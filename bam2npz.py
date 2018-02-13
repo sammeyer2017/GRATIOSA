@@ -2,7 +2,10 @@ import os,pysam, numpy as np, pandas as pd
 from datetime import datetime
 
 def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragments for each strand
-	bamfile = pysam.AlignmentFile(bam_file, "rb") # BAM opening, alignment file object
+
+        if not os.path.exists(bam_file+".bai"):
+                os.system("samtools index -b %s"%bam_file)
+        bamfile = pysam.AlignmentFile(bam_file, "rb") # BAM opening, alignment file object
 	print 'Header :',bamfile.header
 	print 'Reads mapped :',bamfile.mapped
 	print 'Reads without coordinate :',bamfile.nocoordinate
@@ -81,8 +84,11 @@ def cov_from_reads(npz_file, genome_length): # compute coverage from reads (.npz
 
 
 ##### MAIN #####
-process_bam_paired_end('E1.bam')
-cov_from_reads('E1_reads.npz', 4922802)
+samples=["E%d"%x for x in range(1,15)]+["F%d"%x for x in range(1,9)+[13,14]]
+
+for s in samples[1:]:
+        process_bam_paired_end('%s.bam'%s)
+        cov_from_reads('%s_reads.npz'%s, 4922802)
 
 
 	
