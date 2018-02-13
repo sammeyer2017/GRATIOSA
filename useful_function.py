@@ -132,8 +132,8 @@ def download_pair(filename,name):
     with open(filename, 'r') as f:
         header=next(f)
         pair=0
-        os.system("bowtie-build "+basedir+"data/"+name+"/sequence.fasta "+basedir+"data/"+name+"/rnaseq_depth/index")
-        list_depth=[]
+        os.system("bowtie-build "+basedir+"data/"+name+"/sequence.fasta "+basedir+"data/"+name+"/rnaseq_cov/index")
+        list_cov=[]
         i=0
         for line in f:
             line=line.strip()
@@ -148,34 +148,34 @@ def download_pair(filename,name):
             if pair == 1:
                 second=new+'.fastq'
             pair +=1
-            if not(os.path.exists(basedir+"data/"+name+"/rnaseq_depth/"+condition+"_plus.txt")):
-                os.system("wget " + line[i] + " -P "+basedir+"data/"+name+"/rnaseq_depth")
-                os.system("gunzip "+basedir+"data/"+name+"/rnaseq_depth/"+new+'.fastq')
+            if not(os.path.exists(basedir+"data/"+name+"/rnaseq_cov/"+condition+"_plus.txt")):
+                os.system("wget " + line[i] + " -P "+basedir+"data/"+name+"/rnaseq_cov")
+                os.system("gunzip "+basedir+"data/"+name+"/rnaseq_cov/"+new+'.fastq')
                 if pair ==2:
                     pair =0
-                    os.system("bowtie -S "+basedir+"data/"+name+"/rnaseq_depth/index -1 "+basedir+"data/"+name+"/rnaseq_depth/"+first+" -2 "+basedir+"data/"+name+"/rnaseq_depth/"+second+" "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam")
-                    os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+first+"*")
-                    os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+second+"*")
-                    os.system("samtools view -S -b "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam")
-                    os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam")
-                    os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam -strand + -d > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+"_plus.txt")
-                    os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam -strand - -d > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+"_minus.txt")
-                    os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam")
-                    list_depth.append(condition)
-                    list_depth.append(condition+"_plus.txt")
-                    list_depth.append(condition+"_minus.txt")
+                    os.system("bowtie -S "+basedir+"data/"+name+"/rnaseq_cov/index -1 "+basedir+"data/"+name+"/rnaseq_cov/"+first+" -2 "+basedir+"data/"+name+"/rnaseq_cov/"+second+" "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam")
+                    os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+first+"*")
+                    os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+second+"*")
+                    os.system("samtools view -S -b "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam")
+                    os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam")
+                    os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam -strand + -d > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+"_plus.txt")
+                    os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam -strand - -d > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+"_minus.txt")
+                    os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam")
+                    list_cov.append(condition)
+                    list_cov.append(condition+"_plus.txt")
+                    list_cov.append(condition+"_minus.txt")
             if pair == 2:
                 pair =0
-        os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/index*")
+        os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/index*")
     f.close()
-    return list_depth
+    return list_cov
 
 def download_single(filename,name):
     with open(filename, 'r') as f:
         header=next(f)
         pair=0
-        os.system("bowtie-build "+basedir+"data/"+name+"/sequence.fasta "+basedir+"data/"+name+"/rnaseq_depth/index")
-        list_depth=[]
+        os.system("bowtie-build "+basedir+"data/"+name+"/sequence.fasta "+basedir+"data/"+name+"/rnaseq_cov/index")
+        list_cov=[]
         i=0
         for line in f:
             line=line.strip()
@@ -186,29 +186,29 @@ def download_single(filename,name):
             new=new.split('.')[0]
             condition=line[0]
             single=new+'.fastq'
-            if not(os.path.exists(basedir+"data/"+name+"/rnaseq_depth/"+condition+"_plus.txt")):
-                os.system("wget " + line[i] + " -P "+basedir+"data/"+name+"/rnaseq_depth")
-                os.system("gunzip "+basedir+"data/"+name+"/rnaseq_depth/"+new+'.fastq')
-                os.system("bowtie -S "+basedir+"data/"+name+"/rnaseq_depth/index "+basedir+"data/"+name+"/rnaseq_depth/"+single+" "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam")
-                os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+single+"*")
-                os.system("samtools view -S -b "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam")
-                os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".sam")
-                os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam -strand + -d > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+"_plus.txt")
-                os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam -strand - -d > "+basedir+"data/"+name+"/rnaseq_depth/"+condition+"_minus.txt")
-                os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/"+condition+".bam")
-                list_depth.append(condition)
-                list_depth.append(condition+"_plus.txt")
-                list_depth.append(condition+"_minus.txt")
-        os.system("rm "+basedir+"data/"+name+"/rnaseq_depth/index*")
+            if not(os.path.exists(basedir+"data/"+name+"/rnaseq_cov/"+condition+"_plus.txt")):
+                os.system("wget " + line[i] + " -P "+basedir+"data/"+name+"/rnaseq_cov")
+                os.system("gunzip "+basedir+"data/"+name+"/rnaseq_cov/"+new+'.fastq')
+                os.system("bowtie -S "+basedir+"data/"+name+"/rnaseq_cov/index "+basedir+"data/"+name+"/rnaseq_cov/"+single+" "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam")
+                os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+single+"*")
+                os.system("samtools view -S -b "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam")
+                os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".sam")
+                os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam -strand + -d > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+"_plus.txt")
+                os.system("bedtools genomecov -ibam "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam -strand - -d > "+basedir+"data/"+name+"/rnaseq_cov/"+condition+"_minus.txt")
+                os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/"+condition+".bam")
+                list_cov.append(condition)
+                list_cov.append(condition+"_plus.txt")
+                list_cov.append(condition+"_minus.txt")
+        os.system("rm "+basedir+"data/"+name+"/rnaseq_cov/index*")
     f.close()
-    return list_depth
+    return list_cov
 
 
 
-def create_depth_info(list_depth,name):
-    l=list_depth
+def create_cov_info(list_cov,name):
+    l=list_cov
     pair=0
-    fw=open(basedir+"data/"+name+"/rnaseq_depth/depth.info","a")
+    fw=open(basedir+"data/"+name+"/rnaseq_cov/cov.info","a")
     for i in l:
         fw.write(i)
         pair+=1

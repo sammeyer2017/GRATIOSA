@@ -238,7 +238,7 @@ def build_domains_list_from_matrix(genes_dict, domains_matrix):
 from itertools import groupby
 
 def cov_is_zero(cov,winlen=20,maxval=5):
-    """ depth analysis: extract positions where depth is zero
+    """ cov analysis: extract positions where cov is zero
     criterium: maximum value of winlen consecutive basepairs
     """
     wherezero = cov<=maxval

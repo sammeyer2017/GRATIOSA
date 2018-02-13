@@ -886,52 +886,7 @@ class Genome:
 
 
 
-    def load_depths(self):
-        if not hasattr(self, 'cov_minus'):
-            self.cov_minus = {}
-        if not hasattr(self, 'cov_plus'):
-            self.cov_plus = {}
-        l=('')
-        if os.path.exists(basedir+"data/"+self.name+"/rnaseq_depth/depth_numpy.info"):
-            with open(basedir+"data/"+self.name+"/rnaseq_depth/depth_numpy.info","r") as f:
-                for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                    self.cov_minus[line[0]]=np.load(basedir+"data/"+self.name+"/rnaseq_depth/"+line[1])
-                    self.cov_plus[line[0]]=np.load(basedir+"data/"+self.name+"/rnaseq_depth/"+line[2])
-            with open(basedir+"data/"+self.name+"/rnaseq_depth/depth.info","r") as f:
-                for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                    l+=basedir+"data/"+self.name+"/rnaseq_depth/"+line[1]
-                    l+=' '
-                    l+=basedir+"data/"+self.name+"/rnaseq_depth/"+line[3]
-                    l+=' '
-                os.system("zip -r "+basedir+"data/"+self.name+"/rnaseq_depth/file.zip "+l)
-                for i in l.split():
-                    os.system("rm "+i)
-        else:
-            with open(basedir+"data/"+self.name+"/rnaseq_depth/depth.info","r") as f:
-                fw=open(basedir+"data/"+self.name+"/rnaseq_depth/depth_numpy.info","w")
-                for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                    print("Loading depths corresponding to condition:", line)
-                    a=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_depth/"+line[1],usecols=[int(line[2])])
-                    b=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_depth/"+line[3],usecols=[int(line[4])])
-                    np.save(basedir+"data/"+self.name+"/rnaseq_depth/"+line[1].split(".")[0]+".npy",a)
-                    np.save(basedir+"data/"+self.name+"/rnaseq_depth/"+line[3].split(".")[0]+".npy",b)
-                    fw.write(line[0]+'\t'+line[1].split(".")[0]+".npy"+'\t'+line[3].split(".")[0]+".npy"+'\n')
-                    self.cov_minus[line[0]]=a
-                    self.cov_plus[line[0]]=b
-                    l+=basedir+"data/"+self.name+"/rnaseq_depth/"+line[1]
-                    l+=' '
-                    l+=basedir+"data/"+self.name+"/rnaseq_depth/"+line[3]
-                    l+=' '
-                os.system("zip -r "+basedir+"data/"+self.name+"/rnaseq_depth/file.zip "+l)
-                for i in l.split():
-                    os.system("rm "+i)
-                fw.close()
+
 
 
     def load_genes_in_TU(self, TU):
@@ -1040,17 +995,17 @@ class Genome:
         self.terminator_complete=add_terminator(basedir+"data/"+self.name+"/terminator")
 
 
-    def get_depth_from_accession_files(self):
-        if os.path.exists(basedir+"data/"+self.name+"/rnaseq_depth/description.info"):
-            with open(basedir+"data/"+self.name+"/rnaseq_depth/description.info","r") as f:
+    def get_cov_from_accession_files(self):
+        if os.path.exists(basedir+"data/"+self.name+"/rnaseq_cov/description.info"):
+            with open(basedir+"data/"+self.name+"/rnaseq_cov/description.info","r") as f:
                 for line in f:
                     line = line.strip('\n')
                     line=line.split('\t')
                     if line[1] == '2':
-                        list_depth=download_pair(basedir+"data/"+self.name+"/rnaseq_depth/"+line[0],self.name)
+                        list_cov=download_pair(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0],self.name)
                     else:
-                        list_depth=download_single(basedir+"data/"+self.name+"/rnaseq_depth/"+line[0],self.name)
-                    create_depth_info(list_depth,self.name)
+                        list_cov=download_single(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0],self.name)
+                    create_cov_info(list_cov,self.name)
             f.close()
         else:
             print("Warning no description.info")
@@ -1102,3 +1057,76 @@ class Genome:
                 self.dom[i].add_domain_expression()
                 self.dom[i].add_list_expression()
                 i+=1
+
+###################### RAPH #############################
+
+    def load_reads(self): # new attribute reads : {[condition] : .npz}. For each condition,
+    # one .npz is associated containing two .npy, one for R+ and one for R-
+        self.reads = {}
+        if not os.path.exists(basedir+self.name+'/rna_seq_reads/reads.info'):
+            print 'Unable to locate reads.info in /rna_seq_reads/'
+        else:
+            with open(basedir+self.name+'/rna_seq_reads/reads.info',"r") as f:
+            header = next(f)
+            for line in f: # load every condition in reads.info
+                line=line.strip()
+                line=line.split('\t')
+                print 'Loading condition',line[0]
+                self.reads[line[1]] = np.load(basedir+self.name+'/rna_seq_reads/'+line[1])
+            print 'Done'
+
+    def load_cov(self): # new attribute cov : {[condition] : .npz}. For each condition,
+    # one .npz is associated containing two .npy, one for cov on + strand, one for - strand
+        self.cov = {}
+        if not os.path.exists(basedir+self.name+'/rna_seq_cov/cov.info'):
+            print 'Unable to locate cov.info in /rna_seq_cov/'
+        else:
+            with open(basedir+self.name+"/rna_seq_cov/cov.info","r") as f:
+            header = next(f)
+            for line in f: # load every condition in cov.info
+                line=line.strip()
+                line=line.split('\t')
+                print 'Loading condition',line[0]
+                self.cov[line[1]] = np.load(basedir+self.name+'/rna_seq_cov/'+line[1])
+            print 'Done'
+
+    # def compute_rpkm_from_cov(self, before=100):
+    #     """Adds rpkm values from coverage: along whole genes Before= number of bps to add before """
+    #     if not self.genes:
+    #         if os.path.exists(basedir+self.name+"/annotation/annotation.info"):
+    #             self.load_annotation()
+    #         else:
+    #             self.load_annotation_gff()
+    #     try:
+    #         for g in list(self.genes.keys()):
+    #             if hasattr(self.genes[g],'orientation'):
+    #                 if self.genes[g].orientation==1:
+    #         # gene in + strand
+    #                     for cond in list(self.cov_pos.keys()):
+    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
+    #                 else:
+    #         # gene in - strand
+    #                     for cond in list(self.cov_neg.keys()):
+    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
+    #     except:
+    #         print("You need to load coverage pls")
+
+    # def compute_fc_from_rpkm(self):
+    #     if not self.genes:
+    #         if os.path.exists(basedir+self.name+"/annotation/annotation.info"):
+    #             self.load_annotation()
+    #         else:
+    #             self.load_annotation_gff()
+    #     try:
+    #         for g in list(self.genes.keys()):
+    #             if hasattr(self.genes[g],'orientation'):
+    #                 if self.genes[g].orientation==1:
+    #         # gene in + strand
+    #                     for cond in list(self.cov_pos.keys()):
+    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
+    #                 else:
+    #         # gene in - strand
+    #                     for cond in list(self.cov_neg.keys()):
+    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
+    #     except:
+    #         print("You need to load RPKM pls")
