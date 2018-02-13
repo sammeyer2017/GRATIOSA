@@ -1,4 +1,5 @@
-import pysam, numpy as np, pandas as pd, datetime
+import os,pysam, numpy as np, pandas as pd
+from datetime import datetime
 
 def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragments for each strand
 	bamfile = pysam.AlignmentFile(bam_file, "rb") # BAM opening, alignment file object
@@ -45,7 +46,7 @@ def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragme
 		file.close() 
 
 	file = open('reads.info','a')
-	file.write('\n'+bam_file+'\t'+datetime.now()+'\t'+bam_file[:-4]+'_reads.npz')  
+	file.write('\n'+bam_file+'\t'+str(datetime.now())+'\t'+bam_file[:-4]+'_reads.npz')  
 	file.close()
 
 	np.savez(os.getcwd()+'/rna_seq_reads/'+bam_file[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
@@ -73,15 +74,15 @@ def cov_from_reads(npz_file, genome_length): # compute coverage from reads (.npz
 		file.close() 
 
 	file = open(os.getcwd()+'/rna_seq_cov/cov.info','a')
-	file.write('\n'+npz_file+'\t'+datetime.now()+'\t'+npz_file[:-4]+'_cov.npz')  
+	file.write('\n'+npz_file+'\t'+str(datetime.now())+'\t'+npz_file[:-4]+'_cov.npz')  
 	file.close()
 
 	np.savez(os.getcwd()+'/rna_seq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
 
 
 ##### MAIN #####
-# process_bam_paired_end('E1.bam')
-# cov_from_reads('E1_reads.npz', 4922802)
+process_bam_paired_end('E1.bam')
+cov_from_reads('E1_reads.npz', 4922802)
 
 
 	
