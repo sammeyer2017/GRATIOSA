@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import sys
@@ -12,7 +11,7 @@ import operator
 from globvar import *
 from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
-from Bio import Motif
+from Bio import motifs
 
 
 
@@ -29,7 +28,7 @@ def create_matrix_from_file(filename, factor):
                 while i <5:
                     i+=1
                     header=next(f)
-                m = Motif.Motif()
+                m = motifs.Motif()
                 a = IUPAC.unambiguous_dna
                 m.add_instance(Seq(header.strip(),a))
                 l=('*')

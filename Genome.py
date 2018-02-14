@@ -18,6 +18,7 @@ from TU import TU
 from Operon import Operon
 from Terminator import Terminator
 from domain_phuc import Domain
+from datetime import datetime
 
 
 
@@ -885,10 +886,6 @@ class Genome:
             print(" no rpkm file in this folder ")
 
 
-
-
-
-
     def load_genes_in_TU(self, TU):
         """ adds genes to TU accoding to annotation, ordered along orientation of the TU.
         Condition= gene entirely in TU
@@ -929,52 +926,6 @@ class Genome:
             for TU in list(self.TU.values()):
                 load_genes_in_TU(self, TU)
 
-    def load_fc(self,*args, **kwargs):
-        """ Fc info file, 0=condition 1=file_name, 2=tag_column, 3=fc_column
-                4=type of separator, 5 = start line, 6 = p_value( if no write nothing),
-                if other source give the line of the source in fc information file """
-        if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
-        n=0
-        if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"):
-            with open(basedir+"data/"+self.name+"/fold_changes/fc.info","r") as f:
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    try:
-                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
-                    except:
-                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0], int(header[2]),int(header[3]),header[4],int(header[5]),n)
-                    n+=1
-            f.close()
-        else:
-            print(" No fold change file ")
-
-
-
-    def compute_rpkm_from_coverage(self, before=100):
-        """Adds rpkm values from coverage: along whole genes Before= number of bps to add before """
-        if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
-        try:
-            for g in list(self.genes.keys()):
-                if hasattr(self.genes[g],'orientation'):
-                    if self.genes[g].orientation==1:
-            # gene in + strand
-                        for cond in list(self.cov_plus.keys()):
-                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_plus[cond][(self.genes[g].left-100):self.genes[g].right]))
-                    else:
-            # gene in - strand
-                        for cond in list(self.cov_minus.keys()):
-                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_minus[cond][self.genes[g].left:(self.genes[g].right+100)]))
-        except:
-            print("You need to load coverage pls")
 
 
     def load_operon(self):
@@ -1060,73 +1011,115 @@ class Genome:
 
 ###################### RAPH #############################
 
-    def load_reads(self): # new attribute reads : {[condition] : .npz}. For each condition,
-    # one .npz is associated containing two .npy, one for R+ and one for R-
-        self.reads = {}
-        if not os.path.exists(basedir+self.name+'/rna_seq_reads/reads.info'):
-            print 'Unable to locate reads.info in /rna_seq_reads/'
+    def load_reads(self): # new attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
+        self.reads_pos = {} # reads on + strand
+        self.reads_neg = {} # reads on - strand
+        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
+            print 'Unable to locate reads.info in /rnaseq_reads/'
         else:
-            with open(basedir+self.name+'/rna_seq_reads/reads.info',"r") as f:
-            header = next(f)
-            for line in f: # load every condition in reads.info
-                line=line.strip()
-                line=line.split('\t')
-                print 'Loading condition',line[0]
-                self.reads[line[1]] = np.load(basedir+self.name+'/rna_seq_reads/'+line[1])
+            # open info file
+            with open(basedir+"data/"+self.name+'/rnaseq_reads/reads.info',"r") as f:
+                header = next(f) # first line = header
+                # one line / condition
+                for line in f:
+                    line=line.strip()
+                    line=line.split('\t')
+                    print 'Loading condition',line[0]
+                    self.reads_pos[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rpos"]
+                    self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
             print 'Done'
 
-    def load_cov(self): # new attribute cov : {[condition] : .npz}. For each condition,
-    # one .npz is associated containing two .npy, one for cov on + strand, one for - strand
-        self.cov = {}
-        if not os.path.exists(basedir+self.name+'/rna_seq_cov/cov.info'):
-            print 'Unable to locate cov.info in /rna_seq_cov/'
+
+    def load_cov(self): # new attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
+        self.cov_pos = {} # cov on + strand
+        self.cov_neg = {} # cov on - strand
+        # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
+        # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
+        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
+            print 'Unable to locate cov.info in /rnaseq_cov/'
+            print 'Working with .txt file (cov_txt.info)'
+            file = open(basedir+"data/"+self.name+'/rnaseq_cov/cov.info','w') 
+            file.write('Condition\tCov file\tDate\tReads file')
+            file.close() 
+            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_txt.info","r") as f: # load cov_txt.info
+                for line in f: # for each condition (each .txt file in cov_txt.info)
+                    line = line.strip('\n') 
+                    line = line.split('\t') 
+                    print 'Loading condition:',line[0]
+                    # create .npy from .txt
+                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1],usecols=[int(line[2])]) 
+                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[3],usecols=[int(line[4])]) 
+                    # load attributes
+                    self.cov_neg[line[0]]= cov_neg
+                    self.cov_pos[line[0]]= cov_pos
+                    # save .npy into .npz
+                    np.savez(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
+                    # update cov.info
+                    file=open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","a")                   
+                    file.write('\n'+line[0]+'\t'+line[0]+'_cov.npz\t'+str(datetime.now())+'\tUnknown')
+                    file.close()
+            f.close()
+
+        else: # cov.info available, cov.info opening instead of cov_txt.info
+            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
+                header = next(f)       
+                for line in f: # for each condition
+                    line=line.strip()
+                    line=line.split('\t')
+                    print 'Loading condition',line[0]
+                    # load attributes
+                    self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
+                    self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
+        print 'Done'
+        
+
+    def compute_rpkm_from_cov(self, before=100):
+        """Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account 
+        DNA region upstream of the coding sequence of the gene """
+        if not self.genes: # if no genes loaded
+            # try to load them
+            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
+                self.load_annotation()
+            else:
+                self.load_annotation_gff()
+        try:
+            for g in list(self.genes.keys()): # for each gene
+                if hasattr(self.genes[g],'orientation'): # which has a known orientation
+                    if self.genes[g].orientation==1: 
+            # gene in + strand
+                        for cond in list(self.cov_pos.keys()): # for each condition of cov
+                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
+                    else:
+            # gene in - strand
+                        for cond in list(self.cov_neg.keys()):
+                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
+        except:
+            print("You need to load coverage pls")
+
+
+    def load_fc(self,*args, **kwargs):
+        """ Fc info file, 0=condition 1=file_name, 2=tag_column, 3=fc_column
+                4=type of separator, 5 = start line, 6 = p_value( if no write nothing),
+                if other source give the line of the source in fc information file """
+        if not self.genes: # if no genes loaded
+            # try to load them
+            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
+                self.load_annotation()
+            else:
+                self.load_annotation_gff()
+        n=0 
+        if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"): 
+            with open(basedir+"data/"+self.name+"/fold_changes/fc.info","r") as f:
+                skiphead = next(f) # skip head
+                for header in f:
+                    header=header.strip()
+                    header=header.split('\t')
+                    try: # if p-value in file, works
+                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
+                    except: # without p-value otherwise
+                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0], int(header[2]),int(header[3]),header[4],int(header[5]),n)
+                    n+=1
+            f.close()
         else:
-            with open(basedir+self.name+"/rna_seq_cov/cov.info","r") as f:
-            header = next(f)
-            for line in f: # load every condition in cov.info
-                line=line.strip()
-                line=line.split('\t')
-                print 'Loading condition',line[0]
-                self.cov[line[1]] = np.load(basedir+self.name+'/rna_seq_cov/'+line[1])
-            print 'Done'
+            print("No fc.info file, please create one")
 
-    # def compute_rpkm_from_cov(self, before=100):
-    #     """Adds rpkm values from coverage: along whole genes Before= number of bps to add before """
-    #     if not self.genes:
-    #         if os.path.exists(basedir+self.name+"/annotation/annotation.info"):
-    #             self.load_annotation()
-    #         else:
-    #             self.load_annotation_gff()
-    #     try:
-    #         for g in list(self.genes.keys()):
-    #             if hasattr(self.genes[g],'orientation'):
-    #                 if self.genes[g].orientation==1:
-    #         # gene in + strand
-    #                     for cond in list(self.cov_pos.keys()):
-    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
-    #                 else:
-    #         # gene in - strand
-    #                     for cond in list(self.cov_neg.keys()):
-    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
-    #     except:
-    #         print("You need to load coverage pls")
-
-    # def compute_fc_from_rpkm(self):
-    #     if not self.genes:
-    #         if os.path.exists(basedir+self.name+"/annotation/annotation.info"):
-    #             self.load_annotation()
-    #         else:
-    #             self.load_annotation_gff()
-    #     try:
-    #         for g in list(self.genes.keys()):
-    #             if hasattr(self.genes[g],'orientation'):
-    #                 if self.genes[g].orientation==1:
-    #         # gene in + strand
-    #                     for cond in list(self.cov_pos.keys()):
-    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
-    #                 else:
-    #         # gene in - strand
-    #                     for cond in list(self.cov_neg.keys()):
-    #                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
-    #     except:
-    #         print("You need to load RPKM pls")

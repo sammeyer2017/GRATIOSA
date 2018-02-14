@@ -1,4 +1,4 @@
-basedir="/home/kwl06/Documents/stage_GB5/data/data_leger/"
+basedir="/home/kwl06/Documents/stage_GB5/data/"
 
 # try:  
 #    basedir = os.environ['TOPO_DATABASE_PATH']

@@ -2,7 +2,7 @@ import os,pysam, numpy as np, pandas as pd
 from datetime import datetime
 
 def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragments for each strand
-	if not os.path.exists(bam_file+".bai"): # if index needed
+	if not os.path.exists(bam_file+".bai"): # if index needed, created using samtools (.bai file)
 		os.system("samtools index -b %s"%bam_file)
     
     bamfile = pysam.AlignmentFile(bam_file, "rb") # BAM opening, alignment file object
@@ -12,7 +12,7 @@ def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragme
 	print 'Reads not mapped :',bamfile.unmapped
 	# /!\ 0-based coordinate system /!\
 	# fastest way to build a numpy matrix -> store every coordinate of interest into lists, then merge into numpy array
-	# lists storing coordinates of R1 for +/- strands
+	# lists storing coordinates of paired-end fragments for +/- strands
 	Rpos_start = []
 	Rpos_end = []
 	Rneg_start = []
@@ -42,55 +42,56 @@ def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragme
 	Rpos = Rpos[np.isfinite(Rpos).all(axis=1)] 
 	Rneg = Rneg[np.isfinite(Rneg).all(axis=1)]
 
-	# if rna_seq_reads folder not exist
-	if not os.path.exists(os.getcwd()+'/rna_seq_reads'):
-		os.makedirs('rna_seq_reads')
+	# if rnaseq_reads folder not exist
+	if not os.path.exists(os.getcwd()+'/rnaseq_reads'):
+		os.makedirs('rnaseq_reads')
 	# if reads.info not exist
-	if not os.path.exists(os.getcwd()+'/rna_seq_reads/reads.info'):
-		file = open(os.getcwd()+'/rna_seq_reads/reads.info','w') 
+	if not os.path.exists(os.getcwd()+'/rnaseq_reads/reads.info'):
+		file = open(os.getcwd()+'/rnaseq_reads/reads.info','w') 
 		file.write('Condition\tReads file\tDate\tBAM file')
 		file.close() 
-	# save results
-	file = open(os.getcwd()+'/rna_seq_reads/reads.info','a')
+	# save results ; .npz contains two .npy Rpos and Rneg
+	file = open(os.getcwd()+'/rnaseq_reads/reads.info','a')
 	file.write('\n'+bam_file[:-4]+'\t'+bam_file[:-4]+'_reads.npz\t'+str(datetime.now())+'\t'+bam_file)  
 	file.close()	
-	np.savez(os.getcwd()+'/rna_seq_reads/'+bam_file[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
+	np.savez(os.getcwd()+'/rnaseq_reads/'+bam_file[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
 
 
 # compute coverage from reads (.npz, one .npy per strand)
 def cov_from_reads(npz_file, genome_length):
-
-
-	npzfile = np.load(os.getcwd()+'/rna_seq_reads/'+npz_file)
+	# load npz file
+	npzfile = np.load(os.getcwd()+'/rnaseq_reads/'+npz_file)
 	Rpos = npzfile["Rpos"]
 	Rneg = npzfile["Rneg"]
+	# init cov
 	cov_pos = np.zeros(genome_length, dtype=int)
 	cov_neg = np.zeros(genome_length, dtype=int)
+	# compute cov
+	# on positive strand
 	for start,end in Rpos:
 		cov_pos[start:end+1] += 1
-
+	# on negative strand
 	for start,end in Rneg:
 		cov_neg[start:end+1] += 1
-
-	# if rna_seq_cov folder not exist		
-	if not os.path.exists(os.getcwd()+'/rna_seq_cov'):
-		os.makedirs('rna_seq_cov')
+	# if rnaseq_cov folder not exist		
+	if not os.path.exists(os.getcwd()+'/rnaseq_cov'):
+		os.makedirs('rnaseq_cov')
 	# if cov.info not exist
-	if not os.path.exists(os.getcwd()+'/rna_seq_cov/cov.info'):
-		file = open(os.getcwd()+'/rna_seq_cov/cov.info','w') 
+	if not os.path.exists(os.getcwd()+'/rnaseq_cov/cov.info'):
+		file = open(os.getcwd()+'/rnaseq_cov/cov.info','w') 
 		file.write('Condition\tCov file\tDate\tReads file')
 		file.close() 
 	# save results
-	file = open(os.getcwd()+'/rna_seq_cov/cov.info','a')
+	file = open(os.getcwd()+'/rnaseq_cov/cov.info','a')
 	file.write('\n'+npz_file[0:-10]+'\t'+npz_file[:-4]+'_cov.npz\t'+str(datetime.now())+'\t'+npz_file)  
 	file.close()
-	np.savez(os.getcwd()+'/rna_seq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
-
+	# save results ; .npz contains two .npy cov_pos and cov_neg
+	np.savez(os.getcwd()+'/rnaseq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
 
 ##### MAIN #####
+# for a list of .bam
 samples=["E%d"%x for x in range(1,15)]+["F%d"%x for x in range(1,9)+[13,14]]
 
 for s in samples:
 	process_bam_paired_end('%s.bam'%s)
-    cov_from_reads('%s_reads.npz'%s, 4922802)
-
+    cov_from_reads('%s_reads.npz'%s, 4922802) # dickeya genome length
