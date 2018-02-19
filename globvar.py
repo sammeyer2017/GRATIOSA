@@ -1,10 +1,10 @@
-basedir="/home/kwl06/Documents/stage_GB5/data/"
+import os
 
-# try:  
-#    basedir = os.environ['TOPO_DATABASE_PATH']
-# except KeyError: 
-#    print "Please set the environment variable TOPO_DATABASE_PATH"
-#    sys.exit()
+try:  
+    basedir = os.environ['TOPO_DATABASE_PATH']
+except KeyError: 
+    print "Please set the environment variable TOPO_DATABASE_PATH"
+    sys.exit()
 
 # --------- rpkm
 # multiplicative constant btw rpkm values and coverage values: use same unit as rpkm for coverage
