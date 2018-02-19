@@ -161,18 +161,15 @@ class Gene:
         if not (id_TSS in self.id_TSS):
             self.id_TSS.append(id_TSS)
 
-    def add_fc(self, value, *args, **kwargs):
+    def add_fc(self,fc_value, condition, *args, **kwargs):
         if not hasattr(self,'all_fc'):
             self.all_fc={}
-        self.relax_log_fc=value
+        if not hasattr(self,'all_pval'):
+            self.all_pval={}
+        self.all_fc[condition]=fc_value
         p_value = kwargs.get('p_value')
         if p_value:
-            self.relax_p_value = p_value
-
-    def add_full_fc(self,value,condition):
-        if not hasattr(self,'all_fc'):
-            self.all_fc={}
-        self.all_fc[condition]=value
+            self.all_pval[condition]=p_value
 
     def add_left_neighbour(self, neighbour):
         self.left_neighbour = neighbour

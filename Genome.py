@@ -471,7 +471,7 @@ def add_fc_to_genes(genes_dict, fc_filename):
 
 def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, n, *args, **kwargs):
     p_val_col= kwargs.get('p_value')
-    list=[]
+    list_it=[]
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -485,22 +485,18 @@ def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, sep
                 line=line.split(separator)
             try:
                 if p_val_col:
-                    if n==0:
-                        genes_dict[line[tag_col]].add_fc(float(line[fc_col]),p_value=float(line[p_val_col]))
-                    genes_dict[line[tag_col]].add_full_fc(float(line[fc_col]),condition)
+                    genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition, p_value=float(line[p_val_col]))
                 else:
-                    if n ==0:
-                        genes_dict[line[tag_col]].add_fc(float(line[fc_col]))
-                    genes_dict[line[tag_col]].add_full_fc(float(line[fc_col]),condition)
-                list.append(line[tag_col])
+                    genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition)
+                list_it.append(line[tag_col])
             except:
-                if line[tag_col] not in list(genes_dict.keys()):
+                if line[tag_col] not in genes_dict.keys():
                     if line[tag_col] != '':
                         print(line[tag_col] + " not in annotation ")
                     else:
                         print("fc without locus")
     f.close()
-    return list
+    return list_it
 
 
 
@@ -1035,6 +1031,17 @@ class Genome:
         self.cov_neg = {} # cov on - strand
         # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
         # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
+        if os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info'): # cov.info available, cov.info opening instead of cov_txt.info
+            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
+                header = next(f)       
+                for line in f: # for each condition
+                    line=line.strip()
+                    line=line.split('\t')
+                    print 'Loading condition',line[0]
+                    # load attributes
+                    self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
+                    self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
+        
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
             print 'Unable to locate cov.info in /rnaseq_cov/'
             print 'Working with .txt file (cov_txt.info)'
@@ -1059,17 +1066,9 @@ class Genome:
                     file.write('\n'+line[0]+'\t'+line[0]+'_cov.npz\t'+str(datetime.now())+'\tUnknown')
                     file.close()
             f.close()
-
-        else: # cov.info available, cov.info opening instead of cov_txt.info
-            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
-                header = next(f)       
-                for line in f: # for each condition
-                    line=line.strip()
-                    line=line.split('\t')
-                    print 'Loading condition',line[0]
-                    # load attributes
-                    self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
-                    self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
+        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
+            print 'cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder'
+    
         print 'Done'
         
 
@@ -1101,6 +1100,7 @@ class Genome:
         """ Fc info file, 0=condition 1=file_name, 2=tag_column, 3=fc_column
                 4=type of separator, 5 = start line, 6 = p_value( if no write nothing),
                 if other source give the line of the source in fc information file """
+        self.list_cond_fc=[]
         if not self.genes: # if no genes loaded
             # try to load them
             if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
@@ -1114,6 +1114,7 @@ class Genome:
                 for header in f:
                     header=header.strip()
                     header=header.split('\t')
+                    self.list_cond_fc.append(header[0])
                     try: # if p-value in file, works
                         self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
                     except: # without p-value otherwise
