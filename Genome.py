@@ -19,7 +19,12 @@ from Operon import Operon
 from Terminator import Terminator
 from domain_phuc import Domain
 from datetime import datetime
-
+from Bio.SeqUtils import MeltingTemp as mt
+from Bio.Seq import Seq
+from matplotlib import patches
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+from math import sqrt
 
 
 #==============================================================================#
@@ -471,7 +476,7 @@ def add_fc_to_genes(genes_dict, fc_filename):
 
 def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, n, *args, **kwargs):
     p_val_col= kwargs.get('p_value')
-    list_it=[]
+    list_valid_genes=[]
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -488,7 +493,7 @@ def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, sep
                     genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition, p_value=float(line[p_val_col]))
                 else:
                     genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition)
-                list_it.append(line[tag_col])
+                list_valid_genes.append(line[tag_col])
             except:
                 if line[tag_col] not in genes_dict.keys():
                     if line[tag_col] != '':
@@ -496,7 +501,7 @@ def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, sep
                     else:
                         print("fc without locus")
     f.close()
-    return list_it
+    return list_valid_genes
 
 
 
@@ -1100,7 +1105,8 @@ class Genome:
         """ Fc info file, 0=condition 1=file_name, 2=tag_column, 3=fc_column
                 4=type of separator, 5 = start line, 6 = p_value( if no write nothing),
                 if other source give the line of the source in fc information file """
-        self.list_cond_fc=[]
+        self.list_genes_fc = {} # for each condition, list of genes having a FC
+        self.list_genes_fc_pval = {} # for each condition, list of genes having a FC and a pvalue
         if not self.genes: # if no genes loaded
             # try to load them
             if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
@@ -1114,13 +1120,231 @@ class Genome:
                 for header in f:
                     header=header.strip()
                     header=header.split('\t')
-                    self.list_cond_fc.append(header[0])
                     try: # if p-value in file, works
-                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
+                        self.list_genes_fc_pval[header[0]]=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
+                        self.list_genes_fc[header[0]] = self.list_genes_fc_pval[header[0]]
                     except: # without p-value otherwise
-                        self.list_genes_fc=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0], int(header[2]),int(header[3]),header[4],int(header[5]),n)
+                        self.list_genes_fc[header[0]]=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0], int(header[2]),int(header[3]),header[4],int(header[5]),n)
+
                     n+=1
             f.close()
         else:
             print("No fc.info file, please create one")
 
+
+    def compute_melting_energy(self,windows=500000, increment=4000):
+        # compute melting energy on genome windows with a specific increment
+        self.melting_energy = []
+        if not hasattr(self, 'seq'): # if no seq loaded
+            try:
+                print 'Trying to load seq...'
+                self.load_seq()
+                print 'seq loaded'
+            except:
+                print'Unable to load seq'
+                sys.exit()
+
+        bins = [] # bins = windows of the genome : [start coordinate,end coordinate,melting energy]
+        bins_overlap = [] # bins where end coordinate < start coordinate (overlap circular chromosome)
+
+        for i in range(1,self.length,increment): # create bins depending on windows size and increment value
+            if (i+windows) <= self.length: # enough length to create a bin
+                bins.append([i,i+windows,0])
+            else: # i + windows > genome size, overlap with the beginning (circular chromosome)
+                bins_overlap.append([i, windows - (self.length-i),0])
+        
+        bins = np.array(bins) # convert to .npy
+        bins_overlap = np.array(bins_overlap)
+
+        # compute melting energy on bins
+        for start,end,melting_energy in bins:
+            seq = Seq(self.seq[start-1:end])
+            melting_energy = mt.Tm_NN(seq)
+        
+        for start,end,melting_energy in bins_overlap:
+            seq = Seq(self.seq[start-1:] + self.seq[0:end])
+            melting_energy = mt.Tm_NN(seq)
+        
+        bins = np.concatenate((bins,bins_overlap))
+
+        self.melting_energy = list(bins[:,2])
+
+    def draw_melting_energy_circle(self, *args, **kwargs):
+        # draw melting energy circle from melting energy
+        # opt arg : colormap, vmin, vmax
+        if not hasattr(self, 'melting_energy'): # if melting energy not computed
+            try:
+                print 'Trying to compute melting energy with default values...'   
+                self.compute_melting_energy()
+                print 'Melting energy computed'
+            except:
+                print'Unable to compute melting_energy'
+                sys.exit()
+
+        colormap= kwargs.get('colormap','seismic') # default value seismic
+        try:
+            cScale_fc = plt.get_cmap(colormap)
+        except:
+            print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
+            print 'Loading default seismic'
+            cScale_fc = plt.get_cmap('seismic')
+
+        vmin = kwargs.get('vmin', min(self.melting_energy))
+        vmax = kwargs.get('vmax', max(self.melting_energy))          
+        # normalisation of colors
+        cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
+        # map which assigns a colour depending on value between vmin and vmax
+        cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
+        # config, see globvar for more
+        # init plots
+        fig, ax = plt.subplots(1,1) ; fig.set_size_inches(fig_width, fig_height)
+        plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off()
+
+        angle = 360.0/len(self.melting_energy) # angle between two fragments
+        i=0
+        for value in self.melting_energy:
+            # edgecolor = assign a colour depending on value using cMap
+            # draw arc on circle
+            arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=10)
+            ax.add_patch(arc)
+            i+= angle
+
+        cMap_fc._A = [] # fake array to print map
+        plt.colorbar(cMap_fc).set_label("Melting energy")
+        fig.suptitle('Melting energy '+self.name, fontweight='bold') #, fontsize=14, fontweight='bold')
+        fig.savefig(basedir+"data/"+self.name+"/annotation/melting_energy.png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg       
+
+    def draw_expression_circles(self, *arg, **kwargs):
+        # generate density circles based on FC and pvalues
+        # opt arguments : colormap, vmin vmax (color normalisation), windows, increment
+        windows= kwargs.get('windows', 500000)
+        increment= kwargs.get('increment', 4000)
+
+        path = basedir+"data/"+self.name+"/fold_changes/circles-"+str(datetime.now())
+        os.makedirs(path)
+
+        if not hasattr(self, 'list_genes_fc_pval'): # if no fc loaded 
+            try:
+                print 'Trying to load FC...'
+                self.load_fc()
+                print 'FC loaded'
+            except:
+                print 'Unable to load fc'
+                sys.exit()
+
+        if self.list_genes_fc_pval.keys() == []:
+            print 'No condition where genes have valids FC and p-value, unable to continue'
+            sys.exit()
+        else:
+            for cond in self.list_genes_fc_pval.keys():
+                print 'Computing condition',cond
+                gen_states = self.compute_table_genes(cond)
+                bins = self.count_genes_in_windows(cond, gen_states, windows, increment)
+                print 'Windows on genome :\n',bins
+                tot_act = len(gen_states[np.where(gen_states[:,1] == 1)])
+                print 'Total activated genes on genome :',tot_act
+                tot_repr = len(gen_states[np.where(gen_states[:,1] == -1)])
+                print 'Total repressed genes on genome :',tot_repr
+                zscores = self.compute_zscores(tot_act,tot_repr,bins)
+                # Colormap for fold change
+                colormap= kwargs.get('colormap','seismic') # default value seismic
+                try:
+                    cScale_fc = plt.get_cmap(colormap)
+                except:
+                    print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
+                    print 'Loading default seismic'
+                    cScale_fc = plt.get_cmap('seismic')
+                # default values = smallest zscore, highest
+                vmin = kwargs.get('vmin', min(zscores))
+                vmax = kwargs.get('vmax', max(zscores))
+                # normalisation of colours
+                cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
+                # map which assigns a colour depending on value between vmin and vmax
+                cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
+                # init plots
+                fig, ax = plt.subplots(1,1) ; fig.set_size_inches(fig_width, fig_height)
+                plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off()
+                
+                angle = 360.0/len(zscores) # angle between two fragments
+                i=0
+                for value in zscores:
+                    # edgecolor = assign a colour depending on value using cMap
+                    # draw arc on circle
+                    arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=5)
+                    ax.add_patch(arc)
+                    i+= angle
+
+                cMap_fc._A = [] # fake array to print map
+                plt.colorbar(cMap_fc).set_label("Z-score")
+                fig.suptitle(cond, fontweight='bold') #, fontsize=14, fontweight='bold')
+                fig.savefig(path+"/circle-"+cond+".png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg
+
+    def compute_table_genes(self, cond): 
+        # returns a npy where a row is a gene caracterised by a start pos and a gene state
+        # gene is considered activated above a given fc, repressed below a given fc
+        gen_states = []
+        for gene in self.list_genes_fc_pval[cond]:
+            # if activated
+            if self.genes[gene].all_fc[cond] >= fc_treshold_pos and self.genes[gene].all_pval[cond] <= pval_treshold:
+                gen_states.append([self.genes[gene].start,1])
+            # if repressed
+            elif self.genes[gene].all_fc[cond] <= fc_treshold_neg and self.genes[gene].all_pval[cond] <= pval_treshold:
+                gen_states.append([self.genes[gene].start,-1])
+            # if not affected
+            else:
+                gen_states.append([self.genes[gene].start,0])
+        
+        gen_states = np.array(gen_states)
+        return gen_states
+
+    def count_genes_in_windows(self, cond, gen_states, windows, increment):
+        # compute bins on the genome depending on windows size and increment, and
+        # calculate the nb of activated / repressed / non affected genes in each bin for further zscore
+        if not hasattr(self, 'seq'): # if no seq loaded
+            try:
+                print 'Trying to load seq...'
+                self.load_seq()
+                print 'seq loaded'
+            except:
+                print'Unable to load seq'
+                sys.exit()
+
+        bins = [] # bins = windows of the genome : [start coordinate,end coordinate,nb of activated genes,nb of repressed genes,nb of genes not affected]
+        bins_overlap = [] # bins where end coordinate < start coordinate (overlap circular chromosome)
+        for i in range(1,self.length,increment): # create bins depending on windows size and increment value
+            if (i+windows) <= self.length: # enough length to create a bin
+                bins.append([i,i+windows,0,0,0])
+            else: # i + windows > genome size, overlap with the beginning (circular chromosome)
+                bins_overlap.append([i, windows - (self.length-i),0,0,0])
+        bins_overlap = np.array(bins_overlap)
+        bins = np.array(bins) # convert to .npy
+        
+        for start,state in gen_states: # reminder gene state : a row = beginning of gene, state (activated, repressed or not affected)
+            if state == 1: # activated
+            # test to which bins the gene belongs to, and add one to the nb of activated genes of these bins
+                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),2] += 1
+                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),2] += 1
+            elif state == -1: # repressed gene
+                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),3] += 1
+                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),3] += 1
+            elif state == 0: # not affected gene
+                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),4] += 1
+                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),4] += 1
+        
+        bins = np.concatenate((bins,bins_overlap))
+        return bins
+
+    def compute_zscores(self, tot_act, tot_repr, bins):
+        # p_exp = nb of total activated genes / nb of total activated + repressed genes on the whole genome
+        zscores = []
+        p_exp = float(tot_act) / float((tot_act + tot_repr))
+        print 'g+ / (g+ + g-) on genome :',p_exp
+        # compute zscore for each bin
+        for start,end,nb_act,nb_repr,nb_null in bins:
+            nb_act = float(nb_act) ; nb_repr = float(nb_repr)
+            try:
+                zscore =(nb_act - (nb_act+nb_repr)*p_exp) / (sqrt((nb_act+nb_repr)*p_exp*(1-p_exp)))
+            except: # division by zero if no genes activated nor repressed
+                zscore = 0
+            zscores.append(zscore)
+        return zscores
