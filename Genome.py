@@ -346,62 +346,6 @@ def set_mean_expression(genes_dict, expression_filename):
                 print("Expressions : Could not find gene " + line[0])
     return genes_dict
 
-
-
-def filter_TSS_old(xxx_todo_changeme,filt,win):
-    (plus,minus) = xxx_todo_changeme
-    isreal=np.any(plus[:,1:]>=filt,axis=1)
-    plus=plus[isreal]
-    ordre=np.argsort(plus[:,0])
-    plus=plus[ordre]
-    print(len(plus))
-    # --- group together close ones
-    finplus=[]
-    if isinstance(win,int):
-        for ip,p in enumerate(plus[:-1]):
-            if (plus[ip+1,0]-p[0])<win:
-                if np.mean(p[1:])<np.mean(plus[ip+1,1:]):
-                    # replace position of TSS to group them
-                    ind=plus[ip+1,0]
-                else:
-                    ind=plus[ip,0]
-                finplus.append(ind)
-        if plus[-1,0]!=ind:
-            finplus.append(ind)
-                #line=p+plus[ip+1]
-                #line[0]=ind
-                #finplus.append(line)
-            #plus=np.array(finplus)
-    else:
-        finplus=plus[:,0]
-    # ---------------------------------
-    # -------- - strand
-    isreal=np.any(minus[:,1:]>=filt,axis=1)
-    minus=minus[isreal]
-    ordre=np.argsort(minus[:,0])
-    minus=minus[ordre]
-    # ---- group together close ones
-    finminus=[]
-    if isinstance(win,int):
-        for ip,p in enumerate(minus[:-1]):
-            if (minus[ip+1,0]-p[0])<win:
-                #print p
-                if np.mean(p[1:])<np.mean(minus[ip+1,1:]):
-                    # replace position of TSS to group them
-                    ind=minus[ip+1,0]
-                else:
-                    ind=minus[ip,0]
-                finminus.append(ind)
-        if minus[-1,0]!=ind:
-            finminus.append(ind)
-                #line=p+plus[ip+1]
-                #line[0]=ind
-                #finplus.append(line)
-                #plus=np.array(finplus)
-    else:
-        finminus=minus[:,0]
-    return np.array(finplus),np.array(finminus)
-
 def filter_TSS(xxx_todo_changeme1,filt,win):
     (plus,minus) = xxx_todo_changeme1
     isreal=np.any(plus[:,1:]>=filt,axis=1)
@@ -838,7 +782,7 @@ class Genome:
         self.TSS[TSS_condition]=np.array(TSS_list)
 
     def load_TSS(self, *args, **kwargs):
-        """ Laod a TSS file information where indice 0 = condition, 1 = filename,
+        """ Load a TSS file info where indice 0 = condition, 1 = filename,
         2 = locus_tag, 3 = TSS_column, 4 = start_line, 5 = separator, 6 = strand column, 7 = Sig column
         if much other condition give it in the seconde line of file and change TSS column """
         if not (self.genes):
@@ -846,6 +790,7 @@ class Genome:
                 self.load_annotation()
             else:
                 self.load_annotation_gff()
+
         if os.path.exists(basedir+"data/"+self.name+"/TSS/TSS.info"):
             with open(basedir+"data/"+self.name+"/TSS/TSS.info","r") as f:
                 for line in f:
@@ -916,7 +861,6 @@ class Genome:
         if not hasattr(self, 'TU'):
             self.TU={}
         self.TU[index]=TU
-
 
     def load_genes_in_TUs(self):
         """ adds genes to all existing TUs.
@@ -1205,13 +1149,18 @@ class Genome:
         for value in self.melting_energy:
             # edgecolor = assign a colour depending on value using cMap
             # draw arc on circle
-            arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=10)
+            arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=7)
             ax.add_patch(arc)
             i+= angle
 
         cMap_fc._A = [] # fake array to print map
-        plt.colorbar(cMap_fc).set_label("Melting energy")
-        fig.suptitle('Melting energy '+self.name, fontweight='bold') #, fontsize=14, fontweight='bold')
+        cbar = plt.colorbar(cMap_fc,shrink=0.3)
+        cbar.set_label("Melting energy",size=9)
+        cbar.ax.tick_params(labelsize=7)
+        plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+        plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+        plt.annotate('Melting energy '+self.name, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
+        #fig.suptitle('Melting energy '+self.name, fontweight='bold') #, fontsize=14, fontweight='bold')
         fig.savefig(basedir+"data/"+self.name+"/annotation/melting_energy.png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg       
 
     def draw_expression_circles(self, *arg, **kwargs):
@@ -1241,6 +1190,7 @@ class Genome:
                 gen_states = self.compute_table_genes(cond)
                 bins = self.count_genes_in_windows(cond, gen_states, windows, increment)
                 print 'Windows on genome :\n',bins
+
                 tot_act = len(gen_states[np.where(gen_states[:,1] == 1)])
                 print 'Total activated genes on genome :',tot_act
                 tot_repr = len(gen_states[np.where(gen_states[:,1] == -1)])
@@ -1255,28 +1205,32 @@ class Genome:
                     print 'Loading default seismic'
                     cScale_fc = plt.get_cmap('seismic')
                 # default values = smallest zscore, highest
-                vmin = kwargs.get('vmin', min(zscores))
-                vmax = kwargs.get('vmax', max(zscores))
+                vmin = kwargs.get('vmin', -3)
+                vmax = kwargs.get('vmax', +3)
                 # normalisation of colours
                 cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
                 # map which assigns a colour depending on value between vmin and vmax
                 cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
                 # init plots
-                fig, ax = plt.subplots(1,1) ; fig.set_size_inches(fig_width, fig_height)
-                plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off()
-                
+                fig, ax = plt.subplots() ; fig.set_size_inches(fig_width, fig_height)
+                plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
                 angle = 360.0/len(zscores) # angle between two fragments
                 i=0
                 for value in zscores:
                     # edgecolor = assign a colour depending on value using cMap
                     # draw arc on circle
-                    arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=5)
+                    arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=7)
                     ax.add_patch(arc)
                     i+= angle
 
                 cMap_fc._A = [] # fake array to print map
-                plt.colorbar(cMap_fc).set_label("Z-score")
-                fig.suptitle(cond, fontweight='bold') #, fontsize=14, fontweight='bold')
+                cbar = plt.colorbar(cMap_fc,shrink=0.3)
+                cbar.set_label("Z-score",size=9)
+                cbar.ax.tick_params(labelsize=7)
+                plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+                plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+                plt.annotate(cond, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
+                #fig.suptitle(cond, fontweight='bold') #, fontsize=14, fontweight='bold')
                 fig.savefig(path+"/circle-"+cond+".png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg
 
     def compute_table_genes(self, cond): 
