@@ -105,32 +105,11 @@ class Gene:
             self.start = self.right
             self.end = self.left
 
-    def add_expression_data(self, conditions, expression_values):
-        """ Adds expression in the form of a dictionnary where the keys
-        correspond to the different conditions. The conditions and expression
-        values are passed as lists.
-        """
-        self.expression = dict(zip(conditions, expression_values))
-        self.mean_expression = np.mean(self.expression.values())
-
-
-    def add_single_expression(self, condition, expression_value):
-        if not hasattr(self, 'expression'):
-            self.expression = {}
-        self.expression[condition] = expression_value
 
     def add_single_rpkm(self, condition, expression_value):
         if not hasattr(self, 'rpkm'):
             self.rpkm = {}
         self.rpkm[condition] = expression_value
-
-
-    def set_mean_expression(self, expression_value=None):
-        if expression_value:
-            self.mean_expression = expression_value
-        else:
-            self.mean_expression = np.mean(self.expression.values())
-
 
     def set_model_parameters(self, k_on, p_off, condition):
         """ Sets the gene's k_on and p_off parameters. p_off is the probability
@@ -141,13 +120,6 @@ class Gene:
         if not hasattr(self, 'model_parameters'):
             self.model_parameters = {}
         self.model_parameters[condition] = (k_on, p_off)
-
-
-    def add_fc_data(self, conditions, fold_change_values):
-        """ Adds fold change expression data in the form of a dictionnary in the
-        same way as the expression data.
-        """
-        self.fold_change = dict(zip(conditions, fold_change_values))
 
     def __eq__(self, other):
         return (self.name == other.name) and \
@@ -161,15 +133,10 @@ class Gene:
         if not (id_TSS in self.id_TSS):
             self.id_TSS.append(id_TSS)
 
-    def add_fc(self,fc_value, condition, *args, **kwargs):
-        if not hasattr(self,'all_fc'):
-            self.all_fc={}
-        if not hasattr(self,'all_pval'):
-            self.all_pval={}
-        self.all_fc[condition]=fc_value
-        p_value = kwargs.get('p_value')
-        if p_value:
-            self.all_pval[condition]=p_value
+    def add_fc_pval_cond(self,fc_value, condition, p_value):
+        if not hasattr(self,'fc_pval'):
+            self.fc_pval={}
+        self.fc_pval[condition]=[fc_value,p_value]
 
     def add_left_neighbour(self, neighbour):
         self.left_neighbour = neighbour
@@ -182,11 +149,3 @@ class Gene:
             self.id_operon=[]
         if not(operon in self.id_operon):
             self.id_operon.append(operon)
-
-
-
-    def add_list_expression(self):
-        self.list_expression=[]
-        if hasattr(self,'expression'):
-            for i in self.expression:
-                self.list_expression.append(self.expression[i])

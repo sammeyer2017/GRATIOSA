@@ -12,26 +12,35 @@ import numpy as np
 
 class TSS:
     def __init__(self, *args, **kwargs):
-        self.id = kwargs.get('id')
         self.pos = kwargs.get('pos')
-        self.condition=[]
-        self.genes={}
-
-    def add_condition(self,condition):
-        if condition not in self.condition:
-            self.condition.append(condition)
-            self.genes[condition]=[]
-
-    def add_sig(self,sig):
-        self.sig = sig
+        self.strand = None
+        self.genes=[]
+        self.promoter={}
 
     def add_strand(self,strand):
-        self.orientation = strand
         self.strand = strand
         if self.strand == '+':
             self.strand= True
-        else:
+        elif self.strand == '-':
             self.strand=False
+        else:
+            self.strand = None
 
-    def add_genes(self,genes,condition):
-        self.genes[condition].append(genes)
+    def add_genes(self,tags,genes_dict):
+        # tags must have the shape : [gene1,gene2]
+        for tag in tags.strip().replace(' ','').split(','):
+            if tag != '':
+                if tag in genes_dict.keys():
+                    self.genes.append(tag)
+                else:
+                    print(tag + " not in annotations")
+
+    def add_promoter(self, sig, *arg, **kwargs):
+        # shape TSS.promoter = {[sig]:[sites]}
+        # sites must have the shape : [-10l,-10r,-35l,-35r] with l = left, r = right
+        self.promoter[sig] = []
+        sites = kwargs.get('sites')
+        if sites:
+            for site in sites.strip().replace(' ','').split(','):
+                self.promoter[sig].append(site)
+

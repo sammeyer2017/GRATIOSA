@@ -30,66 +30,11 @@ from math import sqrt
 #==============================================================================#
 
 # -------------------
-# useful function
-
-
-def annotations_parser(annotations_filename, tag_column=1):
-    """ Returns a dictionary of Gene objects which has the shape
-    {gene_tag_name:gene_object}, where the tag name column can be specified.
-    """
-    genes_dict = {}
-    with open(annotations_filename, 'r') as f:
-        header = next(f)
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                if (line[tag_column] in genes_dict):
-                    print("Warning! Overwriting value for gene " + \
-                         line[tag_column])
-                # if key already exists this will overwrite the value
-                genes_dict[line[tag_column]] = Gene(annotations_list=line)
-            except (IndexError, ValueError):
-                print("Annotations : could not read line " + ','.join(line))
-    return genes_dict
-
-def annotations_parser_general_old(annotations_filename,separator,tag_column,strand_column,left_column,         right_column,start_line):
-    genes_dict = {}
-    with open(annotations_filename, 'r') as f:
-        i=1
-        j=0
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            list=[]
-            line=line.strip()
-            if      separator == '\\t':
-                line=line.split('\t')
-            else:
-                line=line.split(separator)
-            list.append(line[tag_column])
-            if line[strand_column]=="complement":
-                list.append('-')
-            elif line[strand_column]=="forward":
-                list.append('+')
-            elif line[strand_column]== "1":
-                list.append('+')
-            elif line[strand_column]== "-1":
-                list.append('-')
-            else:
-                list.append(line[strand_column])
-            list.append(line[left_column])
-            list.append(line[right_column])
-            if line[tag_column] in genes_dict:
-                print("Warning! Overwriting value for gene ")
-                print(line[tag_column])
-            genes_dict[line[tag_column]]=Gene(annotations_general=list)
-
-    return genes_dict
-
+# useful functions
 
 def annotations_parser_general(annotations_filename,separator,tag_column,strand_column,left_column,right_column,start_line):
+    ''' Called by load annotation, allows genes to be loaded from info file
+    '''
     genes_dict = {}
     with open(annotations_filename, 'r') as f:
         i=1
@@ -105,36 +50,37 @@ def annotations_parser_general(annotations_filename,separator,tag_column,strand_
             header=next(f)
             i+=1
         for line in f:
-            list=[]
+            gene=[]
             line=line.strip()
-            if      separator == '\\t':
+            if separator == '\\t':
                 line=line.split('\t')
             else:
                 line=line.split(separator)
-            list.append(line[tag_column])
+
+            gene.append(line[tag_column])
             if line[strand_column]=="complement":
-                list.append('-')
+                gene.append('-')
             elif line[strand_column]=="forward":
-                list.append('+')
+                gene.append('+')
             elif line[strand_column]== "1":
-                list.append('+')
+                gene.append('+')
             elif line[strand_column]== "-1":
-                list.append('-')
+                gene.append('-')
             else:
-                list.append(line[strand_column])
-            list.append(line[left_column])
-            list.append(line[right_column])
-            list.append(line)
+                gene.append(line[strand_column])
+
+            gene.append(line[left_column])
+            gene.append(line[right_column])
+            gene.append(line)
             if line[tag_column] in genes_dict:
                 print("Warning! Overwriting value for gene ")
                 print(line[tag_column])
-            genes_dict[line[tag_column]]=Gene(annotations_general=list, head=headl)
-
+            genes_dict[line[tag_column]]=Gene(annotations_general=gene, head=headl)
     return genes_dict
 
-
-
 def annotations_parser_gff(annotations_filename):
+    ''' Called by load annotation, allows genes to be loaded from gff
+    '''
     genes_dict = {}
     under_dict={}
     my_file = open(annotations_filename, "r")
@@ -210,94 +156,6 @@ def add_terminator(file):
     return dict_terminator
 
 
-def feature_table_parser(table_filename):
-    """ Returns a dictionary of Gene objects which has the shape
-    {gene_tag_name:gene_object}, where the tag name column can be specified.
-    """
-    genes_dict = {}
-    with open(table_filename, 'r') as f:
-        next(f)
-        for line in f:
-            line = line.strip('\n')
-            line = line.split('\t')
-            if len(line) != 3:
-                continue
-            elif line[2] == 'gene':
-                start = int(line[0].strip('<').strip('>'))
-                end = int(line[1].strip('<').strip('>'))
-                orientation = (start < end)
-                while 'locus_tag' not in line :
-                    line = next(f)
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                if 'gene' in line:
-                    continue
-                if line[-1] in genes_dict:
-                    print("Warning! Overwriting value for gene " + \
-                         line[-1])
-                # if key already exists this will overwrite the value
-                genes_dict[line[-1]] = Gene(name = line[-1],
-                                           left = min(start,end),
-                                           right = max(start, end),
-                                           orientation = orientation)
-    return genes_dict
-
-
-def add_expression_to_genes(genes_dict, expression_filename, tag_col, first_expression_col, is_log):
-    """ Adds expression data to Gene objects by parsing a file with as many
-    columns as there are different conditions in the experiment, plus one for
-    the gene names (first column).
-    """
-    with open(expression_filename, 'r') as f:
-        header=next(f)
-        header=header.strip()
-        header=header.split('\t')
-        header=header[first_expression_col:]
-        for line in f:
-            line=line.strip()
-            line = line.split('\t')
-            try:
-                if is_log == 'no':
-                    genes_dict[line[tag_col]].add_expression_data(header,[math.log(float(i),2) for i in line[first_expression_col:]])
-                else:
-                    genes_dict[line[tag_col]].add_expression_data(header,[float(i) for i in line[first_expression_col:]])
-            except KeyError:
-                if line[tag_col] == 'none':
-                    print("expressions without locus tag")
-                else:
-                    print(line[tag_col] + " this locus not in annotation")
-        return genes_dict
-
-
-def add_single_expression_to_genes(genes_dict, expression_filename):
-    """ Adds expression data to Gene objects by parsing a file with as many
-    columns as there are different conditions in the experiment, plus one for
-    the gene names (first column).
-    """
-    condition = expression_filename[expression_filename.rfind('/')+1:
-                                    expression_filename.rfind('/')+3]
-    with open(expression_filename, 'r') as f:
-        header = next(f)
-        header = header.strip('\n').split(',')
-        header = header[1:]
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_dict[line[0]].add_single_expression(
-                    #log2(x+1)
-                    condition, np.log2(float(line[1])+1))
-            except KeyError:
-                print("Expressions : Could not find gene " + line[0])
-                #genes_dict[line[0]] = Gene(name=line[0], left=int(line[2]),
-                #                          right=int(line[3]),
-                #                          orientation=(line[4]=='+'))
-                #genes_dict[line[0]].add_single_expression(
-                #    expression_filename[i:i+3], float(line[1]))
-    return genes_dict
-
-
-
 def add_single_rpkm_to_genes(genes_dict, expression_filename, condition, TSS_column, start_line, separator,tag_column):
     """ Adds rpkm data to Gene objects by parsing a file with two columns:
     gene name and value
@@ -331,96 +189,13 @@ def add_single_rpkm_to_genes(genes_dict, expression_filename, condition, TSS_col
                 genes_dict[g].add_single_rpkm(condition, float("NaN"))
     return genes_dict
 
-
-def set_mean_expression(genes_dict, expression_filename):
-    with open(expression_filename, 'r') as f:
-        header = next(f)
-        header = header.strip('\n').split(',')
-        header = header[1:]
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_dict[line[0]].set_mean_expression(line[1])
-            except KeyError:
-                print("Expressions : Could not find gene " + line[0])
-    return genes_dict
-
-def filter_TSS(xxx_todo_changeme1,filt,win):
-    (plus,minus) = xxx_todo_changeme1
-    isreal=np.any(plus[:,1:]>=filt,axis=1)
-    plus=plus[isreal]
-    ordre=np.argsort(plus[:,0])
-    plus=plus[ordre]
-    # --- group together close ones
-    dftrue=plus[1:,0]-plus[:-1,0]<win
-    a=[(k,len(list(g))) for k,g in groupby(dftrue)]
-    # ind is the first index
-    ind=0
-    if a[0][0]:
-        pluslist=[]
-    else:
-        pluslist=[plus[0,0]]
-    for k,l in a:
-        if k:
-            # l separations are small
-            # between index ind and index ind+l+1
-            pluslist.append(plus[ind+np.argmax(np.mean(plus[ind:(ind+l+1),1:],axis=1)),0])
-            ind+=l
-        else:
-            if l>1:
-                pluslist+=plus[(ind+1):(ind+l),0].tolist()
-            ind+=l
-    # -------- minus strand$
-    isreal=np.any(minus[:,1:]>=filt,axis=1)
-    plus=minus[isreal]
-    ordre=np.argsort(plus[:,0])
-    plus=plus[ordre]
-    # --- group together close ones
-    dftrue=abs(plus[1:,0]-plus[:-1,0])<win
-    a=[(k,len(list(g))) for k,g in groupby(dftrue)]
-    # ind is the first index
-    ind=0
-    if a[0][0]:
-        minuslist=[]
-    else:
-        minuslist=[plus[0,0]]
-    for k,l in a:
-        if k:
-            # l separations are small
-            # between index ind and index ind+l+1
-            minuslist.append(plus[ind+np.argmax(np.mean(plus[ind:(ind+l+1),1:],axis=1)),0])
-            ind+=l
-        else:
-            if l>1:
-                minuslist+=plus[(ind+1):(ind+l),0].tolist()
-            ind+=l
-    return np.array(pluslist),np.array(minuslist)
-
-
-
-def add_fc_to_genes(genes_dict, fc_filename):
-    """ Adds expression data to Gene objects by parsing a file with as many
-    columns as there are different conditions in the experiment, plus one for
-    the gene names (first column).
-    """
-    with open(fc_filename, 'r') as f:
-        header = next(f)
-        header = header.strip('\n').split(',')
-        header = header[1:]
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_dict[line[0]].add_fc_data(header,
-                    [float(i) for i in line[1:]])
-            except KeyError:
-                print("Fold change : Could not find gene " + line[0])
-    return genes_dict
-
-def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, n, *args, **kwargs):
+def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, *args, **kwargs):
+    ''' Called by load_fc_pval, allows expression data to be loaded by specifying files, and where each
+    information is (tag, fc, pval...). If no p-value column, assigns pval = 0 to each gene
+    '''
+    genes_valid = [] # list containing all genes having valid FC / pval
     p_val_col= kwargs.get('p_value')
-    list_valid_genes=[]
+
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -434,10 +209,10 @@ def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, sep
                 line=line.split(separator)
             try:
                 if p_val_col:
-                    genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition, p_value=float(line[p_val_col]))
+                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(line[p_val_col]))
                 else:
-                    genes_dict[line[tag_col]].add_fc(float(line[fc_col]),condition)
-                list_valid_genes.append(line[tag_col])
+                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(0))
+                genes_valid.append(line[tag_col])
             except:
                 if line[tag_col] not in genes_dict.keys():
                     if line[tag_col] != '':
@@ -445,7 +220,7 @@ def add_single_fc_to_genes(genes_dict, filename, condition, tag_col, fc_col, sep
                     else:
                         print("fc without locus")
     f.close()
-    return list_valid_genes
+    return genes_valid
 
 
 
@@ -479,7 +254,6 @@ def operon_domains(genes_dict):
         domains.append(Domain(operon_genes))
     return domains
 
-
 def load_seq(filename):
     seq=str()
     my_file = open(filename, "r")
@@ -491,15 +265,11 @@ def load_seq(filename):
     my_file.close
     return seq
 
-
-def load_single_TSS(genes_dict,TSS_dict, filename, TSS_column, start_line , separator, condition, strand, dic_plus, dic_minus, *args, **kwargs):
+def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, strand, *args, **kwargs):
+    TSS_dict = {} # dict of TSS objects
     sig = kwargs.get('sig')
     tag_column = kwargs.get('tag_column')
-    if TSS_dict == {}:
-        indice = 1
-    else:
-        indice = list(TSS_dict.keys())
-        indice=len(indice) +1
+    sites = kwargs.get('sites')
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -512,67 +282,28 @@ def load_single_TSS(genes_dict,TSS_dict, filename, TSS_column, start_line , sepa
             else:
                 line=line.split(separator)
             try:
-                if line[strand] == '+':
-                    if not (line[TSS_column] in list(dic_plus.keys())):
-                        TSS_dict[indice] = TSS(pos=int(line[TSS_column]),id=indice)
-                        TSS_dict[indice].add_condition(condition)
-                        TSS_dict[indice].add_strand(line[strand])
-                        if sig:
-                            if 'Sig' in line[sig]:
-                                TSS_dict[indice].add_sig(line[int(sig)])
-                        dic_plus[line[TSS_column]]=indice
-                        indice +=1
-                    else:
-                        if not (condition in TSS_dict[dic_plus[line[TSS_column]]].condition):
-                            TSS_dict[dic_plus[line[TSS_column]]].add_condition(condition)
-                else:
-                    if not (line[TSS_column] in list(dic_minus.keys())):
-                        TSS_dict[indice] = TSS(pos=int(line[TSS_column]),id=indice)
-                        TSS_dict[indice].add_condition(condition)
-                        TSS_dict[indice].add_strand(line[strand])
-                        if sig:
-                            if 'Sig' in line[sig]:
-                                TSS_dict[indice].add_sig(line[int(sig)])
-                        dic_minus[line[TSS_column]]=indice
-                        indice +=1
-                    else:
-                        if not (condition in TSS_dict[dic_minus[line[TSS_column]]].condition):
-                            TSS_dict[dic_minus[line[TSS_column]]].add_condition(condition)
-            except:
-                pass
-            try:
-                if len(line[tag_column].split(',')):
-                    for tag in line[tag_column].strip().replace(' ','').split(','):
-                        try:
-                            if line[strand] == '+':
-                                if tag !='':
-                                    TSS_dict[dic_plus[line[TSS_column]]].add_genes(tag,condition)
-                                genes_dict[tag].add_id_TSS(dic_plus[line[TSS_column]])
-                            else:
-                                if tag !='':
-                                    TSS_dict[dic_minus[line[TSS_column]]].add_genes(tag,condition)
-                                genes_dict[tag].add_id_TSS(dic_minus[line[TSS_column]])
+                pos = int(line[TSS_column])
+                # if TSS need to be init
+                if pos not in TSS_dict.keys():
+                    # init object tss
+                    TSS_dict[pos] = TSS(pos = pos)
+                    TSS_dict[pos].add_strand(line[strand])
+                    if tag_column: # if tag column
+                        TSS_dict[pos].add_genes(line[tag_column],genes_dict)
 
-                        except:
-                            if tag not in list(genes_dict.keys()):
-                                if tag != '':
-                                    print(tag + " not in annotations")
-                else:
-                    try:
-                        if line[strand] == '+':
-                            TSS_dict[dic_plus[line[TSS_column]]].add_genes(line[tag_column],condition)
-                            genes_dict[tag_column].add_id_TSS(dic_plus[line[TSS_column]])
+                # Add sigma factor and binding sites to the promoter dict
+                if sig: # if sigma column
+                    if line[sig] != '':
+                        if sites:
+                            if line[sites] != '':
+                                TSS_dict[pos].add_promoter(line[sig], sites = line[sites])
                         else:
-                            TSS_dict[dic_plus[line[TSS_column]]].add_genes(line[tag_column],condition)
-                            genes_dict[tag_column].add_id_TSS(dic_minus[line[TSS_column]])
-                    except:
-                        if line[tag_column] not in list(genes_dict.keys()):
-                            if line[tag_column] != '':
-                                print(line[tag_column] + " not in annotations")
-            except:
-                pass
+                            TSS_dict[pos].add_promoter(line[sig])
+            
+            except Exception as e:
+                print 'Error in line, wrong information type :',e
 
-    return genes_dict
+    return TSS_dict
 
 
 def proportion_of(dict, list_genes, composition, seq_plus, seq_minus):
@@ -613,8 +344,6 @@ def add_neighbour(dict_genes,list):
     return dict_genes
 
 # ----------------------
-
-
 
 
 class Genome:
@@ -683,33 +412,27 @@ class Genome:
 
 
     def load_annotation(self):
-        """ Laod a annotations file information where indice
-                0 = file, 1 = separator ,2 = Locus column,3 = Strand column,
-                4,5 Left Rigth column, 6 start line """
-        if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
+        """ Load annotation. Two options : if gff file in directory -> load annotation from gff
+        if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 = 
+        Locus column,3 = Strand column, 4,5 Left Rigth column, 6 start line)
+        """
+        if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
+            self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
+        elif os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
             with open(basedir+"data/"+self.name+"/annotation/annotation.info","r") as f:
                 for line in f:
                     line=line.strip()
                     line=line.split('\t')
                     self.genes=annotations_parser_general(basedir+"data/"+self.name+'/annotation/'+line[0],line[1],int(line[2]),int(line[3]),int(line[4]),int(line[5]),int(line[6]))
-
                 f.close()
-            return True
         else:
-            print(" Please load annotation of GFF file ")
-            return False
-
-
-    def load_annotation_gff(self):
-        self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
+            print('No GFF file nor annotation.info, unable to load annotation')
 
 
     def load_neighbour(self):
         if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
+            self.load_annotation()
+
         dict_plus={}
         dict_minus={}
         for i in self.genes:
@@ -722,22 +445,6 @@ class Genome:
         self.genes=add_neighbour(self.genes,l_plus)
         self.genes=add_neighbour(self.genes,l_minus)
 
-
-    def load_expression_level(self):
-        """ Add expression level for all genes in dictionary """
-        if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
-        if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
-            with open(basedir+"data/"+self.name+"/expression/expression.info","r") as f:
-                for line in f:
-                    line=line.strip()
-                    line=line.split('\t')
-                    self.genes=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+line[0], int(line[1]), int(line[2]), line[3])
-        else:
-            print(" not found expression file information")
 
     def load_genes_positions(self):
         if not hasattr(self, 'genepos'):
@@ -753,64 +460,35 @@ class Genome:
         self.genepos["-"]=gmq[np.argsort(gmq[:,0])]
 
 
-    def load_complete_TSS_list(self, *args, **kwargs):
-        """ Load TSS list from file.
-        Two filters can be applied:
-        - filt: a minimum number of starts (default 20)
-        - buffer: if two TSS are closer than this buffer size, we keep only the strongest one
-        """
-        filt=kwargs.get("filt")
-        if not hasattr(self, 'TSS_complete'):
-            self.TSS_complete = {}
-        if not filt:
-            filt=20
-        self.TSS_complete["filter"]=filt
-        plus=np.loadtxt(basedir+"data/"+self.name+"/TSS/TSS+.dat",skiprows=1)
-        minus=np.loadtxt(basedir+"data/"+self.name+"/TSS/TSS-.dat",skiprows=1)
-        print(plus)
-        win=kwargs.get("buffer")
-        self.TSS_complete["buffer"]=win
-        pl,mi=filter_TSS((plus,minus),filt,win)
-        self.TSS_complete["+"]=np.array(pl)
-        self.TSS_complete["-"]=np.array(mi)
-
-    def add_TSS_data(self,TSS_list,TSS_condition):
-        """ Adds TSS from list generated from database as numpy array.
-        TSS_condition describes the list, in the case where filters were applied etc."""
-        if not hasattr(self, 'expression'):
-            self.expression = {}
-        self.TSS[TSS_condition]=np.array(TSS_list)
-
     def load_TSS(self, *args, **kwargs):
         """ Load a TSS file info where indice 0 = condition, 1 = filename,
         2 = locus_tag, 3 = TSS_column, 4 = start_line, 5 = separator, 6 = strand column, 7 = Sig column
-        if much other condition give it in the seconde line of file and change TSS column """
+        8 = Sites column if much other condition give it in the seconde line of file and change TSS column """
+        self.TSSs = {} # shape (dict of dict) : TSSs = {TSScond : {TSS:attr}}
         if not (self.genes):
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
+            self.load_annotation()
 
         if os.path.exists(basedir+"data/"+self.name+"/TSS/TSS.info"):
             with open(basedir+"data/"+self.name+"/TSS/TSS.info","r") as f:
+                skiphead = next(f) # skip head
                 for line in f:
                     line = line.strip('\n')
                     line = line.split('\t')
-                    try:
-                        test=int(line[2])# If no locus tag column in file information put None, test if locus tag column is number
-                        try:
-                            test=int(line[7])# Same test if no sig column
-                            self.genes=load_single_TSS(self.genes, self.TSS_complete, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], line[0], int(line[6]), self.TSS_plus, self.TSS_minus, tag_column = int(line[2]), sig=int(line[7]))
+                    try: # successively try to load :
+                        try: # sites + tag non tested because sites without sig not possible
+                            try: # tag + sig + sites
+                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]), sig=int(line[7]), sites =int(line[8]))
+                            except: # tag + sig
+                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]), sig=int(line[7]))
                         except:
-                            self.genes=load_single_TSS(self.genes, self.TSS_complete, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], line[0], int(line[6]), self.TSS_plus, self.TSS_minus,tag_column = int(line[2]))
-                    except:
-                        try:
-                            test=int(line[7])
-                            self.genes=load_single_TSS(self.genes, self.TSS_complete, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], line[0], int(line[6]), self.TSS_plus, self.TSS_minus, sig=int(line[7]))
-                        except:
-                            self.genes=load_single_TSS(self.genes, self.TSS_complete, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], line[0], int(line[6]), self.TSS_plus, self.TSS_minus)
+                            try: # sig + sites
+                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), sig=int(line[7]), sites =int(line[8]))
+                            except: # tag
+                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]))
+                    except: # if no tag, no sig, no sites
+                            self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]))
         else:
-            print(" no TSS.info maybe try use add_TSS_data()")
+            print("No TSS.info, unable to load TSS")
 
 
     def load_rpkm(self):
@@ -818,10 +496,8 @@ class Genome:
         1 = filename type, 2 = RPKM  column, 3 = Start line,
         4 = type of separator, 5=locus_column """
         if not (self.genes):
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation_gff()
-            else:
-                self.load_annotation()
+            self.load_annotation()
+
         if os.path.exists(basedir+"data/"+self.name+"/rpkm/rpkm.info"):
             with open(basedir+"data/"+self.name+"/rpkm/rpkm.info","r") as f:
                 for line in f:
@@ -875,19 +551,15 @@ class Genome:
 
     def load_operon(self):
         if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
+            self.load_annotation()
+
         self.operon_complete=add_operon(self.genes,basedir+"data/"+self.name+"/operon")
 
 
     def load_terminator(self):
         if not self.genes:
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
+            self.load_annotation()
+
         self.terminator_complete=add_terminator(basedir+"data/"+self.name+"/terminator")
 
 
@@ -956,7 +628,10 @@ class Genome:
 
 ###################### RAPH #############################
 
-    def load_reads(self): # new attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
+    def load_reads(self): 
+        '''
+        new attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
+        '''
         self.reads_pos = {} # reads on + strand
         self.reads_neg = {} # reads on - strand
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
@@ -974,8 +649,9 @@ class Genome:
                     self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
             print 'Done'
 
-
-    def load_cov(self): # new attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
+    def load_cov(self): 
+        '''new attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
+        '''
         self.cov_pos = {} # cov on + strand
         self.cov_neg = {} # cov on - strand
         # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
@@ -1022,14 +698,13 @@ class Genome:
         
 
     def compute_rpkm_from_cov(self, before=100):
-        """Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account 
-        DNA region upstream of the coding sequence of the gene """
+        '''
+        Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account 
+        DNA region upstream of the coding sequence of the gene
+        '''
         if not self.genes: # if no genes loaded
             # try to load them
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
+            self.load_annotation()
         try:
             for g in list(self.genes.keys()): # for each gene
                 if hasattr(self.genes[g],'orientation'): # which has a known orientation
@@ -1045,39 +720,33 @@ class Genome:
             print("You need to load coverage pls")
 
 
-    def load_fc(self,*args, **kwargs):
-        """ Fc info file, 0=condition 1=file_name, 2=tag_column, 3=fc_column
-                4=type of separator, 5 = start line, 6 = p_value( if no write nothing),
-                if other source give the line of the source in fc information file """
-        self.list_genes_fc = {} # for each condition, list of genes having a FC
-        self.list_genes_fc_pval = {} # for each condition, list of genes having a FC and a pvalue
+    def load_fc_pval(self,*args, **kwargs):
+        ''' Load fc and pval specified in fc.info. Fc info file columns (tab-separated) : condition, filename, tag column
+        , fc column, file separator, startline, pvalcolumn (if not available leave empty)
+        '''
+        self.genes_valid = {} # for each condition, list of genes having a FC /pval value
         if not self.genes: # if no genes loaded
             # try to load them
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
-                self.load_annotation()
-            else:
-                self.load_annotation_gff()
-        n=0 
+            self.load_annotation()
+
         if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"): 
             with open(basedir+"data/"+self.name+"/fold_changes/fc.info","r") as f:
                 skiphead = next(f) # skip head
                 for header in f:
                     header=header.strip()
                     header=header.split('\t')
-                    try: # if p-value in file, works
-                        self.list_genes_fc_pval[header[0]]=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]),n,p_value=int(header[6]))
-                        self.list_genes_fc[header[0]] = self.list_genes_fc_pval[header[0]]
-                    except: # without p-value otherwise
-                        self.list_genes_fc[header[0]]=add_single_fc_to_genes(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0], int(header[2]),int(header[3]),header[4],int(header[5]),n)
-
-                    n+=1
+                    try: # if p-value column specified works
+                        self.genes_valid[header[0]]=load_fc_pval_cond(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]), p_value=int(header[6]))
+                    except: # otherwise, set pvalue = 0
+                        self.genes_valid[header[0]]=load_fc_pval_cond(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]))
             f.close()
         else:
             print("No fc.info file, please create one")
 
-
     def compute_melting_energy(self,windows=500000, increment=4000):
-        # compute melting energy on genome windows with a specific increment
+        ''' 
+        Compute melting energy on genome windows with a specific increment
+        '''
         self.melting_energy = []
         if not hasattr(self, 'seq'): # if no seq loaded
             try:
@@ -1088,34 +757,39 @@ class Genome:
                 print'Unable to load seq'
                 sys.exit()
 
-        bins = [] # bins = windows of the genome : [start coordinate,end coordinate,melting energy]
+        bins = [] # bins = windows of the genome : [start coordinate,end coordinate]
         bins_overlap = [] # bins where end coordinate < start coordinate (overlap circular chromosome)
 
         for i in range(1,self.length,increment): # create bins depending on windows size and increment value
             if (i+windows) <= self.length: # enough length to create a bin
-                bins.append([i,i+windows,0])
+                bins.append([i,i+windows])
             else: # i + windows > genome size, overlap with the beginning (circular chromosome)
-                bins_overlap.append([i, windows - (self.length-i),0])
+                bins_overlap.append([i, windows - (self.length-i)])
         
         bins = np.array(bins) # convert to .npy
         bins_overlap = np.array(bins_overlap)
 
         # compute melting energy on bins
-        for start,end,melting_energy in bins:
+        for start,end in bins:
             seq = Seq(self.seq[start-1:end])
-            melting_energy = mt.Tm_NN(seq)
-        
-        for start,end,melting_energy in bins_overlap:
+            self.melting_energy.append(mt.Tm_GC(seq, strict=False))
+            # if len(seq) < 1000:
+            #     melting_energy = mt.Tm_NN(seq,strict=False)
+            # else:
+            #     melting_energy = mt.Tm_GC(seq,strict=False)
+    
+        for start,end in bins_overlap:
             seq = Seq(self.seq[start-1:] + self.seq[0:end])
-            melting_energy = mt.Tm_NN(seq)
+            self.melting_energy.append(mt.Tm_GC(seq, strict=False))
         
-        bins = np.concatenate((bins,bins_overlap))
-
-        self.melting_energy = list(bins[:,2])
+        self.melting_energy_wind = windows
+        self.melting_energy_incr = increment
 
     def draw_melting_energy_circle(self, *args, **kwargs):
-        # draw melting energy circle from melting energy
-        # opt arg : colormap, vmin, vmax
+        '''
+        Draw melting energy circle from melting energy
+        opt arg : colormap, vmin, vmax
+        '''
         if not hasattr(self, 'melting_energy'): # if melting energy not computed
             try:
                 print 'Trying to compute melting energy with default values...'   
@@ -1125,13 +799,13 @@ class Genome:
                 print'Unable to compute melting_energy'
                 sys.exit()
 
-        colormap= kwargs.get('colormap','seismic') # default value seismic
+        colormap= kwargs.get('colormap','jet') # default value
         try:
             cScale_fc = plt.get_cmap(colormap)
         except:
             print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
-            print 'Loading default seismic'
-            cScale_fc = plt.get_cmap('seismic')
+            print 'Loading default'
+            cScale_fc = plt.get_cmap('jet')
 
         vmin = kwargs.get('vmin', min(self.melting_energy))
         vmax = kwargs.get('vmax', max(self.melting_energy))          
@@ -1141,85 +815,164 @@ class Genome:
         cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
         # config, see globvar for more
         # init plots
-        fig, ax = plt.subplots(1,1) ; fig.set_size_inches(fig_width, fig_height)
-        plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off()
+        fig = plt.figure(figsize=(fig_width,fig_height))
+        ax = plt.subplot(1,1,1)
+        plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
 
         angle = 360.0/len(self.melting_energy) # angle between two fragments
+        # display colour in the middle of the windows
+        start_angle = angle * (self.melting_energy_wind/2 - self.melting_energy_incr/2)  / self.melting_energy_incr
+
         i=0
         for value in self.melting_energy:
             # edgecolor = assign a colour depending on value using cMap
             # draw arc on circle
-            arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=7)
+            arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_fc.to_rgba(value), lw=7)
             ax.add_patch(arc)
             i+= angle
 
         cMap_fc._A = [] # fake array to print map
         cbar = plt.colorbar(cMap_fc,shrink=0.3)
-        cbar.set_label("Melting energy",size=9)
+        cbar.set_label("Melting temp °C",size=9)
         cbar.ax.tick_params(labelsize=7)
+        plt.axis("equal")
         plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
         plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
         plt.annotate('Melting energy '+self.name, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
-        #fig.suptitle('Melting energy '+self.name, fontweight='bold') #, fontsize=14, fontweight='bold')
-        fig.savefig(basedir+"data/"+self.name+"/annotation/melting_energy.png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg       
+        plt.savefig(basedir+"data/"+self.name+"/annotation/melting_energy.pdf", transparent=False)        
+        plt.close()
 
     def draw_expression_circles(self, *arg, **kwargs):
-        # generate density circles based on FC and pvalues
-        # opt arguments : colormap, vmin vmax (color normalisation), windows, increment
+        '''
+        generate density circles based on FC and pvalues
+        opt arguments : colormap = see matplotlib doc, vmin vmax (color normalisation), windows, increment
+        meth (= act/repr/actrepr/overlay), format (= png/pdf/svg)
+        '''
         windows= kwargs.get('windows', 500000)
         increment= kwargs.get('increment', 4000)
 
         path = basedir+"data/"+self.name+"/fold_changes/circles-"+str(datetime.now())
         os.makedirs(path)
 
-        if not hasattr(self, 'list_genes_fc_pval'): # if no fc loaded 
+        if not hasattr(self, 'genes_valid'): # if no fc loaded 
             try:
                 print 'Trying to load FC...'
-                self.load_fc()
+                self.load_fc_pval()
                 print 'FC loaded'
             except:
                 print 'Unable to load fc'
                 sys.exit()
 
-        if self.list_genes_fc_pval.keys() == []:
-            print 'No condition where genes have valids FC and p-value, unable to continue'
-            sys.exit()
-        else:
-            for cond in self.list_genes_fc_pval.keys():
-                print 'Computing condition',cond
-                gen_states = self.compute_table_genes(cond)
-                bins = self.count_genes_in_windows(cond, gen_states, windows, increment)
-                print 'Windows on genome :\n',bins
-
+        for cond in self.genes_valid.keys():
+            print 'Computing condition',cond
+            gen_states = self.compute_state_genes(cond)
+            bins = self.count_genes_in_windows(cond, gen_states, windows, increment)
+            print 'Windows on genome :\n',bins
+            try:
                 tot_act = len(gen_states[np.where(gen_states[:,1] == 1)])
                 print 'Total activated genes on genome :',tot_act
                 tot_repr = len(gen_states[np.where(gen_states[:,1] == -1)])
                 print 'Total repressed genes on genome :',tot_repr
-                zscores = self.compute_zscores(tot_act,tot_repr,bins)
-                # Colormap for fold change
-                colormap= kwargs.get('colormap','seismic') # default value seismic
+                tot_non = len(gen_states[np.where(gen_states[:,1] == 0)])
+                print 'Total non affected genes on genome :',tot_non
+
+                meth = kwargs.get('meth', 'actrepr')
+
+                if meth == "act":
+                    zscores = self.compute_zscores_act(tot_act,tot_repr,tot_non,bins)
+                elif meth == "repr":
+                    zscores = self.compute_zscores_repr(tot_act,tot_repr,tot_non,bins)
+                elif meth == "actrepr":
+                    zscores = self.compute_zscores_actrepr(tot_act,tot_repr,tot_non,bins)
+                elif meth == "overlay":
+                    zscores_act = self.compute_zscores_act(tot_act,tot_repr,tot_non,bins)
+                    zscores_repr = self.compute_zscores_repr(tot_act,tot_repr,tot_non,bins)
+                else:
+                    print "Unknown method, computing default..."
+                    zscores = self.compute_zscores_actrepr(tot_act,tot_repr,tot_non,bins)
+
+            except:
+                print 'Invalid data (e.g. no genes repressed nor activated)'
+                sys.exit()
+
+            # init plots
+            fig = plt.figure(figsize=(fig_width,fig_height))
+            ax = plt.subplot(1,1,1)
+            plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
+           
+            vmin = kwargs.get('vmin', -4)
+            vmax = kwargs.get('vmax', +4)
+
+            if meth == "overlay":
+                # normalisation of colours
+                try:
+                    cNorm_fc = colors.Normalize(vmin=vmin, vmax=vmax)
+                except:
+                    print 'Incorrect values for vmin / vmax'
+                    print 'Loading default'
+                    cNorm_fc = colors.Normalize(vmin=-4, vmax=4)
+
+                cScale_act = plt.get_cmap("Reds")
+                cScale_repr = plt.get_cmap("Blues")
+                cMap_act = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_act) 
+                cMap_repr = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_repr) 
+                angle = 360.0/len(zscores_act) # angle between two fragments
+                # display colour in the middle of the windows
+                start_angle = angle * (windows/2 - increment/2)  / increment 
+                i=0
+                for value in zscores_act:
+                    # edgecolor = assign a colour depending on value using cMap
+                    # draw arc on circle
+                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_act.to_rgba(value), lw=7, alpha = 0.7)
+                    ax.add_patch(arc)
+                    i+= angle
+                angle = 360.0/len(zscores_repr) 
+                start_angle = angle * (windows/2 - increment/2)  / increment
+                i=0
+                for value in zscores_repr:
+                    # edgecolor = assign a colour depending on value using cMap
+                    # draw arc on circle
+                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_repr.to_rgba(value), lw=7, alpha = 0.7)
+                    ax.add_patch(arc)
+                    i+= angle
+
+                cMap_act._A = [] # fake array to print map
+                cMap_repr._A = [] # fake array to print map
+                cbar = plt.colorbar(cMap_act,shrink=0.3)
+                cbar.set_label("Z-score act",size=9)
+                cbar.ax.tick_params(labelsize=7)
+                
+                cbar = plt.colorbar(cMap_repr,shrink=0.3)
+                cbar.set_label("Z-score repr",size=9)
+                cbar.ax.tick_params(labelsize=7)
+
+            else:
+                # Colormap for Zscore
+                colormap= kwargs.get('colormap','jet') # default value
                 try:
                     cScale_fc = plt.get_cmap(colormap)
                 except:
                     print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
-                    print 'Loading default seismic'
-                    cScale_fc = plt.get_cmap('seismic')
-                # default values = smallest zscore, highest
-                vmin = kwargs.get('vmin', -3)
-                vmax = kwargs.get('vmax', +3)
+                    print 'Loading default'
+                    cScale_fc = plt.get_cmap('jet')
                 # normalisation of colours
-                cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
+                try:
+                    cNorm_fc = colors.Normalize(vmin=vmin, vmax=vmax)
+                except:
+                    print 'Incorrect values for vmin / vmax'
+                    print 'Loading default'
+                    cNorm_fc = colors.Normalize(vmin=-4, vmax=4)
+
                 # map which assigns a colour depending on value between vmin and vmax
                 cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
-                # init plots
-                fig, ax = plt.subplots() ; fig.set_size_inches(fig_width, fig_height)
-                plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
                 angle = 360.0/len(zscores) # angle between two fragments
+                # display colour in the middle of the windows
+                start_angle = angle * (windows/2 - increment/2)  / increment
                 i=0
                 for value in zscores:
                     # edgecolor = assign a colour depending on value using cMap
                     # draw arc on circle
-                    arc = patches.Arc((center_x,center_y), radius, radius, angle=0,theta1=i, theta2=i+angle, edgecolor=cMap_fc.to_rgba(value), lw=7)
+                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_fc.to_rgba(value), lw=7)
                     ax.add_patch(arc)
                     i+= angle
 
@@ -1227,22 +980,36 @@ class Genome:
                 cbar = plt.colorbar(cMap_fc,shrink=0.3)
                 cbar.set_label("Z-score",size=9)
                 cbar.ax.tick_params(labelsize=7)
-                plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-                plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-                plt.annotate(cond, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
-                #fig.suptitle(cond, fontweight='bold') #, fontsize=14, fontweight='bold')
-                fig.savefig(path+"/circle-"+cond+".png", format='png', dpi=400, transparent=False) # png (72,300,400 dpi) or svg
 
-    def compute_table_genes(self, cond): 
-        # returns a npy where a row is a gene caracterised by a start pos and a gene state
-        # gene is considered activated above a given fc, repressed below a given fc
+            plt.axis("equal")
+
+            plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+            plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
+            plt.annotate(cond, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
+            form = kwargs.get('format','pdf')
+            if form == "png":
+                plt.savefig(path+"/circle-"+cond+".png", dpi=400, transparent=False)
+            elif form == "svg":
+                plt.savefig(path+"/circle-"+cond+".svg", transparent=False) 
+            elif form == "pdf":
+                plt.savefig(path+"/circle-"+cond+".pdf", transparent=False)
+            else:
+                print 'Unknown format, computing default...'
+                plt.savefig(path+"/circle-"+cond+".pdf",  transparent=False)
+            plt.close()
+
+    def compute_state_genes(self, cond): 
+        '''
+        returns a npy where a row is a gene caracterised by a start pos and a gene state
+        gene is considered activated above a given fc, repressed below a given fc
+        '''
         gen_states = []
-        for gene in self.list_genes_fc_pval[cond]:
+        for gene in self.genes_valid[cond]:
             # if activated
-            if self.genes[gene].all_fc[cond] >= fc_treshold_pos and self.genes[gene].all_pval[cond] <= pval_treshold:
+            if self.genes[gene].fc_pval[cond][0] >= fc_treshold_pos and self.genes[gene].fc_pval[cond][1] <= pval_treshold:
                 gen_states.append([self.genes[gene].start,1])
             # if repressed
-            elif self.genes[gene].all_fc[cond] <= fc_treshold_neg and self.genes[gene].all_pval[cond] <= pval_treshold:
+            elif self.genes[gene].fc_pval[cond][0] <= fc_treshold_neg and self.genes[gene].fc_pval[cond][1] <= pval_treshold:
                 gen_states.append([self.genes[gene].start,-1])
             # if not affected
             else:
@@ -1252,8 +1019,10 @@ class Genome:
         return gen_states
 
     def count_genes_in_windows(self, cond, gen_states, windows, increment):
-        # compute bins on the genome depending on windows size and increment, and
-        # calculate the nb of activated / repressed / non affected genes in each bin for further zscore
+        '''
+        compute bins on the genome depending on windows size and increment, and
+        calculate the nb of activated / repressed / non affected genes in each bin for further zscore
+        '''
         if not hasattr(self, 'seq'): # if no seq loaded
             try:
                 print 'Trying to load seq...'
@@ -1276,20 +1045,22 @@ class Genome:
         for start,state in gen_states: # reminder gene state : a row = beginning of gene, state (activated, repressed or not affected)
             if state == 1: # activated
             # test to which bins the gene belongs to, and add one to the nb of activated genes of these bins
-                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),2] += 1
-                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),2] += 1
+                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),2] += 1
+                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),2] += 1
             elif state == -1: # repressed gene
-                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),3] += 1
-                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),3] += 1
+                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),3] += 1
+                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),3] += 1
             elif state == 0: # not affected gene
-                bins[np.where((bins[:,0] < start) & (bins[:,1] > start)),4] += 1
-                bins_overlap[np.where((bins_overlap[:,0] < start) | (bins_overlap[:,1] > start)),4] += 1
+                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),4] += 1
+                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),4] += 1
         
         bins = np.concatenate((bins,bins_overlap))
         return bins
 
-    def compute_zscores(self, tot_act, tot_repr, bins):
-        # p_exp = nb of total activated genes / nb of total activated + repressed genes on the whole genome
+    def compute_zscores_actrepr(self, tot_act, tot_repr, tot_non, bins):
+        '''
+        p_exp = nb of total activated genes / nb of total activated + repressed genes on the whole genome
+        '''
         zscores = []
         p_exp = float(tot_act) / float((tot_act + tot_repr))
         print 'g+ / (g+ + g-) on genome :',p_exp
@@ -1302,3 +1073,79 @@ class Genome:
                 zscore = 0
             zscores.append(zscore)
         return zscores
+   
+    def compute_zscores_act(self, tot_act, tot_repr, tot_non, bins):
+        '''
+        p_exp = nb of total activated genes / nb of total genes on the whole genome
+        '''
+        zscores = []
+        p_exp = float(tot_act) / float((tot_act + tot_repr + tot_non))
+        print 'g+ / gtot on genome :',p_exp
+        # compute zscore for each bin
+        for start,end,nb_act,nb_repr,nb_null in bins:
+            nb_act = float(nb_act) ; nb_tot = float((nb_act+nb_repr+nb_null))
+            try:
+                zscore =(nb_act - (nb_tot*p_exp)) / sqrt(nb_tot*p_exp*(1-p_exp))
+            except: # division by zero if no genes activated nor repressed
+                zscore = 0
+            zscores.append(zscore)
+        return zscores
+
+    def compute_zscores_repr(self, tot_act, tot_repr, tot_non, bins):
+        '''
+        p_exp = nb of total activated genes / nb of total genes on the whole genome
+        '''
+        zscores = []
+        p_exp = float(tot_repr) / float((tot_act + tot_repr + tot_non))
+        print 'g- / gtot on genome :',p_exp
+        # compute zscore for each bin
+        for start,end,nb_act,nb_repr,nb_null in bins:
+            nb_repr = float(nb_repr) ; nb_tot = float((nb_act+nb_repr+nb_null))
+            try:
+                zscore =(nb_repr - (nb_tot*p_exp)) / sqrt(nb_tot*p_exp*(1-p_exp))
+            except: # division by zero if no genes activated nor repressed
+                zscore = 0
+            zscores.append(zscore)
+        return zscores
+
+    # def compute_spacer_length(self):
+    #     ''' Compute spacer length
+    #     '''
+
+    #     if not self.genes:
+    #         try:
+    #             print 'Trying to load annotation...'
+    #             self.load_annotation()
+    #             print 'Annotation loaded'
+    #         except:
+    #             print 'Unable to load annotation'
+
+    #     if not self.TSSs:
+    #         try:
+    #             print 'Trying to load TSS...'
+    #             self.load_TSS()
+    #             print 'TSS loaded'
+    #         except:
+    #             print 'Unable to load TSS'
+
+    #     for TSS_dict in self.TSSs.keys():
+    #         for TSS in TSS_dict.keys():
+    #             TSS_u = self.TSSs[TSS_dict][TSS]
+    #             try:
+    #                 # INTEGRER MULTI PROM
+    #                 if TSS_u.strand == True:
+    #                     spacer = TSS_u.sites[0] - TSS_u.sites[3]
+    #                 elif TSS_u.strand == False:
+    #                     spacer = TSS_u.sites[2] - TSS_u.sites[1]
+    #                 for gene in TSS_u.genes:
+    #                     self.genes[gene].spacer = {}
+    #                     self.genes[gene].spacer[TSS_dict].append(spacer)
+    #                     print 'Spacer added to',gene
+    #             except:
+    #                 pass
+
+ # if gene on - strand, spacer length = -35L - -10R
+ # if gene on + strand, spacer length = -10L - -35R
+ # gene.spacer = {[cond]:[spacer1,spacer2]}
+
+
