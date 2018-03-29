@@ -36,11 +36,34 @@ class TSS:
                     print(tag + " not in annotations")
 
     def add_promoter(self, sig, *arg, **kwargs):
-        # shape TSS.promoter = {[sig]:[sites]}
+        # shape TSS.promoter = {[sig]:(sites)}
         # sites must have the shape : [-10l,-10r,-35l,-35r] with l = left, r = right
-        self.promoter[sig] = []
         sites = kwargs.get('sites')
+        self.promoter[sig] = {}
         if sites:
-            for site in sites.strip().replace(' ','').split(','):
-                self.promoter[sig].append(site)
+            self.promoter[sig]['sites'] = tuple(map(int, sites.strip().replace(' ','').split(',')))
 
+    def compute_magic_prom(self,gen_seq,gen_seqcompl):
+        '''
+        Compute spacer, -10 and - 35 sequences starting from boxes (sites) coordinates and genome sequence
+        gen_seq : + strand, gen_seqcompl : - strand (complementary, /!\ 3' -> 5')
+        '''
+        try:
+            for sig in self.promoter.keys(): # for each sigma factor
+                try:                    
+                    if self.strand == True:
+        # if promoter on + strand, spacer length = -10L - -35R -1
+                        self.promoter[sig]['spacer'] = gen_seq[self.promoter[sig]['sites'][3]:self.promoter[sig]['sites'][0]-1]
+                        self.promoter[sig]['minus10'] = gen_seq[self.promoter[sig]['sites'][0]-1:self.promoter[sig]['sites'][1]]
+                        self.promoter[sig]['minus35'] = gen_seq[self.promoter[sig]['sites'][2]-1:self.promoter[sig]['sites'][3]]
+
+                    elif self.strand == False:
+        # if promoter on - strand, spacer length = -35L - -10R -1
+                        self.promoter[sig]['spacer'] = gen_seqcompl[self.promoter[sig]['sites'][1]:self.promoter[sig]['sites'][2]-1][::-1]
+                        self.promoter[sig]['minus10'] = gen_seqcompl[self.promoter[sig]['sites'][0]-1:self.promoter[sig]['sites'][1]][::-1]
+                        self.promoter[sig]['minus35'] = gen_seqcompl[self.promoter[sig]['sites'][2]-1:self.promoter[sig]['sites'][3]][::-1]
+                except: # sigma factor without site coordinates or invalid
+                    pass
+
+        except Exception as e:
+            print 'Error for TSS',self.pos,':',e

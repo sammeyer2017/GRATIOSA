@@ -136,7 +136,7 @@ class Gene:
     def add_fc_pval_cond(self,fc_value, condition, p_value):
         if not hasattr(self,'fc_pval'):
             self.fc_pval={}
-        self.fc_pval[condition]=[fc_value,p_value]
+        self.fc_pval[condition]=(fc_value,p_value)
 
     def add_left_neighbour(self, neighbour):
         self.left_neighbour = neighbour

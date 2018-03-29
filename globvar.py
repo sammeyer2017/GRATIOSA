@@ -23,6 +23,11 @@ fig_width = 5;fig_height = 5
 center_x = fig_width/2;center_y = fig_height/2
 radius = fig_width / 1.4 # radius circles
 
+# parameters for bTSS finder
+PROM_LENGTH = 200
+TSS_DOWNSTREAM = 50
+
+
 # --------- TSS
 # error factor in small window coverage calculation:
 # an increase by less than this factor at a TSS is not considered as significant

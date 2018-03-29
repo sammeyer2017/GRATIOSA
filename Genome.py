@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import sys
 import os
 import numpy as np
@@ -25,7 +24,6 @@ from matplotlib import patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from math import sqrt
-
 
 #==============================================================================#
 
@@ -154,7 +152,6 @@ def add_terminator(file):
                 if 'ID' in x:
                     dict_terminator[int(under_dict[x])]=Terminator(int(line[3]),int(line[4]),line[6], int(under_dict[x]), under_dict)
     return dict_terminator
-
 
 def add_single_rpkm_to_genes(genes_dict, expression_filename, condition, TSS_column, start_line, separator,tag_column):
     """ Adds rpkm data to Gene objects by parsing a file with two columns:
@@ -290,7 +287,8 @@ def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, stran
                     TSS_dict[pos].add_strand(line[strand])
                     if tag_column: # if tag column
                         TSS_dict[pos].add_genes(line[tag_column],genes_dict)
-
+                        for gene in TSS_dict[pos].genes: # add TSS to gene attributes
+                            genes_dict[gene].add_id_TSS(pos)
                 # Add sigma factor and binding sites to the promoter dict
                 if sig: # if sigma column
                     if line[sig] != '':
@@ -360,13 +358,13 @@ class Genome:
 
     def load_seq(self):
         self.seq=load_seq(basedir+"data/"+self.name+"/sequence.fasta")
-        self.seq_reverse=''
+        self.seqcompl=''
         if(self.length):
             if(self.length != len(self.seq)):
                 print("Warning not the same length, the new sequence will be removed")
                 self.seq=''
         self.length=len(self.seq)
-        l=self.seq[::-1]
+        l=self.seq
         l=l.replace('A','t')
         l=l.replace('T','a')
         l=l.replace('C','g')
@@ -375,7 +373,7 @@ class Genome:
         l=l.replace('t','T')
         l=l.replace('c','C')
         l=l.replace('g','G')
-        self.seq_reverse=l
+        self.seqcompl=l
 
     def give_proportion_of(self,*args, **kwargs):
         self.load_fc()
@@ -465,6 +463,7 @@ class Genome:
         2 = locus_tag, 3 = TSS_column, 4 = start_line, 5 = separator, 6 = strand column, 7 = Sig column
         8 = Sites column if much other condition give it in the seconde line of file and change TSS column """
         self.TSSs = {} # shape (dict of dict) : TSSs = {TSScond : {TSS:attr}}
+        self.TSSs['all_TSS'] = {} # dict containing all TSS and where they appear (shape all_TSS = {pos:[conditions]})
         if not (self.genes):
             self.load_annotation()
 
@@ -487,7 +486,14 @@ class Genome:
                                 self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]))
                     except: # if no tag, no sig, no sites
                             self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]))
-        else:
+                    # append all entries to all TSS dict
+                    for entry in self.TSSs[line[0]].keys():
+                        try: # works if entry already in dict
+                            self.TSSs['all_TSS'][entry].append(line[0])
+                        except: # init list of conditions for entry
+                            self.TSSs['all_TSS'][entry] = []
+                            self.TSSs['all_TSS'][entry].append(line[0])
+        else:       
             print("No TSS.info, unable to load TSS")
 
 
@@ -1093,7 +1099,7 @@ class Genome:
 
     def compute_zscores_repr(self, tot_act, tot_repr, tot_non, bins):
         '''
-        p_exp = nb of total activated genes / nb of total genes on the whole genome
+        p_exp = nb of total repressed genes / nb of total genes on the whole genome
         '''
         zscores = []
         p_exp = float(tot_repr) / float((tot_act + tot_repr + tot_non))
@@ -1108,44 +1114,79 @@ class Genome:
             zscores.append(zscore)
         return zscores
 
-    # def compute_spacer_length(self):
-    #     ''' Compute spacer length
-    #     '''
+    def compute_spacer_response(self,cond_fc,cond_tss,*arg,**kwargs):
+        '''For all TSS in TSSs[cond_tss], compute spacer length for each sigma factor from promoter site coordinates.
+        Then, associate expression data available in cond_fc for genes associated to TSS to spacer lengths, which allows
+        the analysis of the link between FC and spacer length. kwargs = thresh_pval = only consider genes with pval below, default 0.05. Returns a dict oh shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
+        '''
+        if not hasattr(self, 'genes_valid'): # if no fc loaded 
+            self.load_fc_pval()
+        if not hasattr(self, 'TSSs'): # if no TSS loaded
+            self.load_TSS() 
+        if not hasattr(self, 'seq'): # if no seq loaded
+            self.load_seq() 
 
-    #     if not self.genes:
-    #         try:
-    #             print 'Trying to load annotation...'
-    #             self.load_annotation()
-    #             print 'Annotation loaded'
-    #         except:
-    #             print 'Unable to load annotation'
+        thresh_pval = kwargs.get('thresh_pval', 0.05)
+        try:
+            thresh_pval = float(thresh_pval)
+        except:
+            print 'Invalid thresh_pval, setting default 0.05...'
+            thresh_pval = 0.05
 
-    #     if not self.TSSs:
-    #         try:
-    #             print 'Trying to load TSS...'
-    #             self.load_TSS()
-    #             print 'TSS loaded'
-    #         except:
-    #             print 'Unable to load TSS'
+        spacer_sigma = {} # dict of shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
 
-    #     for TSS_dict in self.TSSs.keys():
-    #         for TSS in TSS_dict.keys():
-    #             TSS_u = self.TSSs[TSS_dict][TSS]
-    #             try:
-    #                 # INTEGRER MULTI PROM
-    #                 if TSS_u.strand == True:
-    #                     spacer = TSS_u.sites[0] - TSS_u.sites[3]
-    #                 elif TSS_u.strand == False:
-    #                     spacer = TSS_u.sites[2] - TSS_u.sites[1]
-    #                 for gene in TSS_u.genes:
-    #                     self.genes[gene].spacer = {}
-    #                     self.genes[gene].spacer[TSS_dict].append(spacer)
-    #                     print 'Spacer added to',gene
-    #             except:
-    #                 pass
+        try :
+            for TSSpos in self.TSSs[cond_tss].keys(): # for all TSS in cond_tss
+                TSSu = self.TSSs[cond_tss][TSSpos] # single TS
+                for sig in TSSu.promoter.keys(): # for all sigma factors binding to this TSS
+                    try:
+                        if sig not in spacer_sigma.keys(): # add sigma factor to sigma dict
+                            spacer_sigma[sig] = {'genes_valid':[],'genes_tot':[],'expr':[]}
+                        try: # if site coordinates
+                            TSSu.compute_magic_prom(self.seq,self.seqcompl)
+                            spacer = len(TSSu.promoter[sig]['spacer'])
+                        except: # if spacer length instead of sites coordinates
+                            spacer = TSSu.promoter[sig]['sites'][0]
 
- # if gene on - strand, spacer length = -35L - -10R
- # if gene on + strand, spacer length = -10L - -35R
- # gene.spacer = {[cond]:[spacer1,spacer2]}
+                        # valid gene : gene with pval < thresh_pval
+                        expr = [] # expression values for valid genes in that TSS 
+                        valid_genes = [] # valid genes in that TSS
+                        tot_genes = [] # genes that appear in FC + TSS data but with pval > thresh_pval
 
+                        for gene in TSSu.genes:
+                            try:
+                                if gene in self.genes_valid[cond_fc]:
+                                    tot_genes.append(gene) # gene in FC data + TSS data
 
+                                    if self.genes[gene].fc_pval[cond_fc][1] <= thresh_pval:
+                                    # gene in FC data + TSS data and valid (pval < thresh)
+                                        valid_genes.append(gene) 
+                                        expr.append(self.genes[gene].fc_pval[cond_fc][0])
+                            except:
+                                pass
+
+                        if tot_genes != []:
+                            if spacer not in spacer_sigma[sig].keys(): # init spacer in dict
+                                spacer_sigma[sig][spacer] = {'genes_valid':[],'genes_tot':[],'expr':[]} # shape 15:{[expr]:[expr1,expr2],[genes_valid]:[g1,g2],[genes_tot]:[g1,g2,g3]} 
+                            # genes_valid and genes_tot implemented in order to keep in memory all
+                            # genes with that spacer length
+                            spacer_sigma[sig]['genes_tot'].append(tot_genes) # gene in FC data + TSS data
+                            spacer_sigma[sig][spacer]['genes_tot'].append(tot_genes)
+
+                            if expr != [] and valid_genes != []:
+                                spacer_sigma[sig]['expr'].append(expr)
+                                spacer_sigma[sig]['genes_valid'].append(valid_genes)                            
+                                spacer_sigma[sig][spacer]['expr'].append(expr)                               
+                                spacer_sigma[sig][spacer]['genes_valid'].append(valid_genes)
+
+                            print 'Success, FC',expr,'for genes',valid_genes,'added to sigma',sig,'with',spacer,'pb spacer'
+                    except:
+                        pass
+
+        except Exception as e:
+            print 'Error',e   
+
+        if spacer_sigma == {}:
+            print 'Unable to compute spacer_sigma'
+        else:
+            return spacer_sigma
