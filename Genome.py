@@ -1190,3 +1190,39 @@ class Genome:
             print 'Unable to compute spacer_sigma'
         else:
             return spacer_sigma
+
+###################### ANTOINE #############################
+
+    def run_btssfinder(self,nom_liste_TSS,nameOut,freedom):
+        '''
+        running btsfinder with default parameters for E.Coli
+        obj is Genome object
+        list_TSS is the TSS list eg. biocyc
+        nameOut is  the name of fasta file (whiout extension .fasta) or if don't exist will become file's name of all out
+        freedom is number of additionnal base at the TSS region
+        NEXT
+        convert out-bTSSfinder.gff on basedir/data/[nom_liste_TSS]
+        AND FINALY
+        write the localization of new csv in file TSS.info to the next load.TSS()
+        '''
+        if nameOut == None:
+            run_btssfinder(self,nom_liste_TSS,nom_liste_TSS,freedom)
+        else:
+            run_btssfinder(self,nom_liste_TSS,nameOut,freedom)
+        gff2csv(self,nom_liste_TSS,nameOut,freedom)
+        TSSinfo = basedir+"data/"+self.name+"/TSS/TSS.info"
+        if os.path.exists(TSSinfo):
+            exist = False
+            f = open(TSSinfo,"r")
+            for i in f.readlines():
+                line = i.split('\t')
+                if line[0] == nameOut:
+                    exist = True
+            f.close()
+            if not exist:
+                f = open(TSSinfo,"a")
+                f.write(nameOut+'\t'+nameOut+'.csv'+'\t'+"2"+'\t'+"0"+'\t'+"2"+'\t'+"\\t"+'\t'+"1"+'\t'+"3"+'\t'+"4"+'\n')
+                f.close()
+        else:
+            print "TSS info not found"
+        print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
