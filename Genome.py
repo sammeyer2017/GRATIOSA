@@ -24,6 +24,7 @@ from matplotlib import patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 from math import sqrt
+from btssfinder import *
 
 #==============================================================================#
 
@@ -1195,6 +1196,7 @@ class Genome:
 
     def run_btssfinder(self,nom_liste_TSS,nameOut,freedom):
         '''
+        bTSSfinder need to be install on this computer
         running btsfinder with default parameters for E.Coli
         obj is Genome object
         list_TSS is the TSS list eg. biocyc

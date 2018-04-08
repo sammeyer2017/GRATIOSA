@@ -26,6 +26,8 @@ radius = fig_width / 1.4 # radius circles
 # parameters for bTSS finder
 PROM_LENGTH = 200
 TSS_DOWNSTREAM = 50
+#correspondent taxon for btssfinder
+taxon={"e_coli_v3":"e","salmonella":"c"}
 
 
 # --------- TSS
