@@ -1,4 +1,5 @@
 import os
+import sys
 
 try:  
     basedir = os.environ['TOPO_DATABASE_PATH']
@@ -26,9 +27,10 @@ radius = fig_width / 1.4 # radius circles
 # parameters for bTSS finder
 PROM_LENGTH = 200
 TSS_DOWNSTREAM = 50
-#correspondent taxon for btssfinder
-taxon={"e_coli_v3":"e","salmonella":"c"}
-
+taxon = {'ecoli':'e','dickeya':'c'}
+# parameters for spacer analysis
+sigfactor = 'sigma70'
+spacers = [15,16,17,18,19]
 
 # --------- TSS
 # error factor in small window coverage calculation:

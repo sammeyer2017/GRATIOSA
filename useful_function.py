@@ -12,6 +12,7 @@ from globvar import *
 from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 from Bio import motifs
+from TSS import TSS
 
 
 
@@ -226,3 +227,68 @@ def search_link(list):
         if 'ftp' in j:
             return i
         i+=1
+
+
+def compare_TSS_lists(TSSd1,TSSd2,*arg,**kwargs):
+    match = {'len':[len(TSSd1.keys()),len(TSSd2.keys())]}
+    bound = kwargs.get('bound',5)
+    for b in range(0,bound+1):
+    # tot : total TSS matching
+    # tot_sig : among TSS matching, those which have a spacer for sigfactor
+        match[b] = {'tot':0,'tot_sig':0}
+        for bb in range(0,bound+1):
+            match[b][bb] = 0
+
+    for TSS1 in TSSd1.keys():
+        for TSS2 in TSSd2.keys():
+            TSSdiff = abs(TSS1-TSS2) # shift between TSS
+            try: # if TSSdiff between 0 (perfect match) and bound
+                match[TSSdiff]['tot'] += 1
+                SPdiff = abs(len(TSSd1[TSS1].promoter[sigfactor]['spacer'])-len(TSSd2[TSS2].promoter[sigfactor]['spacer'])) #shift between spacer lengths
+                match[TSSdiff]['tot_sig'] += 1 # both TSS have spacer for sigfactor
+                match[TSSdiff][SPdiff] += 1
+            except: # key error
+                pass
+    return match
+
+def valid_TSS(gen,cond_fc,cond_tss,thresh_fc):
+    '''
+    For given TSS cond / FC cond, extract valid TSS (TSS with genes having a valid FC value).
+    '''
+    if not hasattr(gen, 'genes_valid'): # if no FC loaded 
+        gen.load_fc_pval()
+    if not hasattr(gen, 'TSSs'): # if no TSS loaded
+        gen.load_TSS() 
+    if not hasattr(gen, 'seq'): # if no seq loaded
+        gen.load_seq() 
+
+    validTSS = {'act':{'TSS':{},'values':[]},'rep':{'TSS':{},'values':[]}, 'all':{'TSS':{},'values':[]}}
+    for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
+        TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
+        expr = []
+        try:
+            if sigfactor in TSSu.promoter.keys():
+                try:
+                    TSSu.compute_magic_prom(gen.seq,gen.seqcompl)
+                    spacer = len(TSSu.promoter[sigfactor]['spacer'])
+                except: # if spacer length instead of sites coordinates
+                    spacer = TSSu.promoter[sigfactor]['sites'][0]
+
+                if spacer in spacers:
+                    for gene in TSSu.genes:
+                        if gene in gen.genes_valid[cond_fc]:
+                            expr.append(gen.genes[gene].fc_pval[cond_fc][0])
+                    if expr != []:
+                        validTSS['all']['TSS'][TSSpos] = TSSu
+                        val = np.mean(expr)
+                        validTSS['all']['values'].append(val)
+                        if val > float(thresh_fc):
+                            validTSS['act']['TSS'][TSSpos] = TSSu
+                            validTSS['act']['values'].append(val)
+                        else:
+                            validTSS['rep']['TSS'][TSSpos] = TSSu
+                            validTSS['rep']['values'].append(val)
+        except Exception as e:
+            print e
+    
+    return validTSS
