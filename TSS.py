@@ -43,25 +43,28 @@ class TSS:
         if sites:
             self.promoter[sig]['sites'] = tuple(map(int, sites.strip().replace(' ','').split(',')))
 
-    def compute_magic_prom(self,gen_seq,gen_seqcompl):
+    def compute_magic_prom(self,gen_seq,gen_seqcompl,*arg,**kwargs):
         '''
         Compute spacer, -10 and - 35 sequences starting from boxes (sites) coordinates and genome sequence
-        gen_seq : + strand, gen_seqcompl : - strand (complementary, /!\ 3' -> 5')
+        gen_seq : + strand, gen_seqcompl : - strand (complementary, /!\ 3' -> 5'). shift : nb of nucleotides to
+        include on either side.
         '''
+        shift = kwargs.get('shift',0)
         try:
             for sig in self.promoter.keys(): # for each sigma factor
                 try:                    
                     if self.strand == True:
         # if promoter on + strand, spacer length = -10L - -35R -1
-                        self.promoter[sig]['spacer'] = gen_seq[self.promoter[sig]['sites'][3]:self.promoter[sig]['sites'][0]-1]
-                        self.promoter[sig]['minus10'] = gen_seq[self.promoter[sig]['sites'][0]-1:self.promoter[sig]['sites'][1]]
-                        self.promoter[sig]['minus35'] = gen_seq[self.promoter[sig]['sites'][2]-1:self.promoter[sig]['sites'][3]]
+                        self.promoter[sig]['spacer'] = gen_seq[self.promoter[sig]['sites'][3]-shift:self.promoter[sig]['sites'][0]-1+shift]
+                        self.promoter[sig]['minus10'] = gen_seq[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift]
+                        self.promoter[sig]['minus35'] = gen_seq[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift]
 
                     elif self.strand == False:
         # if promoter on - strand, spacer length = -35L - -10R -1
-                        self.promoter[sig]['spacer'] = gen_seqcompl[self.promoter[sig]['sites'][1]:self.promoter[sig]['sites'][2]-1][::-1]
-                        self.promoter[sig]['minus10'] = gen_seqcompl[self.promoter[sig]['sites'][0]-1:self.promoter[sig]['sites'][1]][::-1]
-                        self.promoter[sig]['minus35'] = gen_seqcompl[self.promoter[sig]['sites'][2]-1:self.promoter[sig]['sites'][3]][::-1]
+                        self.promoter[sig]['spacer'] = gen_seqcompl[self.promoter[sig]['sites'][1]-shift:self.promoter[sig]['sites'][2]-1+shift][::-1]
+                        self.promoter[sig]['minus10'] = gen_seqcompl[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift][::-1]
+                        self.promoter[sig]['minus35'] = gen_seqcompl[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift][::-1]
+
                 except: # sigma factor without site coordinates or invalid
                     pass
 

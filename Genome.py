@@ -18,12 +18,10 @@ from Operon import Operon
 from Terminator import Terminator
 from domain_phuc import Domain
 from datetime import datetime
-from Bio.SeqUtils import MeltingTemp as mt
-from Bio.Seq import Seq
-from matplotlib import patches
-import matplotlib.colors as colors
-import matplotlib.cm as cmx
 from math import sqrt
+from btssfinder import *
+
+
 from btssfinder import *
 
 #==============================================================================#
@@ -750,450 +748,25 @@ class Genome:
         else:
             print("No fc.info file, please create one")
 
-    def compute_melting_energy(self,windows=500000, increment=4000):
-        ''' 
-        Compute melting energy on genome windows with a specific increment
-        '''
-        self.melting_energy = []
-        if not hasattr(self, 'seq'): # if no seq loaded
-            try:
-                print 'Trying to load seq...'
-                self.load_seq()
-                print 'seq loaded'
-            except:
-                print'Unable to load seq'
-                sys.exit()
-
-        bins = [] # bins = windows of the genome : [start coordinate,end coordinate]
-        bins_overlap = [] # bins where end coordinate < start coordinate (overlap circular chromosome)
-
-        for i in range(1,self.length,increment): # create bins depending on windows size and increment value
-            if (i+windows) <= self.length: # enough length to create a bin
-                bins.append([i,i+windows])
-            else: # i + windows > genome size, overlap with the beginning (circular chromosome)
-                bins_overlap.append([i, windows - (self.length-i)])
-        
-        bins = np.array(bins) # convert to .npy
-        bins_overlap = np.array(bins_overlap)
-
-        # compute melting energy on bins
-        for start,end in bins:
-            seq = Seq(self.seq[start-1:end])
-            self.melting_energy.append(mt.Tm_GC(seq, strict=False))
-            # if len(seq) < 1000:
-            #     melting_energy = mt.Tm_NN(seq,strict=False)
-            # else:
-            #     melting_energy = mt.Tm_GC(seq,strict=False)
     
-        for start,end in bins_overlap:
-            seq = Seq(self.seq[start-1:] + self.seq[0:end])
-            self.melting_energy.append(mt.Tm_GC(seq, strict=False))
-        
-        self.melting_energy_wind = windows
-        self.melting_energy_incr = increment
-
-    def draw_melting_energy_circle(self, *args, **kwargs):
+    def compute_magic_prom(self,*arg,**kwargs):
         '''
-        Draw melting energy circle from melting energy
-        opt arg : colormap, vmin, vmax
+        Computes magic prom for all TSS conditions.
         '''
-        if not hasattr(self, 'melting_energy'): # if melting energy not computed
-            try:
-                print 'Trying to compute melting energy with default values...'   
-                self.compute_melting_energy()
-                print 'Melting energy computed'
-            except:
-                print'Unable to compute melting_energy'
-                sys.exit()
-
-        colormap= kwargs.get('colormap','jet') # default value
-        try:
-            cScale_fc = plt.get_cmap(colormap)
-        except:
-            print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
-            print 'Loading default'
-            cScale_fc = plt.get_cmap('jet')
-
-        vmin = kwargs.get('vmin', min(self.melting_energy))
-        vmax = kwargs.get('vmax', max(self.melting_energy))          
-        # normalisation of colors
-        cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
-        # map which assigns a colour depending on value between vmin and vmax
-        cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
-        # config, see globvar for more
-        # init plots
-        fig = plt.figure(figsize=(fig_width,fig_height))
-        ax = plt.subplot(1,1,1)
-        plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
-
-        angle = 360.0/len(self.melting_energy) # angle between two fragments
-        # display colour in the middle of the windows
-        start_angle = angle * (self.melting_energy_wind/2 - self.melting_energy_incr/2)  / self.melting_energy_incr
-
-        i=0
-        for value in self.melting_energy:
-            # edgecolor = assign a colour depending on value using cMap
-            # draw arc on circle
-            arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_fc.to_rgba(value), lw=7)
-            ax.add_patch(arc)
-            i+= angle
-
-        cMap_fc._A = [] # fake array to print map
-        cbar = plt.colorbar(cMap_fc,shrink=0.3)
-        cbar.set_label("Melting temp °C",size=9)
-        cbar.ax.tick_params(labelsize=7)
-        plt.axis("equal")
-        plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-        plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-        plt.annotate('Melting energy '+self.name, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
-        plt.savefig(basedir+"data/"+self.name+"/annotation/melting_energy.pdf", transparent=False)        
-        plt.close()
-
-    def draw_expression_circles(self, *arg, **kwargs):
-        '''
-        generate density circles based on FC and pvalues
-        opt arguments : colormap = see matplotlib doc, vmin vmax (color normalisation), windows, increment
-        meth (= act/repr/actrepr/overlay), format (= png/pdf/svg)
-        '''
-        windows= kwargs.get('windows', 500000)
-        increment= kwargs.get('increment', 4000)
-
-        path = basedir+"data/"+self.name+"/fold_changes/circles-"+str(datetime.now())
-        os.makedirs(path)
-
-        if not hasattr(self, 'genes_valid'): # if no fc loaded 
-            try:
-                print 'Trying to load FC...'
-                self.load_fc_pval()
-                print 'FC loaded'
-            except:
-                print 'Unable to load fc'
-                sys.exit()
-
-        for cond in self.genes_valid.keys():
-            print 'Computing condition',cond
-            gen_states = self.compute_state_genes(cond)
-            bins = self.count_genes_in_windows(cond, gen_states, windows, increment)
-            print 'Windows on genome :\n',bins
-            try:
-                tot_act = len(gen_states[np.where(gen_states[:,1] == 1)])
-                print 'Total activated genes on genome :',tot_act
-                tot_repr = len(gen_states[np.where(gen_states[:,1] == -1)])
-                print 'Total repressed genes on genome :',tot_repr
-                tot_non = len(gen_states[np.where(gen_states[:,1] == 0)])
-                print 'Total non affected genes on genome :',tot_non
-
-                meth = kwargs.get('meth', 'actrepr')
-
-                if meth == "act":
-                    zscores = self.compute_zscores_act(tot_act,tot_repr,tot_non,bins)
-                elif meth == "repr":
-                    zscores = self.compute_zscores_repr(tot_act,tot_repr,tot_non,bins)
-                elif meth == "actrepr":
-                    zscores = self.compute_zscores_actrepr(tot_act,tot_repr,tot_non,bins)
-                elif meth == "overlay":
-                    zscores_act = self.compute_zscores_act(tot_act,tot_repr,tot_non,bins)
-                    zscores_repr = self.compute_zscores_repr(tot_act,tot_repr,tot_non,bins)
-                else:
-                    print "Unknown method, computing default..."
-                    zscores = self.compute_zscores_actrepr(tot_act,tot_repr,tot_non,bins)
-
-            except:
-                print 'Invalid data (e.g. no genes repressed nor activated)'
-                sys.exit()
-
-            # init plots
-            fig = plt.figure(figsize=(fig_width,fig_height))
-            ax = plt.subplot(1,1,1)
-            plt.axis([0, fig_width, 0, fig_height]) ; ax.set_axis_off() 
-           
-            vmin = kwargs.get('vmin', -4)
-            vmax = kwargs.get('vmax', +4)
-
-            if meth == "overlay":
-                # normalisation of colours
-                try:
-                    cNorm_fc = colors.Normalize(vmin=vmin, vmax=vmax)
-                except:
-                    print 'Incorrect values for vmin / vmax'
-                    print 'Loading default'
-                    cNorm_fc = colors.Normalize(vmin=-4, vmax=4)
-
-                cScale_act = plt.get_cmap("Reds")
-                cScale_repr = plt.get_cmap("Blues")
-                cMap_act = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_act) 
-                cMap_repr = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_repr) 
-                angle = 360.0/len(zscores_act) # angle between two fragments
-                # display colour in the middle of the windows
-                start_angle = angle * (windows/2 - increment/2)  / increment 
-                i=0
-                for value in zscores_act:
-                    # edgecolor = assign a colour depending on value using cMap
-                    # draw arc on circle
-                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_act.to_rgba(value), lw=7, alpha = 0.7)
-                    ax.add_patch(arc)
-                    i+= angle
-                angle = 360.0/len(zscores_repr) 
-                start_angle = angle * (windows/2 - increment/2)  / increment
-                i=0
-                for value in zscores_repr:
-                    # edgecolor = assign a colour depending on value using cMap
-                    # draw arc on circle
-                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_repr.to_rgba(value), lw=7, alpha = 0.7)
-                    ax.add_patch(arc)
-                    i+= angle
-
-                cMap_act._A = [] # fake array to print map
-                cMap_repr._A = [] # fake array to print map
-                cbar = plt.colorbar(cMap_act,shrink=0.3)
-                cbar.set_label("Z-score act",size=9)
-                cbar.ax.tick_params(labelsize=7)
-                
-                cbar = plt.colorbar(cMap_repr,shrink=0.3)
-                cbar.set_label("Z-score repr",size=9)
-                cbar.ax.tick_params(labelsize=7)
-
-            else:
-                # Colormap for Zscore
-                colormap= kwargs.get('colormap','jet') # default value
-                try:
-                    cScale_fc = plt.get_cmap(colormap)
-                except:
-                    print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
-                    print 'Loading default'
-                    cScale_fc = plt.get_cmap('jet')
-                # normalisation of colours
-                try:
-                    cNorm_fc = colors.Normalize(vmin=vmin, vmax=vmax)
-                except:
-                    print 'Incorrect values for vmin / vmax'
-                    print 'Loading default'
-                    cNorm_fc = colors.Normalize(vmin=-4, vmax=4)
-
-                # map which assigns a colour depending on value between vmin and vmax
-                cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
-                angle = 360.0/len(zscores) # angle between two fragments
-                # display colour in the middle of the windows
-                start_angle = angle * (windows/2 - increment/2)  / increment
-                i=0
-                for value in zscores:
-                    # edgecolor = assign a colour depending on value using cMap
-                    # draw arc on circle
-                    arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_fc.to_rgba(value), lw=7)
-                    ax.add_patch(arc)
-                    i+= angle
-
-                cMap_fc._A = [] # fake array to print map
-                cbar = plt.colorbar(cMap_fc,shrink=0.3)
-                cbar.set_label("Z-score",size=9)
-                cbar.ax.tick_params(labelsize=7)
-
-            plt.axis("equal")
-
-            plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-            plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
-            plt.annotate(cond, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
-            form = kwargs.get('format','pdf')
-            if form == "png":
-                plt.savefig(path+"/circle-"+cond+".png", dpi=400, transparent=False)
-            elif form == "svg":
-                plt.savefig(path+"/circle-"+cond+".svg", transparent=False) 
-            elif form == "pdf":
-                plt.savefig(path+"/circle-"+cond+".pdf", transparent=False)
-            else:
-                print 'Unknown format, computing default...'
-                plt.savefig(path+"/circle-"+cond+".pdf",  transparent=False)
-            plt.close()
-
-    def compute_state_genes(self, cond): 
-        '''
-        returns a npy where a row is a gene caracterised by a start pos and a gene state
-        gene is considered activated above a given fc, repressed below a given fc
-        '''
-        gen_states = []
-        for gene in self.genes_valid[cond]:
-            # if activated
-            if self.genes[gene].fc_pval[cond][0] >= fc_treshold_pos and self.genes[gene].fc_pval[cond][1] <= pval_treshold:
-                gen_states.append([self.genes[gene].start,1])
-            # if repressed
-            elif self.genes[gene].fc_pval[cond][0] <= fc_treshold_neg and self.genes[gene].fc_pval[cond][1] <= pval_treshold:
-                gen_states.append([self.genes[gene].start,-1])
-            # if not affected
-            else:
-                gen_states.append([self.genes[gene].start,0])
-        
-        gen_states = np.array(gen_states)
-        return gen_states
-
-    def count_genes_in_windows(self, cond, gen_states, windows, increment):
-        '''
-        compute bins on the genome depending on windows size and increment, and
-        calculate the nb of activated / repressed / non affected genes in each bin for further zscore
-        '''
-        if not hasattr(self, 'seq'): # if no seq loaded
-            try:
-                print 'Trying to load seq...'
-                self.load_seq()
-                print 'seq loaded'
-            except:
-                print'Unable to load seq'
-                sys.exit()
-
-        bins = [] # bins = windows of the genome : [start coordinate,end coordinate,nb of activated genes,nb of repressed genes,nb of genes not affected]
-        bins_overlap = [] # bins where end coordinate < start coordinate (overlap circular chromosome)
-        for i in range(1,self.length,increment): # create bins depending on windows size and increment value
-            if (i+windows) <= self.length: # enough length to create a bin
-                bins.append([i,i+windows,0,0,0])
-            else: # i + windows > genome size, overlap with the beginning (circular chromosome)
-                bins_overlap.append([i, windows - (self.length-i),0,0,0])
-        bins_overlap = np.array(bins_overlap)
-        bins = np.array(bins) # convert to .npy
-        
-        for start,state in gen_states: # reminder gene state : a row = beginning of gene, state (activated, repressed or not affected)
-            if state == 1: # activated
-            # test to which bins the gene belongs to, and add one to the nb of activated genes of these bins
-                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),2] += 1
-                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),2] += 1
-            elif state == -1: # repressed gene
-                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),3] += 1
-                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),3] += 1
-            elif state == 0: # not affected gene
-                bins[np.where((bins[:,0] <= start) & (bins[:,1] > start)),4] += 1
-                bins_overlap[np.where((bins_overlap[:,0] <= start) | (bins_overlap[:,1] > start)),4] += 1
-        
-        bins = np.concatenate((bins,bins_overlap))
-        return bins
-
-    def compute_zscores_actrepr(self, tot_act, tot_repr, tot_non, bins):
-        '''
-        p_exp = nb of total activated genes / nb of total activated + repressed genes on the whole genome
-        '''
-        zscores = []
-        p_exp = float(tot_act) / float((tot_act + tot_repr))
-        print 'g+ / (g+ + g-) on genome :',p_exp
-        # compute zscore for each bin
-        for start,end,nb_act,nb_repr,nb_null in bins:
-            nb_act = float(nb_act) ; nb_repr = float(nb_repr)
-            try:
-                zscore =(nb_act - (nb_act+nb_repr)*p_exp) / (sqrt((nb_act+nb_repr)*p_exp*(1-p_exp)))
-            except: # division by zero if no genes activated nor repressed
-                zscore = 0
-            zscores.append(zscore)
-        return zscores
-   
-    def compute_zscores_act(self, tot_act, tot_repr, tot_non, bins):
-        '''
-        p_exp = nb of total activated genes / nb of total genes on the whole genome
-        '''
-        zscores = []
-        p_exp = float(tot_act) / float((tot_act + tot_repr + tot_non))
-        print 'g+ / gtot on genome :',p_exp
-        # compute zscore for each bin
-        for start,end,nb_act,nb_repr,nb_null in bins:
-            nb_act = float(nb_act) ; nb_tot = float((nb_act+nb_repr+nb_null))
-            try:
-                zscore =(nb_act - (nb_tot*p_exp)) / sqrt(nb_tot*p_exp*(1-p_exp))
-            except: # division by zero if no genes activated nor repressed
-                zscore = 0
-            zscores.append(zscore)
-        return zscores
-
-    def compute_zscores_repr(self, tot_act, tot_repr, tot_non, bins):
-        '''
-        p_exp = nb of total repressed genes / nb of total genes on the whole genome
-        '''
-        zscores = []
-        p_exp = float(tot_repr) / float((tot_act + tot_repr + tot_non))
-        print 'g- / gtot on genome :',p_exp
-        # compute zscore for each bin
-        for start,end,nb_act,nb_repr,nb_null in bins:
-            nb_repr = float(nb_repr) ; nb_tot = float((nb_act+nb_repr+nb_null))
-            try:
-                zscore =(nb_repr - (nb_tot*p_exp)) / sqrt(nb_tot*p_exp*(1-p_exp))
-            except: # division by zero if no genes activated nor repressed
-                zscore = 0
-            zscores.append(zscore)
-        return zscores
-
-    def compute_spacer_response(self,cond_fc,cond_tss,*arg,**kwargs):
-        '''For all TSS in TSSs[cond_tss], compute spacer length for each sigma factor from promoter site coordinates.
-        Then, associate expression data available in cond_fc for genes associated to TSS to spacer lengths, which allows
-        the analysis of the link between FC and spacer length. kwargs = thresh_pval = only consider genes with pval below, default 0.05. Returns a dict oh shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
-        '''
-        if not hasattr(self, 'genes_valid'): # if no fc loaded 
-            self.load_fc_pval()
         if not hasattr(self, 'TSSs'): # if no TSS loaded
             self.load_TSS() 
         if not hasattr(self, 'seq'): # if no seq loaded
-            self.load_seq() 
+            self.load_seq()
+        shift = kwargs.get('shift',0)
 
-        thresh_pval = kwargs.get('thresh_pval', 0.05)
-        try:
-            thresh_pval = float(thresh_pval)
-        except:
-            print 'Invalid thresh_pval, setting default 0.05...'
-            thresh_pval = 0.05
-
-        spacer_sigma = {} # dict of shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
-
-        try :
-            for TSSpos in self.TSSs[cond_tss].keys(): # for all TSS in cond_tss
-                TSSu = self.TSSs[cond_tss][TSSpos] # single TS
-                for sig in TSSu.promoter.keys(): # for all sigma factors binding to this TSS
-                    try:
-                        if sig not in spacer_sigma.keys(): # add sigma factor to sigma dict
-                            spacer_sigma[sig] = {'genes_valid':[],'genes_tot':[],'expr':[]}
-                        try: # if site coordinates
-                            TSSu.compute_magic_prom(self.seq,self.seqcompl)
-                            spacer = len(TSSu.promoter[sig]['spacer'])
-                        except: # if spacer length instead of sites coordinates
-                            spacer = TSSu.promoter[sig]['sites'][0]
-
-                        # valid gene : gene with pval < thresh_pval
-                        expr = [] # expression values for valid genes in that TSS 
-                        valid_genes = [] # valid genes in that TSS
-                        tot_genes = [] # genes that appear in FC + TSS data but with pval > thresh_pval
-
-                        for gene in TSSu.genes:
-                            try:
-                                if gene in self.genes_valid[cond_fc]:
-                                    tot_genes.append(gene) # gene in FC data + TSS data
-
-                                    if self.genes[gene].fc_pval[cond_fc][1] <= thresh_pval:
-                                    # gene in FC data + TSS data and valid (pval < thresh)
-                                        valid_genes.append(gene) 
-                                        expr.append(self.genes[gene].fc_pval[cond_fc][0])
-                            except:
-                                pass
-
-                        if tot_genes != []:
-                            if spacer not in spacer_sigma[sig].keys(): # init spacer in dict
-                                spacer_sigma[sig][spacer] = {'genes_valid':[],'genes_tot':[],'expr':[]} # shape 15:{[expr]:[expr1,expr2],[genes_valid]:[g1,g2],[genes_tot]:[g1,g2,g3]} 
-                            # genes_valid and genes_tot implemented in order to keep in memory all
-                            # genes with that spacer length
-                            spacer_sigma[sig]['genes_tot'].append(tot_genes) # gene in FC data + TSS data
-                            spacer_sigma[sig][spacer]['genes_tot'].append(tot_genes)
-
-                            if expr != [] and valid_genes != []:
-                                spacer_sigma[sig]['expr'].append(expr)
-                                spacer_sigma[sig]['genes_valid'].append(valid_genes)                            
-                                spacer_sigma[sig][spacer]['expr'].append(expr)                               
-                                spacer_sigma[sig][spacer]['genes_valid'].append(valid_genes)
-
-                            print 'Success, FC',expr,'for genes',valid_genes,'added to sigma',sig,'with',spacer,'pb spacer'
-                    except:
-                        pass
-
-        except Exception as e:
-            print 'Error',e   
-
-        if spacer_sigma == {}:
-            print 'Unable to compute spacer_sigma'
-        else:
-            return spacer_sigma
+        for cond_TSS in self.TSSs.keys():
+            try:
+                for TSS in self.TSSs[cond_TSS].keys():
+                    self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift)
+            except:
+                print 'Unable to compute magic prom :',cond_TSS
 
 ###################### ANTOINE #############################
-
     def run_btssfinder(self,nom_liste_TSS,nameOut,freedom):
         '''
         bTSSfinder need to be install on this computer
@@ -1207,10 +780,14 @@ class Genome:
         AND FINALY
         write the localization of new csv in file TSS.info to the next load.TSS()
         '''
+        self.load_TSS()
+        self.load_seq()
+        
         if nameOut == None:
             run_btssfinder(self,nom_liste_TSS,nom_liste_TSS,freedom)
         else:
             run_btssfinder(self,nom_liste_TSS,nameOut,freedom)
+
         gff2csv(self,nom_liste_TSS,nameOut,freedom)
         TSSinfo = basedir+"data/"+self.name+"/TSS/TSS.info"
         if os.path.exists(TSSinfo):
@@ -1228,3 +805,5 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
+
+
