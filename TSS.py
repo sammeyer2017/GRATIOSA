@@ -58,12 +58,14 @@ class TSS:
                         self.promoter[sig]['spacer'] = gen_seq[self.promoter[sig]['sites'][3]-shift:self.promoter[sig]['sites'][0]-1+shift]
                         self.promoter[sig]['minus10'] = gen_seq[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift]
                         self.promoter[sig]['minus35'] = gen_seq[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift]
+                        self.promoter[sig]['discriminator'] = gen_seq[self.promoter[sig]['sites'][1]-shift:self.pos-1+shift]
 
                     elif self.strand == False:
         # if promoter on - strand, spacer length = -35L - -10R -1
                         self.promoter[sig]['spacer'] = gen_seqcompl[self.promoter[sig]['sites'][1]-shift:self.promoter[sig]['sites'][2]-1+shift][::-1]
                         self.promoter[sig]['minus10'] = gen_seqcompl[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift][::-1]
                         self.promoter[sig]['minus35'] = gen_seqcompl[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift][::-1]
+                        self.promoter[sig]['discriminator'] = gen_seqcompl[self.pos-shift:self.promoter[sig]['sites'][0]-1+shift][::-1]
 
                 except: # sigma factor without site coordinates or invalid
                     pass

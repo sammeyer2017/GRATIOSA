@@ -232,29 +232,70 @@ def search_link(list):
 def compare_TSS_lists(TSSd1,TSSd2,*arg,**kwargs):
     match = {'len':[len(TSSd1.keys()),len(TSSd2.keys())]}
     bound = kwargs.get('bound',5)
+    sig = kwargs.get('sig',sigfactor)
+
+    match[0] = {'tot':0,'tot_sig':0,'m1035':0,'m10!35':0,'m35!10':0,'discr':0,'discrm1':0}
     for b in range(0,bound+1):
     # tot : total TSS matching
     # tot_sig : among TSS matching, those which have a spacer for sigfactor
-        match[b] = {'tot':0,'tot_sig':0}
-        for bb in range(0,bound+1):
-            match[b][bb] = 0
+        #match[b] = {'tot':0,'tot_sig':0,'m10':0,'m35':0}
+        match[0][b] = 0
+        # for bb in range(0,bound+1):
+        #     match[b][bb] = 0
+    dist = [[],[]]
 
     for TSS1 in TSSd1.keys():
         for TSS2 in TSSd2.keys():
             TSSdiff = abs(TSS1-TSS2) # shift between TSS
             try: # if TSSdiff between 0 (perfect match) and bound
                 match[TSSdiff]['tot'] += 1
-                SPdiff = abs(len(TSSd1[TSS1].promoter[sigfactor]['spacer'])-len(TSSd2[TSS2].promoter[sigfactor]['spacer'])) #shift between spacer lengths
+                SPdiff = abs(len(TSSd1[TSS1].promoter[sig]['spacer'])-len(TSSd2[TSS2].promoter[sig]['spacer'])) #shift between spacer lengths
                 match[TSSdiff]['tot_sig'] += 1 # both TSS have spacer for sigfactor
+                
+                if TSSd1[TSS1].strand == True:
+                    d1 = TSSd1[TSS1].pos - TSSd1[TSS1].promoter[sig]['sites'][1]-1
+                    d2 = TSSd2[TSS2].pos - TSSd2[TSS2].promoter[sig]['sites'][1]-1
+                
+                elif TSSd2[TSS2].strand == False:
+                    d1 = TSSd1[TSS1].promoter[sig]['sites'][0] - TSSd1[TSS1].pos -1
+                    d2 = TSSd2[TSS2].promoter[sig]['sites'][0] - TSSd2[TSS2].pos -1
+
+                dist[0].append(d1)
+                dist[1].append(d2)
+
+                if d == 0:
+                    match[TSSdiff]['discr'] += 1
+                elif d == 1:
+                    match[TSSdiff]['discrm1'] += 1
+
+                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m1035'] += 1
+                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] != TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m10!35'] += 1
+                if TSSd1[TSS1].promoter[sig]['minus10'] != TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m35!10'] += 1
+
                 match[TSSdiff][SPdiff] += 1
             except: # key error
                 pass
-    return match
 
-def valid_TSS(gen,cond_fc,cond_tss,thresh_fc):
+    return match,dist
+
+def draw_d(d):
+    plt.hist([d[0],d[1]], label=['Biocyc','bTSS'], range = (4,9), bins = 6,normed=True)
+    plt.ylabel('Frequency',fontweight='bold')
+    plt.xlabel('Discriminator length',fontweight='bold')
+    plt.legend()
+    plt.show()
+    # plt.title('Discriminator')
+
+
+
+def valid_TSS(gen,cond_fc,cond_tss,thresh_fc,*arg,**kwargs):
     '''
     For given TSS cond / FC cond, extract valid TSS (TSS with genes having a valid FC value).
     '''
+    sig = kwargs.get('sig',sigfactor)
     if not hasattr(gen, 'genes_valid'): # if no FC loaded 
         gen.load_fc_pval()
     if not hasattr(gen, 'TSSs'): # if no TSS loaded
@@ -267,12 +308,12 @@ def valid_TSS(gen,cond_fc,cond_tss,thresh_fc):
         TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
         expr = []
         try:
-            if sigfactor in TSSu.promoter.keys():
+            if sig in TSSu.promoter.keys():
                 try:
                     TSSu.compute_magic_prom(gen.seq,gen.seqcompl)
-                    spacer = len(TSSu.promoter[sigfactor]['spacer'])
+                    spacer = len(TSSu.promoter[sig]['spacer'])
                 except: # if spacer length instead of sites coordinates
-                    spacer = TSSu.promoter[sigfactor]['sites'][0]
+                    spacer = TSSu.promoter[sig]['sites'][0]
 
                 if spacer in spacers:
                     for gene in TSSu.genes:

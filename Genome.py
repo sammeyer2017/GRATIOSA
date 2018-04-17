@@ -761,8 +761,9 @@ class Genome:
 
         for cond_TSS in self.TSSs.keys():
             try:
-                for TSS in self.TSSs[cond_TSS].keys():
-                    self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift)
+                if cond_TSS != 'all_TSS':
+                    for TSS in self.TSSs[cond_TSS].keys():
+                        self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift)
             except:
                 print 'Unable to compute magic prom :',cond_TSS
 
