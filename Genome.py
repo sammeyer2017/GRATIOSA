@@ -296,7 +296,7 @@ def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, stran
                                 TSS_dict[pos].add_promoter(line[sig], sites = line[sites])
                         else:
                             TSS_dict[pos].add_promoter(line[sig])
-            
+
             except Exception as e:
                 print 'Error in line, wrong information type :',e
 
@@ -410,7 +410,7 @@ class Genome:
 
     def load_annotation(self):
         """ Load annotation. Two options : if gff file in directory -> load annotation from gff
-        if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 = 
+        if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 =
         Locus column,3 = Strand column, 4,5 Left Rigth column, 6 start line)
         """
         if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
@@ -492,7 +492,7 @@ class Genome:
                         except: # init list of conditions for entry
                             self.TSSs['all_TSS'][entry] = []
                             self.TSSs['all_TSS'][entry].append(line[0])
-        else:       
+        else:
             print("No TSS.info, unable to load TSS")
 
 
@@ -633,7 +633,7 @@ class Genome:
 
 ###################### RAPH #############################
 
-    def load_reads(self): 
+    def load_reads(self):
         '''
         new attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
         '''
@@ -654,7 +654,7 @@ class Genome:
                     self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
             print 'Done'
 
-    def load_cov(self): 
+    def load_cov(self):
         '''new attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
         '''
         self.cov_pos = {} # cov on + strand
@@ -663,7 +663,7 @@ class Genome:
         # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
         if os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info'): # cov.info available, cov.info opening instead of cov_txt.info
             with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
-                header = next(f)       
+                header = next(f)
                 for line in f: # for each condition
                     line=line.strip()
                     line=line.split('\t')
@@ -671,40 +671,40 @@ class Genome:
                     # load attributes
                     self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
                     self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
-        
+
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
             print 'Unable to locate cov.info in /rnaseq_cov/'
             print 'Working with .txt file (cov_txt.info)'
-            file = open(basedir+"data/"+self.name+'/rnaseq_cov/cov.info','w') 
+            file = open(basedir+"data/"+self.name+'/rnaseq_cov/cov.info','w')
             file.write('Condition\tCov file\tDate\tReads file')
-            file.close() 
+            file.close()
             with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_txt.info","r") as f: # load cov_txt.info
                 for line in f: # for each condition (each .txt file in cov_txt.info)
-                    line = line.strip('\n') 
-                    line = line.split('\t') 
+                    line = line.strip('\n')
+                    line = line.split('\t')
                     print 'Loading condition:',line[0]
                     # create .npy from .txt
-                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1],usecols=[int(line[2])]) 
-                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[3],usecols=[int(line[4])]) 
+                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1],usecols=[int(line[2])])
+                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[3],usecols=[int(line[4])])
                     # load attributes
                     self.cov_neg[line[0]]= cov_neg
                     self.cov_pos[line[0]]= cov_pos
                     # save .npy into .npz
                     np.savez(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
                     # update cov.info
-                    file=open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","a")                   
+                    file=open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","a")
                     file.write('\n'+line[0]+'\t'+line[0]+'_cov.npz\t'+str(datetime.now())+'\tUnknown')
                     file.close()
             f.close()
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
             print 'cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder'
-    
+
         print 'Done'
-        
+
 
     def compute_rpkm_from_cov(self, before=100):
         '''
-        Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account 
+        Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account
         DNA region upstream of the coding sequence of the gene
         '''
         if not self.genes: # if no genes loaded
@@ -713,7 +713,7 @@ class Genome:
         try:
             for g in list(self.genes.keys()): # for each gene
                 if hasattr(self.genes[g],'orientation'): # which has a known orientation
-                    if self.genes[g].orientation==1: 
+                    if self.genes[g].orientation==1:
             # gene in + strand
                         for cond in list(self.cov_pos.keys()): # for each condition of cov
                             self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
@@ -734,7 +734,7 @@ class Genome:
             # try to load them
             self.load_annotation()
 
-        if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"): 
+        if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"):
             with open(basedir+"data/"+self.name+"/fold_changes/fc.info","r") as f:
                 skiphead = next(f) # skip head
                 for header in f:
@@ -748,13 +748,13 @@ class Genome:
         else:
             print("No fc.info file, please create one")
 
-    
+
     def compute_magic_prom(self,*arg,**kwargs):
         '''
         Computes magic prom for all TSS conditions.
         '''
         if not hasattr(self, 'TSSs'): # if no TSS loaded
-            self.load_TSS() 
+            self.load_TSS()
         if not hasattr(self, 'seq'): # if no seq loaded
             self.load_seq()
         shift = kwargs.get('shift',0)
@@ -767,14 +767,18 @@ class Genome:
                 print 'Unable to compute magic prom :',cond_TSS
 
 ###################### ANTOINE #############################
-    def run_btssfinder(self,nom_liste_TSS,nameOut,freedom):
+
+    def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
+        freedom = kwargs.get('free',0)
+        nameOut = kwargs.get('out',list_TSS+'-btss-'+str(freedom))
         '''
+        kwags possible : out & free
         bTSSfinder need to be install on this computer
-        running btsfinder with default parameters for E.Coli
+        for more informations you can read btssfinder.py
         obj is Genome object
         list_TSS is the TSS list eg. biocyc
-        nameOut is  the name of fasta file (whiout extension .fasta) or if don't exist will become file's name of all out
-        freedom is number of additionnal base at the TSS region
+        out is  the name of fasta file (whiout extension .fasta) or if don't exist will become file's name of all out
+        free is number of additionnal base at the TSS region
         NEXT
         convert out-bTSSfinder.gff on basedir/data/[nom_liste_TSS]
         AND FINALY
@@ -782,13 +786,10 @@ class Genome:
         '''
         self.load_TSS()
         self.load_seq()
-        
-        if nameOut == None:
-            run_btssfinder(self,nom_liste_TSS,nom_liste_TSS,freedom)
-        else:
-            run_btssfinder(self,nom_liste_TSS,nameOut,freedom)
 
-        gff2csv(self,nom_liste_TSS,nameOut,freedom)
+        run_btssfinder(self,list_TSS,nameOut,freedom)
+
+        gff2csv(self,list_TSS,nameOut,freedom)
         TSSinfo = basedir+"data/"+self.name+"/TSS/TSS.info"
         if os.path.exists(TSSinfo):
             exist = False
@@ -805,5 +806,3 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
-
-
