@@ -785,8 +785,12 @@ class Genome:
         AND FINALY
         write the localization of new csv in file TSS.info to the next load.TSS()
         '''
-        self.load_TSS()
-        self.load_seq()
+        try:
+            test = self.TSSs[list_TSS]
+            test = self.seq[0:4]
+        except:
+            self.load_TSS()
+            self.load_seq()
 
         run_btssfinder(self,list_TSS,nameOut,freedom)
 
