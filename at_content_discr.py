@@ -129,134 +129,125 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		gen.load_fc_pval()
 	if not hasattr(gen, 'seq'): # if no fc loaded 
 		gen.load_seq()
-		
+
 	thresh_pval = kwargs.get('thresh_pval', 1.0)
-	wind2 = kwargs.get('windows', 6)
+	wind2 = kwargs.get('windows',6)
 	wind = wind2/2
-	# incr = kwargs.get('increment', 1)
-	align = kwargs.get('align','minus10')
+	align = kwargs.get('align',-10)
+	before = kwargs.get('bef',50)
+	after = kwargs.get('aft',20)
 	at = {}
 	for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
 		TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
 		for sig in TSSu.promoter.keys(): # for all sigma factors binding to this TSS
 			try:
 				if sig not in at.keys(): # add sigma factor to sigma dict
-					at[sig] = {'act':[],'rep':[]}
+					at[sig] = {'act':[],'rep':[],'none':[],'lact':[],'lrep':[], 'lnone':[]}
 
 				at_val = [] # AT content for each position
-				# AT content for positions -50 to +20
+				# AT content for positions -before to +after
+				if align == -10:
+					ref = (TSSu.promoter[sig]['sites'][0] + TSSu.promoter[sig]['sites'][1])/2
+				elif align == -35:
+					ref = (TSSu.promoter[sig]['sites'][2] + TSSu.promoter[sig]['sites'][3])/2
+				elif align == 1:
+					ref = TSSu.pos
+				
 				if TSSu.strand == True:
-					if align == 'minus10':
-						ref = TSSu.promoter[sig]['sites'][0]
-						refb = ref-40
-						refe = ref+30
-					elif align == 'minus35':
-						ref = TSSu.promoter[sig]['sites'][2]
-						refb = ref-15
-						refe = ref+55
-					elif align == 'TSS':
-						ref = TSSu.pos
-						refb = ref-51
-						refe = ref+19
-
+					refb = ref - (before + align)
+					refe = ref + (after - align)
 					for i in range(refb,refe+1):
 						at_val.append(100 - GC(gen.seq[i-1-wind:i+wind]))
 
 				elif TSSu.strand == False:
-					if align == 'minus10':
-						ref = TSSu.promoter[sig]['sites'][1]
-						refb = ref-30
-						refe = ref+40
-					elif align == 'minus35':
-						ref = TSSu.promoter[sig]['sites'][3]
-						refb = ref-55
-						refe = ref+15
-					elif align == 'TSS':
-						ref = TSSu.pos
-						refb = ref-19
-						refe = ref+51
-
+					refb = ref - (after - align)
+					refe = ref + (before + align)
 					for i in range(refb,refe+1):
 						at_val.append(100 - GC(gen.seqcompl[i-1-wind:i+wind]))
 					at_val = at_val[::-1]
 
-				expr = []
+				expr = [] ; expr_none = []
 				for gene in TSSu.genes:
 					try:
 						if gen.genes[gene].fc_pval[cond_fc][1] <= thresh_pval:
 							expr.append(gen.genes[gene].fc_pval[cond_fc][0])
+						else:
+							expr_none.append(gen.genes[gene].fc_pval[cond_fc][0])
 					except:
 						pass
-
+				
 				if expr != [] and at_val != []:
 					if np.mean(expr) < 0:
 						at[sig]['rep'].append(at_val)
+						at[sig]['lrep'].append(TSSu.pos)
 					elif np.mean(expr) > 0:
 						at[sig]['act'].append(at_val)
-			except:
+						at[sig]['lact'].append(TSSu.pos)
+				
+				elif expr_none != [] and at_val != []:
+					at[sig]['none'].append(at_val)
+					at[sig]['lnone'].append(TSSu.pos)
+
+			except Exception as e:
+				print e
 				pass
-	return at
 
-def draw_results_windows(at,*arg,**kwargs):
+	titl = '{}, {} et al., p-value = {}'.format(cond_tss,cond_fc,thresh_pval)
 
-	titl = kwargs.get('title','')
-	align = kwargs.get('align',-50)
-	spc = kwargs.get('spc',False)
+	sigma = kwargs.get('sigma',sigfactor)
+	nb_act = len(at[sigma]['act'])
+	nb_rep = len(at[sigma]['rep'])
+	nb_none = len(at[sigma]['none'])
 
-	nb_act = len(at[sigfactor]['act'])
-	nb_rep = len(at[sigfactor]['rep'])
-
-	at_act = zip(*at[sigfactor]['act'])
-	at_rep = zip(*at[sigfactor]['rep'])
+	at_act = zip(*at[sigma]['act'])
+	at_rep = zip(*at[sigma]['rep'])
+	at_none = zip(*at[sigma]['none'])
 
 	mact = [np.mean(x) for x in at_act]
 	mrep = [np.mean(x) for x in at_rep]
-	pos = [x for x in range(-50,21)]
-    
+	mnone = [np.mean(x) for x in at_none]
+
+	pos = [x for x in range(-before,after+1)]
+	print nb_none
 	draw = kwargs.get('draw', True)	
-	stat = kwargs.get('stats',True)
-	if spc == True:
-		spact = [item for sublist in at_act[20:41] for item in sublist]
-		sprep = [item for sublist in at_rep[20:41] for item in sublist]
-		disact = [item for sublist in at_act[40:51] for item in sublist]
-		disrep = [item for sublist in at_rep[40:51] for item in sublist]
-
-		print 'Spacer :',stats.ttest_ind(spact,sprep)[1]
-		print 'Discriminator :',stats.ttest_ind(disact,disrep)[1]
-	if stat == True:
-		pval = []
-		for a,r in zip(at_act,at_rep):
-			pval.append(stats.ttest_ind(a,r)[1])
-
 	if draw == True:
 		act = plt.plot(pos,mact,'rD',linestyle='solid', color='red', markersize=3,label=str(nb_act)+' Activated')
 		rep = plt.plot(pos,mrep,'bD',linestyle='solid', color='blue',markersize=3,label=str(nb_rep)+' Repressed')
+		if nb_none != 0:
+			plt.plot(pos,mnone,'kD',linestyle='dashed', color='black',markersize=3,label=str(nb_none)+' Non')
 		plt.xlabel('position',fontweight='bold')
 		plt.ylabel('AT content',fontweight='bold')
 		plt.title(titl)
 		plt.legend(title= 'Promoters', ncol = 1, fontsize='medium')
 		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
 
-		if stat == True:
-			i = -50
-			for val in pval:
-				if val <= 0.001:
-					s = '***'
-				elif val <= 0.01:
-					s = '**' 
-				elif val <= 0.05:
-					s = '*' 
-				else:
-					s = ''
+		pval = []
+		for a,r in zip(at_act,at_rep):
+			pval.append(stats.ttest_ind(a,r)[1])
+		i = - before
+		for val in pval:
+			if val <= 0.001:
+				s = '***'
+			elif val <= 0.01:
+				s = '**' 
+			elif val <= 0.05:
+				s = '*' 
+			else:
+				s = ''
+			if s != '':
+				plt.text(i,min(min(mact),min(mrep))+1,s,fontweight='bold')
+			i += 1
 
-				if s != '':# and i > -40 and i<1:
-					plt.text(i,min(min(mact),min(mrep))+1,s,fontweight='bold')
-
-				i += 1
-
-
-		plt.show()
-
+    	plt.savefig("{}res/jet3/{}-{}_{}_{}.svg".format(basedir,titl,before,after,sigma),transparent=False)
+    	plt.close('all')
+	# spc = kwargs.get('spc',False)
+	# if spc == True:
+	# 	spact = [item for sublist in at_act[20:41] for item in sublist]
+	# 	sprep = [item for sublist in at_rep[20:41] for item in sublist]
+	# 	disact = [item for sublist in at_act[40:51] for item in sublist]
+	# 	disrep = [item for sublist in at_rep[40:51] for item in sublist]
+	# 	print 'Spacer :',stats.ttest_ind(spact,sprep)[1]
+	# 	print 'Discriminator :',stats.ttest_ind(disact,disrep)[1]
 
 def corr_at_content(gen,cond_fc,cond_tss,*arg,**kwargs):
 
