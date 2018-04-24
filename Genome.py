@@ -21,9 +21,6 @@ from datetime import datetime
 from math import sqrt
 from btssfinder import *
 
-
-from btssfinder import *
-
 #==============================================================================#
 
 # -------------------
