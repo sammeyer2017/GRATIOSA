@@ -194,6 +194,16 @@ def gff2csv(obj,list_TSS,filename,freedom):
                 line2 = line1[(len(line1)-1)].split(';')
                 TSSposPredict = line1[6] #and 7 if interval TSS (case of TSS, position is not set)
                 sig = line2[0].split('=')[1]
+                if sig == 'sigmaA':
+                	sig = 'sigma70'
+                elif sig == 'sigmaH':
+                	sig = 'sigma32'
+                elif sig == 'sigmaF':
+                	sig = 'sigma28'
+                elif sig == 'sigmaC':
+                	sig = 'sigma38'
+                elif sig == 'sigmaG':
+                	sig = 'sigma24'
                 box35pos = line2[1].split('=')[1]
                 box35seq = line2[2].split('=')[1]
                 box10pos = line2[3].split('=')[1]
