@@ -89,22 +89,22 @@ def generFasta(obj,list_TSS,filename,freedom):
         ma = freedom + TSS_DOWNSTREAM
         if obj.TSSs[list_TSS][pos].strand:
             if pos - mp < 0:
-                reste = mp - pos
-                sequence = obj.seq[(genLen-reste):genLen] + obj.seq[0:(pos+ma+1)]
+                reste = abs(pos -1 -mp)
+                sequence = obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+ma)]
             elif pos + ma > genLen:
-                reste = pos + ma - genLen
-                sequence = (obj.seq[(pos+mp):genLen] + obj.seq[0:(reste+1)])
+                reste = ma - (genLen -pos -1)
+                sequence = obj.seq[(pos -1 -mp):genLen] + obj.seq[0:(reste+1)]
             else:
                 sequence = obj.seq[(pos-1-mp):(pos+ma)]
             verifLen(sequence,pos,mp,ma)
             fasta.write(seqFasta(com,sequence)+'\n\n')
         elif not obj.TSSs[list_TSS][pos].strand:
             if pos - ma < 0:
-                reste = ma - pos
-                sequence = compl_string(obj.seq[0:(pos+mp+1)]) + compl_string(obj.seq[(genLen-reste):genLen])
+                reste = pos -1 -ma
+                sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp+1)])
             elif pos + mp > genLen:
-                reste = pos + mp - genLen
-                sequence = compl_string(obj.seq[0:(reste+1)]) + compl_string(obj.seq[(pos+ma):genLen])
+                reste = abs(mp - (genLen -pos -1))
+                sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp)])
             else:
                 sequence = compl_string(obj.seq[(pos-1-ma):(pos+mp)])
             verifLen(sequence,pos,mp,ma)
@@ -186,6 +186,7 @@ def gff2csv(obj,list_TSS,filename,freedom):
     f = open(basedir+"/data/"+obj.name+"/TSS/"+filename+'.csv','w')
     my_file = open(pathTemp+filename+'.gff', "r")
     f.write('TSS position'+'\t'+'strand'+'\t'+'gene'+'\t'+'sigma'+'\t'+'positions'+'\n')
+    genLen = len(obj.seq)
     for line in my_file.readlines():
         if line[0]!= '#':
             if line != '\n':
@@ -194,16 +195,6 @@ def gff2csv(obj,list_TSS,filename,freedom):
                 line2 = line1[(len(line1)-1)].split(';')
                 TSSposPredict = line1[6] #and 7 if interval TSS (case of TSS, position is not set)
                 sig = line2[0].split('=')[1]
-                if sig == 'sigmaA':
-                	sig = 'sigma70'
-                elif sig == 'sigmaH':
-                	sig = 'sigma32'
-                elif sig == 'sigmaF':
-                	sig = 'sigma28'
-                elif sig == 'sigmaC':
-                	sig = 'sigma38'
-                elif sig == 'sigmaG':
-                	sig = 'sigma24'
                 box35pos = line2[1].split('=')[1]
                 box35seq = line2[2].split('=')[1]
                 box10pos = line2[3].split('=')[1]
@@ -228,11 +219,28 @@ def gff2csv(obj,list_TSS,filename,freedom):
 
                 else:
                     print 'error no detect strand for TSS '+pos
-                try:
-                    gene = ','.join(find_gene(obj,list_TSS,pos,freedom))
-                    f.write(str(pos)+'\t'+line1[3]+'\t'+str(gene)+'\t'+sig+'\t'+str(b10PosRealLeft)+','+str(b10PosRealRight)+','+str(b35PosRealLeft)+','+str(b35PosRealRight)+'\n')
-                except:
-                    print "/!\TSS pos n°"+str(pos)+" ignored"
+                #convert bad coordinate
+                gene = ','.join(find_gene(obj,list_TSS,pos,freedom))
+                if b10PosRealLeft < 0:
+                    b10PosRealLeft = genLen + b10PosRealLeft
+                elif b10PosRealLeft > genLen:
+                    b10PosRealLeft = b10PosRealLeft - genLen
+                if b10PosRealRight < 0:
+                    b10PosRealRight = genLen + b10PosRealRight
+                elif b10PosRealRight > genLen:
+                    b10PosRealRight = b10PosRealRight - genLen
+                if b35PosRealLeft < 0:
+                    b35PosRealLeft = genLen + b35PosRealLeft
+                elif b35PosRealLeft > genLen:
+                    b35PosRealLeft = b35PosRealLeft - genLen
+                if b35PosRealRight < 0:
+                    b35PosRealRight = genLen + b35PosRealRight
+                elif b35PosRealRight > genLen:
+                    b35PosRealRight = b35PosRealRight - genLen
+
+                f.write(str(pos)+'\t'+line1[3]+'\t'+str(gene)+'\t'+sig+'\t'+str(b10PosRealLeft)+','+str(b10PosRealRight)+','+str(b35PosRealLeft)+','+str(b35PosRealRight)+'\n')
+
+                    #print "/!\TSS pos n°"+str(pos)+" ignored"
     my_file.close()
     f.close()
 
