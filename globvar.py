@@ -27,7 +27,7 @@ radius = fig_width / 1.4 # radius circles
 # parameters for bTSS finder
 PROM_LENGTH = 200
 TSS_DOWNSTREAM = 50
-taxon = {'ecoli':'e','dickeya':'e','salmonella':'e', 'synechococcus':'c', 'streptococcus':'c', 'staphylococcus':'c'}
+taxon = {'ecoli':'e','dickeya':'e','salmonella':'e', 'synechococcus':'c', 'streptococcus':'c', 'staphylococcus':'c', 'mycoplasma_pneu':'c'}
 # parameters for spacer analysis
 sigfactor = 'sigma70'
 spacers = [15,16,17,18,19]
