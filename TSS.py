@@ -49,7 +49,7 @@ class TSS:
         gen_seq : + strand, gen_seqcompl : - strand (complementary, /!\ 3' -> 5'). shift : nb of nucleotides to
         include on either side.
         '''
-        shift = kwargs.get('shift',0)
+        shift = kwargs.get('shift',0) # number of nt to include beyond each region on either side, e.g. to compute angle
         try:
             for sig in self.promoter.keys(): # for each sigma factor
                 try:                    

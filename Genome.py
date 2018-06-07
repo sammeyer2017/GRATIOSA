@@ -20,6 +20,7 @@ from domain_phuc import Domain
 from datetime import datetime
 from math import sqrt
 from btssfinder import *
+from scipy import stats
 
 #==============================================================================#
 
@@ -215,6 +216,33 @@ def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separato
     f.close()
     return genes_valid
 
+def load_expr_cond(genes_dict, filename, condition, tag_col, nb_replicates, expr_col, separator, start_line):
+    ''' Called by load_expr_cond, allows expression data to be loaded by specifying files, and where each
+    information is (tag, expr...).
+    '''
+    with open(filename, 'r') as f:
+        i=1
+        while i < start_line:
+            header=next(f)
+            i+=1
+        for line in f:
+            line = line.strip('\n')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line=line.split(separator)
+
+            st = int(expr_col) ; nb = int(nb_replicates)
+            for i in range(st,st+nb):
+                try:
+                    genes_dict[line[tag_col]].add_expr_cond(float(line[i]),condition)
+                except:
+                    if line[tag_col] not in genes_dict.keys():
+                        if line[tag_col] != '':
+                            print(line[tag_col] + " not in annotation ")
+                        else:
+                            print("fc without locus")
+    f.close()
 
 
 def domain_parser(genes_dict, domain_filename):
@@ -281,7 +309,7 @@ def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, stran
                     # init object tss
                     TSS_dict[pos] = TSS(pos = pos)
                     TSS_dict[pos].add_strand(line[strand])
-                    if tag_column: # if tag column
+                    if tag_column or tag_column == 0: # if tag column
                         TSS_dict[pos].add_genes(line[tag_column],genes_dict)
                         for gene in TSS_dict[pos].genes: # add TSS to gene attributes
                             genes_dict[gene].add_id_TSS(pos)
@@ -338,6 +366,72 @@ def add_neighbour(dict_genes,list):
     return dict_genes
 
 # ----------------------
+def add_expression_to_genes(genes_dict, expression_filename, tag_col, first_expression_col, is_log):
+    """ Adds expression data to Gene objects by parsing a file with as many
+    columns as there are different conditions in the experiment, plus one for
+    the gene names (first column).
+    """
+    with open(expression_filename, 'r') as f:
+        header=next(f)
+        header=header.strip()
+        header=header.split('\t')
+        header=header[first_expression_col:]
+        for line in f:
+            line=line.strip()
+            line = line.split('\t')
+            try:
+                if is_log == 'no':
+                    genes_dict[line[tag_col]].add_expression_data(header,[math.log(float(i),2) for i in line[first_expression_col:]])
+                else:
+                    genes_dict[line[tag_col]].add_expression_data(header,[float(i) for i in line[first_expression_col:]])
+            except KeyError:
+                if line[tag_col] == 'none':
+                    print("expressions without locus tag")
+                else:
+                    print(line[tag_col] + " this locus not in annotation")
+    return genes_dict
+
+
+def add_single_expression_to_genes(genes_dict, expression_filename):
+    """ Adds expression data to Gene objects by parsing a file with as many
+    columns as there are different conditions in the experiment, plus one for
+    the gene names (first column).
+    """
+    condition = expression_filename[expression_filename.rfind('/')+1:
+                                    expression_filename.rfind('/')+3]
+    with open(expression_filename, 'r') as f:
+        header = next(f)
+        header = header.strip('\n').split(',')
+        header = header[1:]
+        for line in f:
+            line = line.strip('\n')
+            line = line.split(',')
+            try:
+                genes_dict[line[0]].add_single_expression(
+                    #log2(x+1)
+                    condition, np.log2(float(line[1])+1))
+            except KeyError:
+                print("Expressions : Could not find gene " + line[0])
+                #genes_dict[line[0]] = Gene(name=line[0], left=int(line[2]),
+                #                          right=int(line[3]),
+                #                          orientation=(line[4]=='+'))
+                #genes_dict[line[0]].add_single_expression(
+                #    expression_filename[i:i+3], float(line[1]))
+    return genes_dict
+
+def set_mean_expression(genes_dict, expression_filename):
+    with open(expression_filename, 'r') as f:
+        header = next(f)
+        header = header.strip('\n').split(',')
+        header = header[1:]
+        for line in f:
+            line = line.strip('\n')
+            line = line.split(',')
+            try:
+                genes_dict[line[0]].set_mean_expression(line[1])
+            except KeyError:
+                print("Expressions : Could not find gene " + line[0])
+    return genes_dict
 
 
 class Genome:
@@ -748,13 +842,13 @@ class Genome:
 
     def compute_magic_prom(self,*arg,**kwargs):
         '''
-        Computes magic prom for all TSS conditions.
+        Extract sequences of the different promoter elements based on -35 and -10 coordinates, for all TSS conditions.
         '''
         if not hasattr(self, 'TSSs'): # if no TSS loaded
             self.load_TSS()
         if not hasattr(self, 'seq'): # if no seq loaded
             self.load_seq()
-        shift = kwargs.get('shift',0)
+        shift = kwargs.get('shift',0) # number of nt to include beyond each region on either side, e.g. to compute angle
 
         for cond_TSS in self.TSSs.keys():
             try:
@@ -764,6 +858,66 @@ class Genome:
             except:
                 print 'Unable to compute magic prom :',cond_TSS
 
+
+    def add_fake_expression(self,cond_fc):
+        '''
+        For a given FC condition cond_fc, add FC = 0 and p-value = 1 to all genes which are not in the condition 
+        file but only in the annotation file e.g. Blot et al. transcriptomic dataset analysis
+        '''
+        self.load_fc_pval()
+        for gene in self.genes.keys():               
+            try: # if the gene has already an expression value for the condition, pass
+                test = self.genes[gene].fc_pval[cond_fc]
+            except:
+                try: # if the gene has an expression value for another condition, only add key to dict and fake values
+                    self.genes[gene].fc_pval[cond_fc] = (0,1)
+                except: # otherwise init dict before adding fake values
+                    self.genes[gene].fc_pval = {}
+                    self.genes[gene].fc_pval[cond_fc] = (0,1)
+
+    def load_expression_level(self):
+        """ Add expression level for all genes in dictionary """
+        if not self.genes: # if no genes loaded
+            # try to load them
+            self.load_annotation()
+
+        if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
+            with open(basedir+"data/"+self.name+"/expression/expression.info","r") as f:
+                for line in f:
+                    line=line.strip()
+                    line=line.split('\t')
+                    self.genes=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+line[0], int(line[1]), int(line[2]), line[3])
+        else:
+            print(" not found expression file information")
+
+
+    def compute_fc_from_expr(self, ctrls, conds,condname):
+        ''' 
+        Compute FC and p-values of a condition condname starting from a list of expression conditions : 
+        control conditions ctrls, test conditions conds
+        '''
+        if not hasattr(self, 'genes_valid'):
+            self.genes_valid = {}
+        self.load_expression_level() # load expression values
+
+        genes_val = [] # list containing all genes having valid expr
+        for genename in self.genes.keys():
+            gene = self.genes[genename]
+            ctrlvals = [] # list of control values for that gene
+            testvals = [] # list of test values for that gene
+            try:
+                for ctrl in ctrls:
+                    ctrlvals.append(gene.expression[ctrl])
+                for cond in conds:
+                    testvals.append(gene.expression[cond])
+                # add FC (meantest - meanctrl) and p-values (Student test)
+                gene.add_fc_pval_cond(np.mean(testvals)-np.mean(ctrlvals),condname,stats.ttest_ind(ctrlvals,testvals,equal_var=False)[1])
+                genes_val.append(genename)
+            except:
+                pass
+
+        self.genes_valid[condname] = genes_val
+        
 ###################### ANTOINE #############################
 
     def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
@@ -808,3 +962,4 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
+

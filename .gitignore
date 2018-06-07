@@ -6,6 +6,7 @@ compute_spacer_angle.py
 globvar_angle.py
 spacer_angle.zip
 spacers_modelling.py
-# ignore virtualenv
-venv/
+# ignore virtualenv and others
+venv
+SIST
 old_version

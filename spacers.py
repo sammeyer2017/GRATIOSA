@@ -4,6 +4,21 @@ from globvar import *
 import numpy as np
 import matplotlib.pyplot as plt
 
+params = {
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+   'axes.labelsize': 11,
+   'font.size': 11,
+   'legend.fontsize': 9,
+   'xtick.labelsize': 11,
+   'ytick.labelsize': 11,
+   'text.usetex': False,
+   'axes.linewidth':1.5, #0.8
+   'axes.titlesize':11,
+   'axes.spines.top':True,
+   'axes.spines.right':True,
+   }
+plt.rcParams.update(params)
 
 def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
     '''For all TSS in TSSs[cond_tss], compute spacer length for each sigma factor from promoter site coordinates.
@@ -19,7 +34,7 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
         gen.load_seq() 
 
     thresh_pval = kwargs.get('thresh_pval', 0.05)
-    spacer_sigma = {'org':gen.name} # dict of shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
+    spacer_sigma = {} # dict of shape {[sigma_factor]:{[sp_length]:{[genes]:[g1,g2],[expr]:[1,2]}}}
     try :
         for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
             TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
@@ -74,25 +89,23 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
 
     if spacer_sigma == {}:
         print 'Unable to compute spacer_sigma'
-    else:
-        return spacer_sigma
 
-def draw_results(spacer_sigma,*arg,**kwargs):
     '''Starting from spacer_sigma, the dict associating expression values to each spacer
     length for each sigma factor, compute txt results and graphes. kwargs : thresh_fc = for log2FC above,
     gene considered activated, for FC below, repressed (default 0). Aggregation = True or False. If True, 
     for each TSS, associate mean of expressions of genes, otherwise associate all single expression data. 
     l_genes = write in results the list of genes associated to each sigma factor and spacer length, default False.
     '''
+
     thresh_fc = kwargs.get('thresh_fc', 0.0)
     aggregation = kwargs.get('aggregation', True)
     l_genes = kwargs.get('l_genes', False)
     miscell = kwargs.get('miscell', False)
     # compute and write results
     # title for results
-    titl = '{}-fc{}-agg{}-genes{}'.format(spacer_sigma['org'],str(thresh_fc),str(aggregation),str(l_genes))
+    titl = '{}-{}-fc{}-pval{}-agg{}-genes{}'.format(cond_fc,cond_tss,str(thresh_fc),str(thresh_pval),str(aggregation),str(l_genes))
     # path to database
-    pathdb = '{}data/{}/spacer'.format(basedir,spacer_sigma['org'])
+    pathdb = '{}data/{}/spacer'.format(basedir,gen.name)
     if not os.path.exists(pathdb):
         os.makedirs(pathdb)
     # txt results
@@ -185,17 +198,7 @@ def draw_results(spacer_sigma,*arg,**kwargs):
         plt.ylabel(ylab, fontweight = 'bold')
         plt.title(tit, fontweight='bold')
 
-    def good_shape():
-        plt.rcParams.update({'pdf.fonttype': 42})
-        plt.rcParams.update({'ps.fonttype': 42})
-        plt.rcParams.update({'font.size': 11})
-        plt.rcParams.update({'legend.fontsize': 11})
-        plt.rcParams.update({'font.family': "Arial"})
-        # plt.rcParams.update('xtick', labelsize=11)
-        # plt.rcParams.update('ytick', labelsize=11)
-        # plt.rcParams.update('axes', labelsize=11)
-
-    if miscell == True:
+    if miscell == True: # creates various plots
         fig = plt.figure(figsize=(6,6))
         d = spacer_sigma[sigfactor]
         plt.boxplot([d[x]['expr'] for x in spacers],labels=spacers)
@@ -227,7 +230,7 @@ def draw_results(spacer_sigma,*arg,**kwargs):
     yval = []
     meanstd = []
 
-    for sp in spacers:
+    for sp in spacers: # compute proportion of activated promoters with CI for each spacer length using binomial law
         val = spacer_sigma[sigfactor][sp]['expr_valid']
         act = val[val > thresh_fc].shape[0]
         rep = val[val < thresh_fc].shape[0]
@@ -242,42 +245,33 @@ def draw_results(spacer_sigma,*arg,**kwargs):
         meanstd.append(std)
         xval.append(sp)
 
-
+    # weighted linear regression
     X = sm.add_constant(xval)
-    wls_model = sm.WLS(yval, X, weights=1/np.power(np.array(meanstd),2))
+    wls_model = sm.WLS(yval, X, weights=1/np.power(np.array(meanstd),2)) # weights proportional to the inverse of std²
     results = wls_model.fit()
     slope = results.params[1]
     OR = results.params[0]
     pval = results.pvalues[1]
 
-    plt.rcParams['font.family'] = 'Arial'
-    plt.rcParams['ps.fonttype'] = 42
-    plt.rcParams['pdf.fonttype'] = 42
-    plt.rcParams['legend.fontsize'] = 11
-    plt.rcParams['font.size'] = 11
-    plt.rcParams['font.family'] = 'Arial'
-
-    width = 6
-    height = width / 1.618
-
+    width = 5 ; height = width / 1.618
     fig, ax = plt.subplots()
-    fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-
-    ax.set_ylabel('Activated promoters (%)')
-    ax.set_xlabel('Spacer length (nt)')
-    ax.set_xlim(14,20)
-    fig.set_size_inches(width, height)
-    
-    plt.plot(xval, yval, 'rD', markersize=9, linestyle='None')
-    plt.errorbar(xval, yval,yerr=meanstd,mec='black', capsize=12.5, elinewidth=1.25,mew=1.5,linestyle='None', color='black')
+    plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+    plt.errorbar(xval, yval,yerr=meanstd,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')
     xval = [14] + xval + [20] # delimit plot
-    plt.plot(xval,np.array(xval)*slope + OR, linestyle='dashed', color='black')
-    plt.text(0.5,0.75, r'Lin reg : slope '+str(round(slope,3))+', pval '+str(round(pval,3)),fontsize = 8,fontweight = 'bold',horizontalalignment = 'center',transform = ax.transAxes)
+    plt.plot(xval,np.array(xval)*slope + OR, linestyle='dashed', color='black')    
+    
+    fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+    ax.set_ylabel('Activated promoters proportion',fontweight='bold')
+    ax.set_xlabel('Spacer length (bp)',fontweight='bold')
+    ax.set_xlim(14,20)
+    ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
 
-    good_shape()
-    save_single_fig('spacers')
+    #ax.set_title(str(round(stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2,3)),fontweight='bold')
+    fig.set_size_inches(width, height)
+    plt.tight_layout()
+    save_single_fig('spacers')   
 
-    # compute spacer lengths for activated and repressed genes
+    # compute spacer lengths mean and std for activated, repressed or non affected promoters
     allact = []
     allrep = []
     allnone = []
@@ -291,31 +285,44 @@ def draw_results(spacer_sigma,*arg,**kwargs):
         allrep.extend([sp]*rep)
         allnone.extend([sp]*non)
 
-    mact = np.mean(allact)
-    mrep = np.mean(allrep)
+    mact = np.mean(allact) # spacer length mean of act promoters
+    mrep = np.mean(allrep) # spacer length mean of rep promoters
 
-    eact = np.std(allact)/np.sqrt(len(allact))
-    erep = np.std(allrep)/np.sqrt(len(allrep))
+    eact = np.std(allact)/np.sqrt(len(allact)) # 95 CI on mean
+    erep = np.std(allrep)/np.sqrt(len(allrep)) # 95 CI on mean
     
-    if allnone != []:
+    if allnone != []: # if non affected promoters
         mnone = np.mean(allnone)
         enone = np.std(allnone)/np.sqrt(len(allnone))
         xval = [1,2,3]
         yval = [mact,mnone,mrep]
         stdval = [eact,enone,erep]
         col = ['red','black','blue']
-        labs = ['Activated','Non affected','Repressed']
-    else:
+        labs = ['Activated','Non','Repressed']
+    else: # only act and rep promoters (e.g. Peter et al.)
         xval = [1,2]
         yval = [mact,mrep]
         stdval = [eact,erep]
         col = ['red','blue']
         labs = ['Activated','Repressed']
 
-    plt.plot(xval,yval, markersize=9,marker='D',linestyle='None')#,color=col)
-    plt.errorbar(xval, yval,yerr=stdval,linestyle='None', capsize=12.5, ecolor='black', elinewidth=1.25, mew=1.5)
-    
+    width = 4 ; height = width / 1.618
+    fig, ax = plt.subplots()
+
+    plt.scatter(xval,yval ,marker='D',color=col,s=50)# markersize=9 ,linestyle='None'
+    plt.errorbar(xval, yval,yerr=stdval,linestyle='None', capsize=10, ecolor='black', elinewidth=1, mew=1)
+
+    ax.set_xlabel('Promoters',fontweight='bold')    
+    ax.set_ylabel('Spacer length (bp)',fontweight='bold')
+    ax.set_xlim(xval[0]-1,xval[-1]+1)
+    ax.set_ylim(yval[0]-0.3,yval[1]+0.4)
     plt.xticks(xval,labs)
-    plt.xlim(xval[0]-1,xval[-1]+1)
-    
-    plt.show()
+    ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
+    print str(round(stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2,3))
+    a = stats.ttest_ind(allact,allnone,equal_var=False)[1] / 2
+    b = stats.ttest_ind(allnone,allrep,equal_var=False)[1] / 2
+    c = a*b
+    print c
+    fig.set_size_inches(width, height)
+    plt.tight_layout()
+    save_single_fig('ttest')

@@ -131,8 +131,6 @@ def draw_expression_circles(gen, *arg, **kwargs):
             print'Unable to load seq'
             sys.exit()
 
-
-
     for cond in gen.genes_valid.keys():
         print 'Computing condition',cond
         gen_states = compute_state_genes(gen,cond)
@@ -256,7 +254,7 @@ def draw_expression_circles(gen, *arg, **kwargs):
         plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.4),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
         plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,0),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=8)
         plt.annotate(cond, xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center',fontstyle='italic', wrap=True, fontsize=7)
-        form = kwargs.get('format','pdf')
+        form = kwargs.get('format','svg')
         if form == "png":
             plt.savefig(path+"/circle-"+cond+".png", dpi=400, transparent=False)
         elif form == "svg":
@@ -265,7 +263,7 @@ def draw_expression_circles(gen, *arg, **kwargs):
             plt.savefig(path+"/circle-"+cond+".pdf", transparent=False)
         else:
             print 'Unknown format, computing default...'
-            plt.savefig(path+"/circle-"+cond+".pdf",  transparent=False)
+            plt.savefig(path+"/circle-"+cond+".svg",  transparent=False)
         plt.close()
 
 def compute_state_genes(gen, cond): 

@@ -149,3 +149,31 @@ class Gene:
             self.id_operon=[]
         if not(operon in self.id_operon):
             self.id_operon.append(operon)
+
+
+
+    def add_expression_data(self, conditions, expression_values):
+        """ Adds expression in the form of a dictionnary where the keys
+        correspond to the different conditions. The conditions and expression
+        values are passed as lists.
+        """
+        self.expression = dict(zip(conditions, expression_values))
+        self.mean_expression = np.mean(self.expression.values())
+
+
+    def add_single_expression(self, condition, expression_value):
+        if not hasattr(self, 'expression'):
+            self.expression = {}
+        self.expression[condition] = expression_value
+
+    def set_mean_expression(self, expression_value=None):
+        if expression_value:
+            self.mean_expression = expression_value
+        else:
+            self.mean_expression = np.mean(self.expression.values())
+
+    def add_list_expression(self):
+        self.list_expression=[]
+        if hasattr(self,'expression'):
+            for i in self.expression:
+                self.list_expression.append(self.expression[i])

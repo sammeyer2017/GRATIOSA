@@ -7,53 +7,61 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 params = {
+	'pdf.fonttype': 42,
+	'ps.fonttype': 42,
    'axes.labelsize': 11,
    'font.size': 11,
-   'legend.fontsize': 11,
+   'font.family':'Arial',
+   'legend.fontsize': 9,
    'xtick.labelsize': 11,
    'ytick.labelsize': 11,
    'text.usetex': False,
    'axes.linewidth':1.5, #0.8
+   'axes.titlesize':11,
    'axes.spines.top':True,
    'axes.spines.right':True,
    }
-
 plt.rcParams.update(params)
 
 def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	'''
-	Compute AT content on each position of promoter on x bp centered windows. Promoter is then classified activated, repressed or non regulated based on FC data and AT contents between groups are compared.
+	Compute AT content on each position of promoter on x bp centered windows. Promoter is then
+	classified activated, repressed or non regulated based on FC / pvalues data and AT contents 
+	between groups are compared. gen : genome object, cond_fc : FC condition, cond_tss : list of TSS used
 	'''
+	# Requirements
 	gen.load_fc_pval()
 	gen.load_TSS() 
 	gen.load_seq() 
-
+	# kwargs
 	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
 	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
 	align = kwargs.get('align',-10) # position where promoters are aligned for comparison
 	before = kwargs.get('bef',50) # number of bp to look below TSS position
 	after = kwargs.get('aft',20) # number of bp to look above TSS position
 	methstat = kwargs.get('methstat','actvsrep') # stat method to compute pvalue between groups. Actvsrep : ttest(activated > repressed). Actvsnone : ttest(act > none)*ttest(rep < none).
-	statw = kwargs.get('statw',True) # write pval results 
-	draw = kwargs.get('draw', True) # draw AT curves. If draw == 'CI', draw CI
-	org = kwargs.get('org', gen.name) # real organism name for plot title
-
+	statw = kwargs.get('statw',True) # True : write pval results for each position in a text file 
+	draw = kwargs.get('draw', 'std') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
+	org = kwargs.get('org', gen.name) # organism name to use for plot title
 	wind2 = kwargs.get('windows',6) # length of windows to compute AT contents
 	wind = wind2/2
+	shift = kwargs.get('shift',1) # shift of windows, per default one windows computed every nt 
 
-	at = {'all':{'act':[],'rep':[],'none':[]}} # all TSS aligned on +1 regardless of sigma factor
+	at = {'all':{'act':[],'rep':[],'none':[]}} # all : TSS aligned on +1 regardless of sigma factor
 	# general shape of dict is at[sigma]:{[at contents for activated promoters],[at contents for repressed promoters], [at contents for non regulated promoters]}
+	# general shape of [at contents for promoters] : list of lists where each list corresponds to the values of a promoter for each position
 	for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
-		TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
-		at_val = []
+		TSSu = gen.TSSs[cond_tss][TSSpos] # single TSS
+		at_val = [] # at values of the promoter
+		# alignment on TSS
 		if TSSu.strand == True:
-			for i in range(TSSpos-before-1,TSSpos+after-1+1):
+			for i in range(TSSpos-before,TSSpos+after+1,shift):
 				at_val.append(100 - GC(gen.seq[i-1-wind:i+wind]))
 		elif TSSu.strand == False:
-			for i in range(TSSpos-after+1,TSSpos+before+1+1):
+			for i in range(TSSpos-after,TSSpos+before+1,shift):
 				at_val.append(100 - GC(gen.seqcompl[i-1-wind:i+wind]))
 			at_val = at_val[::-1]
-
+		# decides if the promoter is activated, repressed or non regulated
 		expr = [] ; expr_none = []
 		for gene in TSSu.genes:
 			try:
@@ -84,22 +92,22 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 				at_val = [] # AT content for each position
 				# AT content for positions -before to +after
 				if align == -10:
-					ref = (TSSu.promoter[sig]['sites'][0] + TSSu.promoter[sig]['sites'][1])/2
+					ref = (TSSu.promoter[sig]['sites'][0] + TSSu.promoter[sig]['sites'][1])//2
 				elif align == -35:
-					ref = (TSSu.promoter[sig]['sites'][2] + TSSu.promoter[sig]['sites'][3])/2
-				elif align == 1:
+					ref = (TSSu.promoter[sig]['sites'][2] + TSSu.promoter[sig]['sites'][3])//2
+				elif align == 0:
 					ref = TSSu.pos
 				
 				if TSSu.strand == True:
 					refb = ref - (before + align)
 					refe = ref + (after - align)
-					for i in range(refb,refe+1):
+					for i in range(refb,refe+1,shift):
 						at_val.append(100 - GC(gen.seq[i-1-wind:i+wind]))
 
 				elif TSSu.strand == False:
 					refb = ref - (after - align)
 					refe = ref + (before + align)
-					for i in range(refb,refe+1):
+					for i in range(refb,refe+1,shift):
 						at_val.append(100 - GC(gen.seqcompl[i-1-wind:i+wind]))
 					at_val = at_val[::-1]
 				
@@ -120,9 +128,9 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 
 	sigma = kwargs.get('sigma',sigfactor)
 	if sigma == 'all':
-		align = +1
+		align = 0
 
-	titl = '{}, {} et al., {}, {}'.format(cond_tss,cond_fc,sigma,methstat)
+	titl = '{}-{}-{}-{}-FC{}-PVAL{}'.format(cond_tss,cond_fc,sigma,methstat,thresh_fc,thresh_pval)
 
 	nb_act = len(at[sigma]['act'])
 	nb_rep = len(at[sigma]['rep'])
@@ -147,22 +155,22 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 			pvals.append(val)
 
 	if statw == True: # write pvalues in file for each position
-		res = open("{}res/jet4/{}-{}_{}_{}.txt".format(basedir,titl,before,after,sigma),'w')
+		res = open("{}res/jet4/{}-bef{}-aft{}.txt".format(basedir,titl,before,after),'w')
 		for val in pvals:
 			res.write('{}\n'.format(str(val)))
 		res.close()
 
-	pos = [x for x in range(-before,after+1)]
+	pos = [x for x in range(-before,after+1,shift)]
 
-	if draw == True:
+	if draw == 'std':
+		fig, ax = plt.subplots()
 		act = plt.plot(pos,mact,'rD',linestyle='solid', color='red', markersize=3,label=str(nb_act)+' Activated')
 		rep = plt.plot(pos,mrep,'bD',linestyle='solid', color='blue',markersize=3,label=str(nb_rep)+' Repressed')
 		try:
-			plt.plot(pos,mnone,'kD',linestyle='solid', color='black',markersize=3,label=str(nb_none)+' Non affected')
+			if nb_none > 1:
+				plt.plot(pos,mnone,'kD',linestyle='solid', color='black',markersize=3,label=str(nb_none)+' Non affected')
 		except:
 			pass
-		plt.title(titl, fontweight='bold')
-		plt.legend(title='Promoters', ncol = 1, fontsize='medium')
 		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
 
 		i = - before
@@ -178,20 +186,33 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 
 			if s != '':
 				plt.text(i,min(min(mact),min(mrep))+1,s,fontweight='bold')
-			i += 1
+			i += shift
 
-    	plt.savefig("{}res/jet4/{}-{}_{}_{}.svg".format(basedir,titl,before,after,sigma),transparent=False)
-    	plt.close('all')
+		width = 6
+		height = width / 1.618
+		fig.set_size_inches(width, height)
+
+		ax.set_ylabel('AT content (%)',fontweight='bold')
+		ax.set_xlabel('Position (nt)',fontweight='bold')
+		ax.set_xlim(-before,after)
+		ax.set_title(titl,fontweight='bold')
+		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+		plt.tight_layout()
+
+		if sigma == 'all':
+			leg = 'All Promoters'
+		else:
+			leg = '$\sigma {}$ Promoters'.format(sigma.replace('sigma',''))
+		
+		ax.legend(title=leg,ncol=1,loc='upper left')
+		plt.savefig("{}res/jet4/{}-bef{}-aft{}.svg".format(basedir,titl,before,after),transparent=False)
+		plt.close('all')
 
 	if draw == 'CI':
-		
+		fig, ax = plt.subplots()		
 		ciact = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_act]
 		cirep = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_rep]
 		cinone = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_none]
-
-		width = 5.5
-		height = width / 1.618
-		fig, ax = plt.subplots()
 
 		plt.fill_between(pos,[x[0] for x in ciact], [x[1] for x in ciact], facecolor = 'red', alpha = 0.5, label=str(nb_act)+' Activated',linewidth=0)
 		plt.fill_between(pos,[x[0] for x in cirep], [x[1] for x in cirep], facecolor = 'blue', alpha = 0.5, label=str(nb_rep)+' Repressed',linewidth=0)
@@ -199,29 +220,206 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		plt.plot(pos,mact, linestyle = 'solid', color = 'red', linewidth = 1.5, alpha=0.8)
 		plt.plot(pos,mrep, linestyle = 'solid', color = 'blue', linewidth = 1.5, alpha=0.8)
 		try:
-			plt.plot(pos,mnone, linestyle = 'solid', color = 'black', label=str(nb_none)+' Non affected', linewidth = 1.5)
+			if nb_none > 1:
+				plt.plot(pos,mnone, linestyle = 'solid', color = 'black', label=str(nb_none)+' Non affected', linewidth = 1.5)
 		except:
 			pass
 
+		width = 5
+		height = width / 1.618
+		fig.set_size_inches(width, height)
+
 		ax.set_ylabel('AT content (%)',fontweight='bold')
 		ax.set_xlabel('Position (nt)',fontweight='bold')
-		ax.set_xlim(-35,10)
+		ax.set_xlim(-before,after)
 		ax.set_title(org,fontweight='bold')
-		fig.set_size_inches(width, height)
 		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+		plt.tight_layout()
 
 		if sigma == 'all':
 			leg = 'All Promoters'
 		else:
-			leg = '$\sigma{}$ Promoters'.format(sigma.replace('sigma',''))
-
-		plt.legend(title=leg, ncol = 1, loc='upper left')
+			leg = '$\sigma {}$ Promoters'.format(sigma.replace('sigma',''))
+		
+		ax.legend(title=leg,ncol=1,loc='upper left')
 		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
-		plt.savefig("{}res/jet4/{}-{}_{}_{}.svg".format(basedir,titl,before,after,sigma),transparent=False)
+		plt.savefig("{}res/jet4/{}-bef{}-aft{}.svg".format(basedir,titl,before,after),transparent=False)
 		plt.close('all')
 
-		# plt.arrow(-4,0,0, max(max(mact),max(mrep)),linestyle='solid',color='black',linewidth =2)
-		# plt.arrow(1,0,0, max(max(mact),max(mrep)),linestyle='solid',color='black',linewidth =2)
-		# rec = patches.Rectangle((-2,65),6,3.5,fill=True, facecolor='lightgray', edgecolor='black',hatch='\\')
-		# ax.add_patch(rec)
+def compute_at_spacer(gen,cond_tss,*arg,**kwargs):
 
+	gen.compute_magic_prom()
+	sig = kwargs.get('sig', 'sigma70') # below, gene considered valid, above, gene considered non regulated
+	wind2 = kwargs.get('windows',6) # length of windows to compute AT contents
+	wind = wind2//2
+	align = kwargs.get('align',-10) # position where promoters are aligned for comparison
+	before = kwargs.get('bef',50) # number of bp to look below TSS position
+	after = kwargs.get('aft',20) # number of bp to look above TSS position
+
+	at = {}
+	for sp in spacers:
+		at[sp] = []
+	
+	for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
+		TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
+		try:
+			at_val = [] # AT content for each position
+			# AT content for positions -before to +after
+			if align == -10:
+				ref = (TSSu.promoter[sig]['sites'][0] + TSSu.promoter[sig]['sites'][1])//2
+			elif align == -35:
+				ref = (TSSu.promoter[sig]['sites'][2] + TSSu.promoter[sig]['sites'][3])//2
+			elif align == 1:
+				ref = TSSu.pos
+			
+			if TSSu.strand == True:
+				refb = ref - (before + align)
+				refe = ref + (after - align)
+				for i in range(refb,refe+1):
+					at_val.append(100 - GC(gen.seq[i-1-wind:i+wind]))
+
+			elif TSSu.strand == False:
+				refb = ref - (after - align)
+				refe = ref + (before + align)
+				for i in range(refb,refe+1):
+					at_val.append(100 - GC(gen.seqcompl[i-1-wind:i+wind]))
+				at_val = at_val[::-1]
+			
+			sp = len(TSSu.promoter[sig]['spacer'])
+			at[sp].append(at_val)
+
+		except Exception as e:
+			pass	
+
+	titl = '{},{}'.format(cond_tss,align)
+
+	pos = [x for x in range(-before,after+1)]
+
+	fig, ax = plt.subplots()
+
+	cols = ['cyan','purple','blue','green','red']
+	i = 0
+	for sp in spacers:
+		vals = zip(*at[sp])
+		mvals = [np.mean(x) for x in vals]
+		plt.plot(pos,mvals,'kD',linestyle='solid', color=cols[i], markersize=3,label='{} bp ({} prom.)'.format(sp,len(at[sp])))
+		i += 1
+
+	plt.arrow(align,0,0, 75,linestyle='dashed',color='gray')
+	width = 6
+	height = width / 1.618
+	fig.set_size_inches(width, height)
+
+	ax.legend()
+	ax.set_ylabel('AT content (%)',fontweight='bold')
+	ax.set_xlabel('Position (nt)',fontweight='bold')
+	ax.set_xlim(-35,+10)
+	ax.set_title(cond_tss,fontweight='bold')
+	fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+	plt.tight_layout()
+	plt.savefig("{}res/{}-{}_{}.svg".format(basedir,titl,before,after),transparent=False)
+	plt.close('all')
+
+
+
+def compute_at_discr(gen,*arg,**kwargs):
+	'''
+	'''
+
+	gen.load_fc_pval()
+	gen.load_TSS() 
+	gen.load_seq() 
+
+	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
+	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
+	wind = kwargs.get('wind', 6)
+	cond_tss = kwargs.get('cond_tss', 'biocyc')
+	cond_fc = kwargs.get('cond_fc', 'Blot')
+
+	ATactref = kwargs.get('actref', 0.08)
+	ATrepref = kwargs.get('repref', 0.02)
+	ATref = 100 - GC(gen.seq)
+	ATact = []
+	ATrep = []
+
+	for TSS in gen.TSSs[cond_tss].keys():
+		try:
+			TSSu = gen.TSSs[cond_tss][TSS]
+			if TSSu.strand == True:
+				AT = 100 - GC(gen.seq[TSSu.promoter[sigfactor]['sites'][1]:TSSu.promoter[sigfactor]['sites'][1]+wind])
+			elif TSSu.strand == False:
+				AT = 100 - GC(gen.seq[TSSu.promoter[sigfactor]['sites'][0]-wind-1:TSSu.promoter[sigfactor]['sites'][0]-1])
+
+			expr = []
+			for gene in TSSu.genes:
+				try:
+					if gen.genes[gene].fc_pval[cond_fc][1] <= thresh_pval:
+						expr.append(gen.genes[gene].fc_pval[cond_fc][0])
+				except:
+					pass
+
+			if expr != []:
+				if np.mean(expr) < 0 - thresh_fc:
+					ATact.append(AT)
+				elif np.mean(expr) > 0 + thresh_fc:
+					ATrep.append(AT)
+		except:
+			pass
+
+	ATs = ATact + ATrep
+	titl = '{}_{}_FC{}_PVAL{}'.format(cond_tss,cond_fc,str(thresh_fc),str(thresh_pval))
+
+	fig = plt.figure()
+	fig.set_size_inches(8,10)
+
+	plt.subplot(321)
+	plt.hist(ATs,normed=True,align='left',edgecolor='black',color='lightgray')
+	plt.title('All promoters', fontweight='bold')
+	plt.xlim(0,100)
+	
+	plt.subplot(323)
+	plt.hist(ATact,normed=True,align='left',edgecolor='black',color='red')
+	plt.title('Activated promoters', fontweight='bold')
+	plt.xlim(0,100)
+
+	plt.subplot(325)
+	plt.hist(ATrep,normed=True,align='left',edgecolor='black',color='blue')
+	plt.ylabel('Proportion', fontweight='bold')
+	plt.xlabel('AT %', fontweight='bold')
+	plt.title('Repressed promoters', fontweight='bold')
+	plt.xlim(0,100)
+
+#####
+
+	plt.subplot(322)
+	plt.hist(np.random.binomial(len(ATs),ATref/100),normed=True,align='left',edgecolor='black',color='lightgray')
+	plt.title('All promoters', fontweight='bold')
+	
+	plt.subplot(324)
+	plt.hist(np.random.binomial(len(ATact),ATactref),normed=True,align='left',edgecolor='black',color='red')
+	plt.title('Activated promoters', fontweight='bold')
+
+	plt.subplot(326)
+	plt.hist(np.random.binomial(len(ATrep),ATrepref),normed=True,align='left',edgecolor='black',color='blue')
+	plt.ylabel('Proportion', fontweight='bold')
+	plt.xlabel('AT %', fontweight='bold')
+	plt.title('Repressed promoters', fontweight='bold')
+	
+	plt.savefig("{}res/jet4/{}.svg".format(basedir,titl),transparent=False)
+	plt.close('all')
+
+def write_genes(gen,cond_fc):
+	act = open(basedir+'data/genes_act.txt','w')
+	rep = open(basedir+'data/genes_rep.txt','w')
+	for gene in gen.genes.keys():
+		try:
+			if gen.genes[gene].fc_pval[cond_fc][1] <= 0.05:
+				if gen.genes[gene].fc_pval[cond_fc][0] > 0:
+					act.write(gene+'\n')
+				else:
+					rep.write(gene+'\n')
+		except:
+			pass
+	
+	act.close()
+	rep.close()
