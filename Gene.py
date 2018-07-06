@@ -144,6 +144,9 @@ class Gene:
     def add_right_neighbour(self, neighbour):
         self.right_neighbour = neighbour
 
+    def add_orientation(self,orient):
+        self.orientation = orient
+
     def add_id_operon(self, operon):
         if not hasattr(self,'id_operon'):
             self.id_operon=[]

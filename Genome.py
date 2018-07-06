@@ -22,6 +22,22 @@ from math import sqrt
 from btssfinder import *
 from scipy import stats
 
+params = {
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+   'axes.labelsize': 11,
+   'font.size': 11,
+   'legend.fontsize': 9,
+   'xtick.labelsize': 11,
+   'ytick.labelsize': 11,
+   'text.usetex': False,
+   'axes.linewidth':1.5, #0.8
+   'axes.titlesize':11,
+   'axes.spines.top':True,
+   'axes.spines.right':True,
+   }
+plt.rcParams.update(params)
+
 #==============================================================================#
 
 # -------------------
@@ -533,6 +549,15 @@ class Genome:
         self.genes=add_neighbour(self.genes,l_plus)
         self.genes=add_neighbour(self.genes,l_minus)
 
+    def load_neighbour_all(self):
+        if not self.genes:
+            self.load_annotation()
+        res={}
+        for i in self.genes:
+            res[int(self.genes[i].left)]=i
+
+        l_res=sorted(list(res.items()), key=operator.itemgetter(0))
+        self.genes=add_neighbour(self.genes,l_res)
 
     def load_genes_positions(self):
         if not hasattr(self, 'genepos'):
@@ -918,6 +943,86 @@ class Genome:
 
         self.genes_valid[condname] = genes_val
         
+
+    def load_gene_orientation(self,*args,**kwargs):
+        self.load_neighbour_all()
+        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
+        for gene in self.genes:
+            try:               
+                g = self.genes[gene]
+                lg = self.genes[g.left_neighbour]
+                rg = self.genes[g.right_neighbour]
+                if (g.start - lg.left) < bound and (rg.right - g.start) < bound:
+                    if not lg.strand and not rg.strand:
+                        self.genes[gene].add_orientation('tandem')
+                    elif lg.strand and rg.strand:
+                        self.genes[gene].add_orientation('tandem')
+                    elif lg.strand and not rg.strand:
+                        self.genes[gene].add_orientation('convergent')
+                    elif not lg.strand and rg.strand:
+                        self.genes[gene].add_orientation('divergent')
+            except:
+                pass
+
+    def compute_orientation_proportion(self,cond_fc,*args,**kwargs):
+        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right        
+        self.load_gene_orientation(bound=bound)
+        self.load_fc_pval()
+        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
+        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
+        res = {'act':{'tandem':0,'convergent':0,'divergent':0},'rep':{'tandem':0,'convergent':0,'divergent':0}, 'non':{'tandem':0,'convergent':0,'divergent':0}}
+        for gene in self.genes:
+            try:               
+                g = self.genes[gene]
+                if g.fc_pval[cond_fc][1] <= thresh_pval:
+                    if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
+                        res['rep'][g.orientation] += 1
+                    elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
+                        res['act'][g.orientation] += 1
+                    else:
+                        res['non'][g.orientation] += 1
+                else:
+                    res['non'][g.orientation] += 1
+            except:
+                pass
+        
+        print res
+        means = [] ; stds = []
+        for state in ['act','non','rep']:
+            try:
+                pexp = float(res[state]['convergent']) / (res[state]['convergent']+res[state]['divergent'])
+                tot = res[state]['convergent']+res[state]['divergent']
+                std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+                means.append(pexp)
+                stds.append(std)
+            except:
+                pass
+        org = kwargs.get('org', self.name) # organism name to use for plot title
+        width = 5 ; height = width / 1.618
+        fig, ax = plt.subplots()
+        try:
+            xval = [0,1,2] ; labs = ['rel','non','hyp']
+            yval = means
+            plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+            plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
+        except:
+            xval = [0,1] ; labs = ['rel','hyp']
+            yval = means
+            plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+            plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
+        
+        fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+        ax.set_ylabel('conv / (conv + diverg)',fontweight='bold')
+        ax.set_xlim(xval[0]-1,xval[-1]+1)
+        #ax.set_ylim(0.4,0.6)
+        plt.xticks(xval,labs,fontweight='bold')
+        ax.set_title('{}, {} et al.'.format(org,cond_fc),fontweight='bold')
+        fig.set_size_inches(width, height)
+        plt.tight_layout()
+        plt.savefig('{}/res/jet4/{}-FC{}-P{}.svg'.format(basedir,self.name+cond_fc,thresh_fc,thresh_pval),transparent=False)
+        plt.close('all')
+
+    
 ###################### ANTOINE #############################
 
     def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
