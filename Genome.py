@@ -22,22 +22,6 @@ from math import sqrt
 from btssfinder import *
 from scipy import stats
 
-params = {
-    'pdf.fonttype': 42,
-    'ps.fonttype': 42,
-   'axes.labelsize': 11,
-   'font.size': 11,
-   'legend.fontsize': 9,
-   'xtick.labelsize': 11,
-   'ytick.labelsize': 11,
-   'text.usetex': False,
-   'axes.linewidth':1.5, #0.8
-   'axes.titlesize':11,
-   'axes.spines.top':True,
-   'axes.spines.right':True,
-   }
-plt.rcParams.update(params)
-
 #==============================================================================#
 
 # -------------------
@@ -536,7 +520,6 @@ class Genome:
     def load_neighbour(self):
         if not self.genes:
             self.load_annotation()
-
         dict_plus={}
         dict_minus={}
         for i in self.genes:
@@ -549,15 +532,6 @@ class Genome:
         self.genes=add_neighbour(self.genes,l_plus)
         self.genes=add_neighbour(self.genes,l_minus)
 
-    def load_neighbour_all(self):
-        if not self.genes:
-            self.load_annotation()
-        res={}
-        for i in self.genes:
-            res[int(self.genes[i].left)]=i
-
-        l_res=sorted(list(res.items()), key=operator.itemgetter(0))
-        self.genes=add_neighbour(self.genes,l_res)
 
     def load_genes_positions(self):
         if not hasattr(self, 'genepos'):
@@ -902,8 +876,9 @@ class Genome:
 
     def load_expression_level(self):
         """ Add expression level for all genes in dictionary """
+        
         if not self.genes: # if no genes loaded
-            # try to load them
+            # try to load them   
             self.load_annotation()
 
         if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
@@ -916,7 +891,7 @@ class Genome:
             print(" not found expression file information")
 
 
-    def compute_fc_from_expr(self, ctrls, conds,condname):
+    def compute_fc_from_expr(self, ctrls, conds, condname):
         ''' 
         Compute FC and p-values of a condition condname starting from a list of expression conditions : 
         control conditions ctrls, test conditions conds
@@ -943,52 +918,202 @@ class Genome:
 
         self.genes_valid[condname] = genes_val
         
+    def load_neighbour_all(self):
+        '''
+        For each gene, find nearest neighbours (left and right) on genome, whatever their strand.
+        '''
+        if not self.genes:
+            self.load_annotation()
+        res={}
+        # create dic with genes and position (res[position] = gene)
+        for i in self.genes:
+            res[int(self.genes[i].start)]=i
+        # sort dic per position of genes
+        l_res=sorted(list(res.items()), key=operator.itemgetter(0))
+        # add neighbours to genes
+        self.genes=add_neighbour(self.genes,l_res)
+
 
     def load_gene_orientation(self,*args,**kwargs):
+        '''
+        Compute gene orientation. If couple = 3, gene is considered divergent if left neighbour on - strand and right neighbour on + strand,
+        convergent if left neighbour on + strand and right neighbour on - strand, tandem if left and right neighbours on same strand
+        (whatever the strand of the given gene is). If couple = 2, gene is considered tandem if predecessor (left neighbour for gene on + strand,
+        right neighbour for gene on - strand) is on same strand, divergent if the predecessor is on opposite strand.
+        '''
         self.load_neighbour_all()
         bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
+        couple = kwargs.get('couple',3)
         for gene in self.genes:
             try:               
                 g = self.genes[gene]
                 lg = self.genes[g.left_neighbour]
                 rg = self.genes[g.right_neighbour]
-                if (g.start - lg.left) < bound and (rg.right - g.start) < bound:
-                    if not lg.strand and not rg.strand:
-                        self.genes[gene].add_orientation('tandem')
-                    elif lg.strand and rg.strand:
-                        self.genes[gene].add_orientation('tandem')
-                    elif lg.strand and not rg.strand:
-                        self.genes[gene].add_orientation('convergent')
-                    elif not lg.strand and rg.strand:
-                        self.genes[gene].add_orientation('divergent')
+                if couple == 3:
+                    if (g.start - lg.start) < bound and (rg.start - g.start) < bound:
+                        if not lg.strand and not rg.strand:
+                            self.genes[gene].add_orientation('tandem')
+                        elif lg.strand and rg.strand:
+                            self.genes[gene].add_orientation('tandem')
+                        elif lg.strand and not rg.strand:
+                            self.genes[gene].add_orientation('convergent')
+                        elif not lg.strand and rg.strand:
+                            self.genes[gene].add_orientation('divergent')
+                elif couple == 2:
+                    if g.strand:
+                        if (g.start - lg.start) < bound:
+                            if lg.strand:
+                                self.genes[gene].add_orientation('tandem')
+                            elif not lg.strand:
+                                self.genes[gene].add_orientation('divergent')
+                    if not g.strand:
+                        if (rg.start - g.start) < bound:
+                            if rg.strand:
+                                self.genes[gene].add_orientation('divergent')
+                            elif not rg.strand:
+                                self.genes[gene].add_orientation('tandem')
             except:
                 pass
 
+
     def compute_orientation_proportion(self,cond_fc,*args,**kwargs):
-        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right        
-        self.load_gene_orientation(bound=bound)
-        self.load_fc_pval()
+        '''
+        Compute gene orientation and state (act, non, rep) depending on FC data, 
+        to check whether or not act / rep / non genes are more convergent / divergent / tandem.
+        '''
+
+        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
+        couple = kwargs.get('couple',3)
+        self.load_annotation()  
+        self.load_gene_orientation(bound=bound,couple=couple) # compute gene orientation
+        self.load_fc_pval() 
         thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
         thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-        res = {'act':{'tandem':0,'convergent':0,'divergent':0},'rep':{'tandem':0,'convergent':0,'divergent':0}, 'non':{'tandem':0,'convergent':0,'divergent':0}}
+        # number of convergent, divergent and tandem genes for each state 
+        res = {'act':{'tandem':[],'convergent':[],'divergent':[]},'rep':{'tandem':[],'convergent':[],'divergent':[]}, 'non':{'tandem':[],'convergent':[],'divergent':[]}}
+
         for gene in self.genes:
             try:               
                 g = self.genes[gene]
                 if g.fc_pval[cond_fc][1] <= thresh_pval:
                     if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                        res['rep'][g.orientation] += 1
+                        res['rep'][g.orientation].append(gene)
                     elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                        res['act'][g.orientation] += 1
+                        res['act'][g.orientation].append(gene)
                     else:
-                        res['non'][g.orientation] += 1
+                        res['non'][g.orientation].append(gene)
                 else:
-                    res['non'][g.orientation] += 1
+                    res['non'][g.orientation].append(gene)
             except:
                 pass
         
+
+        for state in ['act','non','rep']:
+            try:
+                print state 
+                print 'convergent :',len(res[state]['convergent']),'divergent :',len(res[state]['divergent']),'tandem :',len(res[state]['tandem'])
+            except:
+                pass
+
+        means = [] ; stds = []
+        meth = kwargs.get('meth','convdiv')
+        # meth = method to use to display results, e.g. (convergent) / (convergent + divergent) for each state
+        if couple == 2: 
+            meth = 'couple'
+
+        if meth == 'convdiv':  # (convergent) / (convergent + divergent)        
+            for state in ['act','non','rep']:
+                try:
+                    pexp = float(len(res[state]['convergent'])) / (len(res[state]['convergent'])+len(res[state]['divergent']))
+                    tot = len(res[state]['convergent'])+len(res[state]['divergent'])
+                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+                    means.append(pexp)
+                    stds.append(std)
+                except:
+                    pass
+        
+        if meth == 'tot': # (convergent) / (convergent + divergent + tandem)        
+            for state in ['act','non','rep']:
+                try:
+                    pexp = float(len(res[state]['convergent'])) / (len(res[state]['convergent'])+len(res[state]['divergent'])+len(res[state]['tandem']))
+                    tot = len(res[state]['convergent'])+len(res[state]['divergent'])+len(res[state]['tandem'])
+                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+                    means.append(pexp)
+                    stds.append(std)
+                except:
+                    pass
+
+        if meth == 'couple':
+            for state in ['act','non','rep']:
+                try:
+                    pexp = float(len(res[state]['tandem'])) / (len(res[state]['divergent'])+len(res[state]['tandem']))
+                    tot = len(res[state]['divergent'])+len(res[state]['tandem'])
+                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+                    means.append(pexp)
+                    stds.append(std)
+                except:
+                    pass
+
+
+        draw = kwargs.get("draw",True) # whether or not graphes have to be created
+        org = kwargs.get('org', self.name) # organism name to use for plot title
+        titl = '/home/raphael/Documents/topo/results/stage/2treat/{}-FC{}-P{}'.format(self.name+cond_fc,thresh_fc,thresh_pval) 
+        if draw:
+            width = 5 ; height = width / 1.618
+            fig, ax = plt.subplots()
+            try:
+                xval = [0,1,2] ; labs = ['rel','non','hyp']
+                yval = means
+                plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+                plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
+            except:
+                xval = [0,1] ; labs = ['rel','hyp']
+                yval = means
+                plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+                plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
+            
+            fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+            ax.set_ylabel('conv / (conv + diverg)',fontweight='bold')
+            ax.set_xlim(xval[0]-1,xval[-1]+1)
+            #ax.set_ylim(0.4,0.6)
+            plt.xticks(xval,labs,fontweight='bold')
+            ax.set_title('{}, {} et al.'.format(org,cond_fc),fontweight='bold')
+            fig.set_size_inches(width, height)
+            plt.tight_layout()
+            plt.savefig(titl+'.svg',transparent=False)
+            plt.close('all')
+
+        write_genes = kwargs.get('write',False)
+        if write_genes:
+            f = open(titl+'.txt',"w")
+            f.write('convergent\tdivergent\ttandem\n')
+            for state in ['act','non','rep']:
+                f.write(state+'\n')
+                f.write(",".join(str(x) for x in res[state]['convergent'])+'\t'+",".join(str(x) for x in res[state]['divergent'])+'\t'+",".join(str(x) for x in res[state]['tandem'])+'\n')
+            f.close()
+
+
+    def compute_orientation_dickeya(self,*args,**kwargs):
+        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
+        self.load_annotation()  
+        self.load_gene_orientation(bound=bound)
+        #files = ['act_puce_expo.txt','act_puce.txt','act_expo.txt','rep_puce_expo.txt','rep_puce.txt','rep_expo.txt']
+        files = ['act_puce.txt','rep_puce.txt']
+        #files = ['act_expo.txt','rep_expo.txt']
+        #files = ['act_puce_expo.txt','rep_puce_expo.txt']
+        res = {'act':{'tandem':0,'convergent':0,'divergent':0},'rep':{'tandem':0,'convergent':0,'divergent':0}}
+        for name in files:
+            file = open('{}{}'.format(basedir,name),'r')
+            for line in file: 
+                line = line.strip()
+                try:
+                    res[name[0:3]][self.genes[line].orientation] += 1
+                except:
+                    pass
+            
         print res
         means = [] ; stds = []
-        for state in ['act','non','rep']:
+        for state in ['act','rep']:
             try:
                 pexp = float(res[state]['convergent']) / (res[state]['convergent']+res[state]['divergent'])
                 tot = res[state]['convergent']+res[state]['divergent']
@@ -997,32 +1122,27 @@ class Genome:
                 stds.append(std)
             except:
                 pass
-        org = kwargs.get('org', self.name) # organism name to use for plot title
+
+        titl = '/home/raphael/Documents/topo/results/stage/2treat/{}'.format(str(files))
         width = 5 ; height = width / 1.618
         fig, ax = plt.subplots()
-        try:
-            xval = [0,1,2] ; labs = ['rel','non','hyp']
-            yval = means
-            plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-            plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
-        except:
-            xval = [0,1] ; labs = ['rel','hyp']
-            yval = means
-            plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-            plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
+        xval = [0,1] ; labs = ['rel','hyp']
+        yval = means
+        plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
+        plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
         
         fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
         ax.set_ylabel('conv / (conv + diverg)',fontweight='bold')
         ax.set_xlim(xval[0]-1,xval[-1]+1)
         #ax.set_ylim(0.4,0.6)
         plt.xticks(xval,labs,fontweight='bold')
-        ax.set_title('{}, {} et al.'.format(org,cond_fc),fontweight='bold')
+        #ax.set_title('{}, {} et al.'.format(org,cond_fc),fontweight='bold')
         fig.set_size_inches(width, height)
         plt.tight_layout()
-        plt.savefig('{}/res/jet4/{}-FC{}-P{}.svg'.format(basedir,self.name+cond_fc,thresh_fc,thresh_pval),transparent=False)
+        plt.savefig(titl+'.svg',transparent=False)
         plt.close('all')
 
-    
+
 ###################### ANTOINE #############################
 
     def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
@@ -1067,4 +1187,3 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
-
