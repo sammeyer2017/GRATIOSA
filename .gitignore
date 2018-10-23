@@ -1,11 +1,7 @@
 # ignore .pyc files
 *.pyc
 # ignore model files (raph)
-param
-compute_spacer_angle.py
-globvar_angle.py
-spacer_angle.zip
-spacers_modelling.py
+modeling_spacer
 # ignore virtualenv and others
 venv
 SIST

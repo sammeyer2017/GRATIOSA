@@ -1,6 +1,6 @@
 from Bio.SeqUtils import GC
 from scipy import stats
-import statsmodels.api as sm
+#import statsmodels.api as sm
 from globvar import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +9,7 @@ import matplotlib.patches as patches
 params = {
 	'pdf.fonttype': 42,
 	'ps.fonttype': 42,
-   'axes.labelsize': 11,
+   'axes.labelsize': 22,
    'font.size': 11,
    'font.family':'Arial',
    'legend.fontsize': 9,
@@ -37,11 +37,11 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
 	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
 	align = kwargs.get('align',-10) # position where promoters are aligned for comparison
-	before = kwargs.get('bef',50) # number of bp to look below TSS position
-	after = kwargs.get('aft',20) # number of bp to look above TSS position
+	before = kwargs.get('bef',35) # number of bp to look below TSS position
+	after = kwargs.get('aft',10) # number of bp to look above TSS position
 	methstat = kwargs.get('methstat','actvsrep') # stat method to compute pvalue between groups. Actvsrep : ttest(activated > repressed). Actvsnone : ttest(act > none)*ttest(rep < none).
-	statw = kwargs.get('statw',True) # True : write pval results for each position in a text file 
-	draw = kwargs.get('draw', 'std') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
+	statw = kwargs.get('statw',False) # True : write pval results for each position in a text file 
+	draw = kwargs.get('draw', 'CI') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
 	org = kwargs.get('org', gen.name) # organism name to use for plot title
 	wind2 = kwargs.get('windows',6) # length of windows to compute AT contents
 	wind = wind2/2
@@ -205,7 +205,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 			leg = '$\sigma {}$ Promoters'.format(sigma.replace('sigma',''))
 		
 		ax.legend(title=leg,ncol=1,loc='upper left')
-		plt.savefig("{}res/jet4/{}-bef{}-aft{}.svg".format(basedir,titl,before,after),transparent=False)
+		plt.savefig("/home/raphael/Documents/topo/results/stage/{}-bef{}-aft{}.svg".format(titl,before,after),transparent=False)
 		plt.close('all')
 
 	if draw == 'CI':
@@ -225,7 +225,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		except:
 			pass
 
-		width = 5
+		width = 10
 		height = width / 1.618
 		fig.set_size_inches(width, height)
 
@@ -243,7 +243,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		
 		ax.legend(title=leg,ncol=1,loc='upper left')
 		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
-		plt.savefig("{}res/jet4/{}-bef{}-aft{}.svg".format(basedir,titl,before,after),transparent=False)
+		plt.savefig("/home/raphael/Documents/topo/results/stage/{}-bef{}-aft{}.svg".format(titl,before,after),transparent=False)
 		plt.close('all')
 
 def compute_at_spacer(gen,cond_tss,*arg,**kwargs):

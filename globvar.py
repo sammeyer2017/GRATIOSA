@@ -16,13 +16,14 @@ maxrat=1.5
 minrpkm=1.
 # tresholds for log2(FC) where we consider a gene activated / repressed
 fc_treshold_pos = 0.263 # FC > 1.2
-fc_treshold_neg = -0.263 # fc < 1/1.2
+fc_treshold_neg = -0.263 # FC < 1/1.2
 pval_treshold = 0.05
 # figure var
 # for density circles
-fig_width = 5;fig_height = 5
+fig_width = 3;fig_height = 3
 center_x = fig_width/2;center_y = fig_height/2
 radius = fig_width / 1.4 # radius circles
+
 
 # parameters for bTSS finder
 PROM_LENGTH = 200

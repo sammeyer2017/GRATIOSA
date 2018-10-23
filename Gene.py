@@ -138,6 +138,11 @@ class Gene:
             self.fc_pval={}
         self.fc_pval[condition]=(fc_value,p_value)
 
+    def add_state_cond(self,cond,state):
+        if not hasattr(self,'state'):
+            self.state={}
+        self.state[cond]=state
+
     def add_left_neighbour(self, neighbour):
         self.left_neighbour = neighbour
 
