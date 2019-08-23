@@ -4,7 +4,7 @@
 import sys
 import os
 import numpy as np
-
+import pandas as pd
 
 
 #==============================================================================#
@@ -16,7 +16,18 @@ class TU:
         """
         self.start=kwargs.get('start')
         self.stop=kwargs.get('stop')
-        self.orientation = kwargs.get('orientation')
+        orient = kwargs.get('orientation')
+        if type(orient) == str:
+            if orient.lower() in ["true","1","+"]:         
+                self.orientation = True
+            elif orient.lower() in ["false","0","-"]:         
+                self.orientation = False
+            else:
+                self.orientation = None
+        else:
+            self.orientation = orient
+
+        self.genes = kwargs.get('genes')
         if self.orientation:
             self.left = self.start
             self.right = self.stop
@@ -42,3 +53,24 @@ class TU:
         if not hasattr(self, 'TTSs'):
             self.TTS_cond = {}
         self.TTS_cond[condition]=TTS
+
+    def add_correlation(self, correlations):
+        """ Adds a list of expression correlation values among genes of TU
+            Shape [(gene1,gene2,correlation among conditions),...]
+        """
+        self.correlation = correlations
+        self.mean_correlation = np.mean([x[2] for x in correlations])
+
+    def add_intergenic_cov(self, cov):
+        """ Adds a list of coverage values from RNAseq data between intergenic regions among successive genes of TU
+            Shape [(gene1,gene2,mean coverage among conditions),...]
+        """
+        self.intergenic_cov = cov
+        self.mean_intergenic_cov = np.mean([np.mean(x[2]) for x in cov])
+
+    def add_expression_ratio(self, expr_ratio):
+        """ Adds a list of expression ratio values from RNAseq data (log2RPKM) among genes of TU
+            Shape [(gene1,gene2,mean expression ratio among conditions),...]
+        """
+        self.expression_ratio = expr_ratio
+        self.mean_expression_ratio = np.mean([x[2] for x in expr_ratio])

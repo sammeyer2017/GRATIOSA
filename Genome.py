@@ -8,7 +8,7 @@ import inspect as inspect
 import math
 import matplotlib.pyplot as plt
 import operator
-from useful_function import *
+from useful_functions import *
 from itertools import groupby
 from globvar import *
 from Gene import Gene
@@ -21,6 +21,9 @@ from datetime import datetime
 from math import sqrt
 from btssfinder import *
 from scipy import stats
+
+from BCBio import GFF
+from Bio import SeqIO
 
 #==============================================================================#
 
@@ -99,9 +102,36 @@ def annotations_parser_gff(annotations_filename):
                             if('gene_biotype' in line[8]):
                                 print(line[8]['gene_biotype'])
                         genes_dict[line[8]['locus_tag']]= Gene(annotations_list_gff=line)
+
                 except (IndexError, ValueError):
                     print("Annotations : could not read line ")
+                    
     return genes_dict
+
+def annotations_gbk(file):
+    ''' Called by load annotation, allows genes to be loaded from gff
+    '''
+    genes_dict = {}
+    gb_record = SeqIO.read(open(file,"r"), "genbank")
+    for f in gb_record.features:
+        try:
+            if f.type == 'gene':
+                left = f.location.start + 1
+                right = int(f.location.end)
+                strand = f.location.strand
+                locus = f.qualifiers['locus_tag'][0]
+                try:
+                    name = f.qualifiers['gene'][0]
+                except:
+                    name = f.qualifiers['locus_tag'][0]
+
+                genes_dict[locus]= Gene(annot_gbk=[locus,name,left,right,strand])
+
+        except (IndexError, ValueError):
+            print("Annotations : could not read line ")
+
+    return genes_dict
+
 
 def add_operon(dict_genes,file):
     dict_operon={}
@@ -189,7 +219,6 @@ def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separato
     '''
     genes_valid = [] # list containing all genes having valid FC / pval
     p_val_col= kwargs.get('p_value')
-
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -366,19 +395,25 @@ def add_neighbour(dict_genes,list):
     return dict_genes
 
 # ----------------------
-def add_expression_to_genes(genes_dict, expression_filename, tag_col, first_expression_col, is_log):
+def add_expression_to_genes(genes_dict, filename, tag_col, first_expression_col, is_log, separator):
     """ Adds expression data to Gene objects by parsing a file with as many
     columns as there are different conditions in the experiment, plus one for
     the gene names (first column).
     """
-    with open(expression_filename, 'r') as f:
+    with open(filename, 'r') as f:
         header=next(f)
         header=header.strip()
-        header=header.split('\t')
+        if separator == '\\t':
+            header = header.split('\t')
+        else:
+            header=header.split(separator)        
         header=header[first_expression_col:]
         for line in f:
             line=line.strip()
-            line = line.split('\t')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line = line.split(separator)
             try:
                 if is_log == 'no':
                     genes_dict[line[tag_col]].add_expression_data(header,[math.log(float(i),2) for i in line[first_expression_col:]])
@@ -388,8 +423,42 @@ def add_expression_to_genes(genes_dict, expression_filename, tag_col, first_expr
                 if line[tag_col] == 'none':
                     print("expressions without locus tag")
                 else:
-                    print(line[tag_col] + " this locus not in annotation")
+                    print(line[tag_col] + " not in annotation")
+    genes_dict["conditions"] = header
     return genes_dict
+
+def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, *args, **kwargs):
+    ''' Called by load_fc_pval, allows expression data to be loaded by specifying files, and where each
+    information is (tag, fc, pval...). If no p-value column, assigns pval = 0 to each gene
+    '''
+    genes_valid = [] # list containing all genes having valid FC / pval
+    p_val_col= kwargs.get('p_value')
+
+    with open(filename, 'r') as f:
+        i=1
+        while i < start_line:
+            header=next(f)
+            i+=1
+        for line in f:
+            line = line.strip('\n')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line=line.split(separator)
+            try:
+                if p_val_col:
+                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(line[p_val_col]))
+                else:
+                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(0))
+                genes_valid.append(line[tag_col])
+            except:
+                if line[tag_col] not in genes_dict.keys():
+                    if line[tag_col] != '':
+                        print(line[tag_col] + " not in annotation ")
+                    else:
+                        print("fc without locus")
+    f.close()
+    return genes_valid
 
 
 def add_single_expression_to_genes(genes_dict, expression_filename):
@@ -433,6 +502,27 @@ def set_mean_expression(genes_dict, expression_filename):
                 print("Expressions : Could not find gene " + line[0])
     return genes_dict
 
+def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, separator, *args, **kwargs):
+    ''' Called by load_TU, allows TU data to be loaded by specifying files, and where each information is
+    '''
+    TUs= {}
+    with open(filename, 'r') as f:
+        i=1
+        while i < startline:
+            header=next(f)
+            i+=1
+        for line in f:
+            line = line.strip('\n')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line=line.split(separator)
+            try:
+                TUs[int(line[startcol])] = TU(start=int(line[startcol]), stop=int(line[stopcol]), orientation=line[strandcol], genes = line[genescol].split(","))   
+            except:
+                pass
+    f.close()
+    return TUs
 
 class Genome:
 
@@ -514,7 +604,12 @@ class Genome:
                     self.genes=annotations_parser_general(basedir+"data/"+self.name+'/annotation/'+line[0],line[1],int(line[2]),int(line[3]),int(line[4]),int(line[5]),int(line[6]))
                 f.close()
         else:
-            print('No GFF file nor annotation.info, unable to load annotation')
+            try:
+                self.genes = annotations_gbk(basedir+"data/"+self.name+'/annotation/sequence.gbk')
+
+            except Exception as e:
+                print e
+                print('No GFF file nor annotation.info, unable to load annotation')
 
 
     def load_neighbour(self):
@@ -602,47 +697,7 @@ class Genome:
         else:
             print(" no rpkm file in this folder ")
 
-
-    def load_genes_in_TU(self, TU):
-        """ adds genes to TU accoding to annotation, ordered along orientation of the TU.
-        Condition= gene entirely in TU
-        """
-        if not hasattr(self, 'genes'):
-            print("loading annotation")
-            load_annotation(self)
-        glist=[]
-        for g in list(self.genes.values()):
-            if g.orientation==TU.orientation and g.left>=TU.left and g.right<=TU.right:
-                glist.append(g.name)
-        # sort list
-        if len(glist)==0:
-            TU.add_genes([])
-        else:
-            TU.add_genes(glist)
-            lefts=[self.genes[x].left for x in glist]
-            leftsort=sorted(lefts)
-            if TU.orientation:
-                TU.add_genes([glist[lefts.index(x)] for x in leftsort])
-            else:
-                TU.add_genes([glist[lefts.index(x)] for x in leftsort[::-1]])
-
-    def add_single_TU(self, TU, index):
-        """ adds TU to genome
-        """
-        if not hasattr(self, 'TU'):
-            self.TU={}
-        self.TU[index]=TU
-
-    def load_genes_in_TUs(self):
-        """ adds genes to all existing TUs.
-        """
-        if not hasattr(self, "TU"):
-            print("no TU in genome")
-        else:
-            for TU in list(self.TU.values()):
-                load_genes_in_TU(self, TU)
-
-
+            
 
     def load_operon(self):
         if not self.genes:
@@ -709,7 +764,7 @@ class Genome:
             self.dom={}
             if not self.load_annotation():
                 self.load_annotation_gff()
-            self.load_expression_level()
+            self.load_expression()
         with open(basedir+"data/"+self.name+"/domains.txt","r") as f:
             header=next(f)
             for line in f:
@@ -755,8 +810,7 @@ class Genome:
             with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
                 header = next(f)
                 for line in f: # for each condition
-                    line=line.strip()
-                    line=line.split('\t')
+                    line=line.strip().split('\t')
                     print 'Loading condition',line[0]
                     # load attributes
                     self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
@@ -769,13 +823,13 @@ class Genome:
             file.write('Condition\tCov file\tDate\tReads file')
             file.close()
             with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_txt.info","r") as f: # load cov_txt.info
-                for line in f: # for each condition (each .txt file in cov_txt.info)
-                    line = line.strip('\n')
-                    line = line.split('\t')
+                header = next(f)
+                for line in f:
+                    line = line.strip('\n').split('\t')
                     print 'Loading condition:',line[0]
                     # create .npy from .txt
-                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1],usecols=[int(line[2])])
-                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[3],usecols=[int(line[4])])
+                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1], usecols=[int(line[4])], skiprows= int(line[3])-1)
+                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[2], usecols=[int(line[4])], skiprows= int(line[3])-1)
                     # load attributes
                     self.cov_neg[line[0]]= cov_neg
                     self.cov_pos[line[0]]= cov_pos
@@ -785,12 +839,10 @@ class Genome:
                     file=open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","a")
                     file.write('\n'+line[0]+'\t'+line[0]+'_cov.npz\t'+str(datetime.now())+'\tUnknown')
                     file.close()
-            f.close()
+        f.close()
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
             print 'cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder'
-
         print 'Done'
-
 
     def compute_rpkm_from_cov(self, before=100):
         '''
@@ -801,16 +853,15 @@ class Genome:
             # try to load them
             self.load_annotation()
         try:
-            for g in list(self.genes.keys()): # for each gene
-                if hasattr(self.genes[g],'orientation'): # which has a known orientation
-                    if self.genes[g].orientation==1:
-            # gene in + strand
-                        for cond in list(self.cov_pos.keys()): # for each condition of cov
-                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-100):self.genes[g].right]))
-                    else:
-            # gene in - strand
-                        for cond in list(self.cov_neg.keys()):
-                            self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+100)]))
+            for g in self.genes.keys(): # for each gene
+                if self.genes[g].strand:
+        # gene in + strand
+                    for cond in self.cov_pos.keys(): # for each condition of cov
+                        self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-before):self.genes[g].right]), np.sum(self.cov_pos[cond])+np.sum(self.cov_neg[cond]))
+                elif not self.genes[g].strand:
+        # gene in - strand
+                    for cond in self.cov_neg.keys():
+                        self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+before)]), np.sum(self.cov_pos[cond])+np.sum(self.cov_neg[cond]))
         except:
             print("You need to load coverage pls")
 
@@ -838,6 +889,28 @@ class Genome:
         else:
             print("No fc.info file, please create one")
 
+    def load_expression(self,*args, **kwargs):
+        ''' Load expression data specified in expression.info. Expression info file columns (tab-separated) : condition, filename, tag column
+        , fc column, file separator, startline, pvalcolumn (if not available leave empty)
+        '''
+        if not hasattr(self,'genes_valid_expr'):
+            self.genes_valid_expr = {}
+        if not self.genes: # if no genes loaded
+            # try to load them
+            self.load_annotation()
+
+        if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
+            with open(basedir+"data/"+self.name+"/expression/expression.info","r") as f:
+                skiphead = next(f) # skip head
+                for header in f:
+                    header=header.strip()
+                    header=header.split('\t')
+                    self.genes_valid_expr[header[0]]=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+header[0], int(header[1]), int(header[2]), header[3], header[4])
+                    # self.genes_valid_expr[header[0]]["conditions"]=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+header[0], int(header[1]), int(header[2]), header[3], header[4])
+
+            f.close()
+        else:
+            print("No expression.info file, please create one")
 
     def compute_magic_prom(self,*arg,**kwargs):
         '''
@@ -848,12 +921,12 @@ class Genome:
         if not hasattr(self, 'seq'): # if no seq loaded
             self.load_seq()
         shift = kwargs.get('shift',0) # number of nt to include beyond each region on either side, e.g. to compute angle
-
+        prom_region = kwargs.get('prom',False)
         for cond_TSS in self.TSSs.keys():
             try:
                 if cond_TSS != 'all_TSS':
                     for TSS in self.TSSs[cond_TSS].keys():
-                        self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift)
+                        self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift,prom=prom_region)
             except:
                 print 'Unable to compute magic prom :',cond_TSS
 
@@ -874,21 +947,6 @@ class Genome:
                     self.genes[gene].fc_pval = {}
                     self.genes[gene].fc_pval[cond_fc] = (0,1)
 
-    def load_expression_level(self):
-        """ Add expression level for all genes in dictionary """
-        
-        if not self.genes: # if no genes loaded
-            # try to load them   
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
-            with open(basedir+"data/"+self.name+"/expression/expression.info","r") as f:
-                for line in f:
-                    line=line.strip()
-                    line=line.split('\t')
-                    self.genes=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+line[0], int(line[1]), int(line[2]), line[3])
-        else:
-            print(" not found expression file information")
 
 
     def compute_fc_from_expr(self, ctrls, conds, condname):
@@ -898,7 +956,7 @@ class Genome:
         '''
         if not hasattr(self, 'genes_valid'):
             self.genes_valid = {}
-        self.load_expression_level() # load expression values
+        self.load_expression() # load expression values
 
         genes_val = [] # list containing all genes having valid expr
         for genename in self.genes.keys():
@@ -979,7 +1037,8 @@ class Genome:
                 pass
 
     def compute_state_from_fc(self,*args,**kwargs):
-        self.load_fc_pval() 
+        if not hasattr(self, 'genes_valid'):
+            self.load_fc_pval() 
         thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
         thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
         for gene in self.genes.keys():
@@ -998,317 +1057,27 @@ class Genome:
                 except:
                     g.add_state_cond(cond_fc,'null')
 
-    def compute_orientation_proportion(self,cond_fc,*args,**kwargs):
+    def load_TU(self,*args, **kwargs):
+        ''' Load TUs specified in TU.info
         '''
-        Compute gene orientation and state (act, non, rep) depending on FC data, 
-        to check whether or not act / rep / non genes are more convergent / divergent / tandem.
-        '''
+        self.TUs = {}
+        if not self.genes: # if no genes loaded
+            # try to load them
+            self.load_annotation()
 
-        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
-        couple = kwargs.get('couple',3)
-        self.compute_state_from_fc() 
-        self.load_gene_orientation(bound=bound,couple=couple) # compute gene orientation
-        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-        # number of convergent, divergent and tandem genes for each state 
-        res = {'act':{'tandem':[],'convergent':[],'divergent':[]},'rep':{'tandem':[],'convergent':[],'divergent':[]}, 'non':{'tandem':[],'convergent':[],'divergent':[]}}
-        filt = kwargs.get('filt', False)
-
-        for gene in self.genes:
-            try:               
-                g = self.genes[gene]
-                if filt:
-                    # if g.length > 750 and g.name[0:3] != 'Dda':
-                    # if gene in self.genes_valid['WT+nov/WT']:
-                        if g.fc_pval[cond_fc][1] <= thresh_pval:
-                            if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                                res['rep'][g.orientation].append(gene)
-                            elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                                res['act'][g.orientation].append(gene)
-                            else:
-                                res['non'][g.orientation].append(gene)
-                        else:
-                            res['non'][g.orientation].append(gene)
-                else:
-                    if g.fc_pval[cond_fc][1] <= thresh_pval:
-                        if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                            res['rep'][g.orientation].append(gene)
-                        elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                            res['act'][g.orientation].append(gene)
-                        else:
-                            res['non'][g.orientation].append(gene)
-                    else:
-                        res['non'][g.orientation].append(gene)
-            except:
-                pass
-        
-
-        for state in ['act','non','rep']:
-            try:
-                print state 
-                print 'convergent :',len(res[state]['convergent']),'divergent :',len(res[state]['divergent']),'tandem :',len(res[state]['tandem'])
-            except:
-                pass
-
-        means = [] ; stds = []
-        meth = kwargs.get('meth','convdiv')
-        # meth = method to use to display results, e.g. (convergent) / (convergent + divergent) for each state
-        if couple == 2: 
-            meth = 'couple'
-
-        if meth == 'convdiv':  # (convergent) / (convergent + divergent)        
-            for state in ['act','non','rep']:
-                try:
-                    pexp = float(len(res[state]['convergent'])) / (len(res[state]['convergent'])+len(res[state]['divergent']))
-                    tot = len(res[state]['convergent'])+len(res[state]['divergent'])
-                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
-                    means.append(pexp)
-                    stds.append(std)
-                except:
-                    pass
-        
-        if meth == 'tot': # (convergent) / (convergent + divergent + tandem)        
-            for state in ['act','non','rep']:
-                try:
-                    pexp = float(len(res[state]['convergent'])) / (len(res[state]['convergent'])+len(res[state]['divergent'])+len(res[state]['tandem']))
-                    tot = len(res[state]['convergent'])+len(res[state]['divergent'])+len(res[state]['tandem'])
-                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
-                    means.append(pexp)
-                    stds.append(std)
-                except:
-                    pass
-
-        if meth == 'couple':
-            for state in ['act','non','rep']:
-                try:
-                    pexp = float(len(res[state]['divergent'])) / (len(res[state]['divergent'])+len(res[state]['tandem']))
-                    tot = len(res[state]['divergent'])+len(res[state]['tandem'])
-                    std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
-                    means.append(pexp)
-                    stds.append(std)
-                except:
-                    pass
-
-
-        draw = kwargs.get("draw",True) # whether or not graphes have to be created
-        org = kwargs.get('org', self.name) # organism name to use for plot title
-        titl = '/home/raphael/Documents/topo/results/orientation/{}-FC{}-P{}'.format(self.name+cond_fc.replace('/',''),thresh_fc,thresh_pval) 
-        if draw:
-            width = 5 ; height = width / 1.618
-            fig, ax = plt.subplots()
-            try:
-                xval = [0,1,2] ; labs = ['act','non','rep']
-                yval = means
-                plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-                plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
-            except:
-                xval = [0,1] ; labs = ['act','rep']
-                yval = means
-                plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-                plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
-            
-            fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-            if meth == 'couple':
-                ax.set_ylabel('diverg / (tandem + diverg)',fontweight='bold')
-            else:
-                ax.set_ylabel('conv / (conv + diverg)',fontweight='bold')
-
-            ax.set_xlim(xval[0]-1,xval[-1]+1)
-            #ax.set_ylim(0.4,0.6)
-            plt.xticks(xval,labs,fontweight='bold')
-            ax.set_title('{}, {}'.format(org,cond_fc),fontweight='bold')
-            fig.set_size_inches(width, height)
-            plt.tight_layout()
-            plt.savefig(titl+'.svg',transparent=False)
-            plt.close('all')
-
-        write_genes = kwargs.get('write_genes',False)
-        if write_genes:
-            f = open(titl+'.txt',"w")
-            f.write('convergent\tdivergent\ttandem\n')
-            for state in ['act','non','rep']:
-                f.write(state+'\n')
-                f.write(",".join(str(x) for x in res[state]['convergent'])+'\t'+",".join(str(x) for x in res[state]['divergent'])+'\t'+",".join(str(x) for x in res[state]['tandem'])+'\n')
+        if os.path.exists(basedir+"data/"+self.name+"/TU/TU.info"):
+            with open(basedir+"data/"+self.name+"/TU/TU.info","r") as f:
+                skiphead = next(f) # skip head
+                for header in f:
+                    header=header.strip()
+                    header=header.split('\t')
+                    try:                
+                        self.TUs[header[0]]=load_TU_cond(basedir+"data/"+self.name+"/TU/"+header[1],int(header[2]),int(header[3]),int(header[4]),int(header[5]),int(header[6]), header[7])
+                    except:
+                        print("Error loading cond",header[0])
             f.close()
-
-        write = kwargs.get('write',False)
-        if write:
-            results = open('/home/raphael/Documents/topo/results/orientation/{}-FC{}-P{}.txt'.format(self.name+'-'+cond_fc.replace('/','VS'),thresh_fc,thresh_pval),'w')
-            results.write('Gene\tOrientation\tState\tLeft Neighbour state\tRight neighbour state\n')
-            for gene in self.genes:
-                try:
-                    g = self.genes[gene]
-                    lg = self.genes[g.left_neighbour]
-                    rg = self.genes[g.right_neighbour]
-                    results.write('{}-{}\t{}\t{}\t{}\t{}\n'.format(gene,g.name,g.orientation,g.state[cond_fc],lg.state[cond_fc],rg.state[cond_fc]))
-                except:
-                    pass               
-            results.close()
-
-
-    def write_genes_fc(self,*args,**kwargs):
-        self.load_fc_pval()
-        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated 
-        res = {}
-        for cond_fc in self.genes_valid.keys():
-            res[cond_fc] = {'act':[],'rep':[],'non':[]}
-            for gene in self.genes_valid[cond_fc]:
-                g = self.genes[gene]
-                if g.fc_pval[cond_fc][1] <= thresh_pval:
-                    if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                        res[cond_fc]['rep'].append(gene)
-                    elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                        res[cond_fc]['act'].append(gene)
-                    else:
-                        res[cond_fc]['non'].append(gene)
-                else:
-                        res[cond_fc]['non'].append(gene)
-
-        df = pd.DataFrame.from_dict(res,orient='index')
-        df.drop(['non'],axis=1,inplace=True)
-        df.to_csv('/home/raphael/Documents/test.csv')
-
-    def compare_fc_conds(self,c1,c2,*args,**kwargs):
-        self.load_fc_pval()
-        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-        res = {}
-        states = ['+*','+','-*','-']
-        for st1 in states:
-            res[st1] = {}
-            for st2 in states:
-                res[st1][st2] = 0
-
-        for gene in self.genes.keys():
-            try:
-                g = self.genes[gene]
-                if g.fc_pval[c1][1] <= thresh_pval:
-                    stat1 = '*'
-                else:
-                    stat1 = ''
-                if g.fc_pval[c1][0] > thresh_fc:
-                    sign1 = '+'
-                else:
-                    sign1 = '-'
-
-
-                if g.fc_pval[c2][1] <= thresh_pval:
-                    stat2 = '*'
-                else:
-                    stat2 = ''
-                if g.fc_pval[c2][0] > thresh_fc:
-                    sign2 = '+'
-                else:
-                    sign2 = '-'
-
-                st1 = sign1+stat1 ; st2 = sign2+stat2
-                res[st1][st2] += 1
-            except:
-                pass
-
-        df = pd.DataFrame.from_dict(res,orient='index')
-        df.sort_index(axis=1,inplace=True) ; df.sort_index(axis=0,inplace=True)
-        df.to_csv('/home/raphael/Documents/test.csv')
-
-    def compare_gene_orientation(self,c1,c2,*args,**kwargs):
-        self.load_fc_pval()
-        self.load_gene_orientation()
-        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-
-        res = {'convergent':{}, 'divergent':{}, 'tandem':{}}
-        states = ['+*','+','-*','-']
-        for orientation in res.keys():        
-            for st1 in states:
-                res[orientation][st1] = {}
-                for st2 in states:
-                    res[orientation][st1][st2] = 0
-
-        for gene in self.genes.keys():
-            try:
-                g = self.genes[gene]
-                if g.fc_pval[c1][1] <= thresh_pval:
-                    stat1 = '*'
-                else:
-                    stat1 = ''
-                if g.fc_pval[c1][0] > thresh_fc:
-                    sign1 = '+'
-                else:
-                    sign1 = '-'
-
-
-                if g.fc_pval[c2][1] <= thresh_pval:
-                    stat2 = '*'
-                else:
-                    stat2 = ''
-                if g.fc_pval[c2][0] > thresh_fc:
-                    sign2 = '+'
-                else:
-                    sign2 = '-'
-
-                st1 = sign1+stat1 ; st2 = sign2+stat2
-                res[g.orientation][st1][st2] += 1
-            except:
-                pass
-
-        for orientation in res.keys():        
-            df = pd.DataFrame.from_dict(res[orientation],orient='index')
-            #df.drop(['non'],axis=1,inplace=True)
-            df.sort_index(axis=1,inplace=True) ; df.sort_index(axis=0,inplace=True)
-            df.to_csv('/home/raphael/Documents/test_{}.csv'.format(orientation))
-
-
-
-
-    def compute_orientation_dickeya(self,*args,**kwargs):
-        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
-        self.load_annotation()  
-        self.load_gene_orientation(bound=bound)
-        #files = ['act_puce_expo.txt','act_puce.txt','act_expo.txt','rep_puce_expo.txt','rep_puce.txt','rep_expo.txt']
-        files = ['act_common.txt','rep_common.txt']
-        #files = ['act_expo.txt','rep_expo.txt']
-        #files = ['act_puce_expo.txt','rep_puce_expo.txt']
-        res = {'act':{'tandem':0,'convergent':0,'divergent':0},'rep':{'tandem':0,'convergent':0,'divergent':0}}
-        for name in files:
-            file = open('{}{}'.format(basedir,name),'r')
-            for line in file: 
-                line = line.strip()
-                try:
-                    res[name[0:3]][self.genes[line].orientation] += 1
-                except:
-                    pass
-            
-        print res
-        means = [] ; stds = []
-        for state in ['act','rep']:
-            try:
-                pexp = float(res[state]['convergent']) / (res[state]['convergent']+res[state]['divergent'])
-                tot = res[state]['convergent']+res[state]['divergent']
-                std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
-                means.append(pexp)
-                stds.append(std)
-            except:
-                pass
-
-        titl = '/home/raphael/Documents/orientation'
-        width = 5 ; height = width / 1.618
-        fig, ax = plt.subplots()
-        xval = [0,1] ; labs = ['rel','hyp']
-        yval = means
-        plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-        plt.errorbar(xval, yval,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')        
-        
-        fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-        ax.set_ylabel('conv / (conv + diverg)',fontweight='bold')
-        ax.set_xlim(xval[0]-1,xval[-1]+1)
-        #ax.set_ylim(0.4,0.6)
-        plt.xticks(xval,labs,fontweight='bold')
-        #ax.set_title('{}, {} et al.'.format(org,cond_fc),fontweight='bold')
-        fig.set_size_inches(width, height)
-        plt.tight_layout()
-        plt.savefig(titl+'.svg',transparent=False)
-        plt.close('all')
+        else:
+            print("No TU.info file, please create one")
 
 
 ###################### ANTOINE #############################
@@ -1355,3 +1124,5 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
+
+

@@ -13,6 +13,16 @@ from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 from Bio import motifs
 from TSS import TSS
+from matplotlib_venn import venn2
+
+from scipy import stats
+from statsmodels.stats import weightstats
+
+plt.rcParams.update({'pdf.fonttype': 42})
+plt.rcParams.update({'ps.fonttype': 42})
+plt.rcParams.update({'font.size': 11})
+plt.rcParams.update({'legend.fontsize': 9})
+plt.rcParams.update({'font.family': "Arial"})
 
 #==============================================================================#
 
@@ -337,11 +347,11 @@ def valid_TSS(gen,cond_fc,cond_tss,thresh_fc,*arg,**kwargs):
 import os,pysam, numpy as np, pandas as pd
 from datetime import datetime
 
-def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragments for each strand
-    if not os.path.exists(bam_file+".bai"): # if index needed, created using samtools (.bai file)
+def process_bam_paired_end(bam_file, gen): # /!\ paired-end only /!\ -> return fragments for each strand
+    if not os.path.exists(basedir+"data/"+gen+'/rnaseq_reads/'+bam_file+".bai"): # if index needed, created using samtools (.bai file)
         os.system("samtools index -b %s"%bam_file)
     
-    bamfile = pysam.AlignmentFile(bam_file, "rb") # BAM opening, alignment file object
+    bamfile = pysam.AlignmentFile(basedir+"data/"+gen+'/rnaseq_reads/'+bam_file, "rb") # BAM opening, alignment file object
     print 'Header :',bamfile.header
     print 'Reads mapped :',bamfile.mapped
     print 'Reads without coordinate :',bamfile.nocoordinate
@@ -378,25 +388,22 @@ def process_bam_paired_end(bam_file): # /!\ paired-end only /!\ -> return fragme
     Rpos = Rpos[np.isfinite(Rpos).all(axis=1)] 
     Rneg = Rneg[np.isfinite(Rneg).all(axis=1)]
 
-    # if rnaseq_reads folder not exist
-    if not os.path.exists(os.getcwd()+'/rnaseq_reads'):
-        os.makedirs('rnaseq_reads')
     # if reads.info not exist
-    if not os.path.exists(os.getcwd()+'/rnaseq_reads/reads.info'):
-        file = open(os.getcwd()+'/rnaseq_reads/reads.info','w') 
+    if not os.path.exists(basedir+"data/"+gen+'/rnaseq_reads/reads.info'):
+        file = open(basedir+"data/"+gen+'/rnaseq_reads/reads.info','w') 
         file.write('Condition\tReads file\tDate\tBAM file')
         file.close() 
     # save results ; .npz contains two .npy Rpos and Rneg
-    file = open(os.getcwd()+'/rnaseq_reads/reads.info','a')
+    file = open(basedir+"data/"+gen+'/rnaseq_reads/reads.info','a')
     file.write('\n'+bam_file[:-4]+'\t'+bam_file[:-4]+'_reads.npz\t'+str(datetime.now())+'\t'+bam_file)  
     file.close()    
-    np.savez(os.getcwd()+'/rnaseq_reads/'+bam_file[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
+    np.savez(basedir+"data/"+gen+'/rnaseq_reads/'+bam_file[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
 
 
 # compute coverage from reads (.npz, one .npy per strand)
-def cov_from_reads(npz_file, genome_length):
+def cov_from_reads(npz_file, gen, genome_length):
     # load npz file
-    npzfile = np.load(os.getcwd()+'/rnaseq_reads/'+npz_file)
+    npzfile = np.load(basedir+"data/"+gen+'/rnaseq_reads/'+npz_file)
     Rpos = npzfile["Rpos"]
     Rneg = npzfile["Rneg"]
     # init cov
@@ -410,19 +417,17 @@ def cov_from_reads(npz_file, genome_length):
     for start,end in Rneg:
         cov_neg[start:end+1] += 1
     # if rnaseq_cov folder not exist        
-    if not os.path.exists(os.getcwd()+'/rnaseq_cov'):
-        os.makedirs('rnaseq_cov')
     # if cov.info not exist
-    if not os.path.exists(os.getcwd()+'/rnaseq_cov/cov.info'):
-        file = open(os.getcwd()+'/rnaseq_cov/cov.info','w') 
+    if not os.path.exists(basedir+"data/"+gen+'/rnaseq_cov/cov.info'):
+        file = open(basedir+"data/"+gen+'/rnaseq_cov/cov.info','w') 
         file.write('Condition\tCov file\tDate\tReads file')
         file.close() 
     # save results
-    file = open(os.getcwd()+'/rnaseq_cov/cov.info','a')
+    file = open(basedir+"data/"+gen+'/rnaseq_cov/cov.info','a')
     file.write('\n'+npz_file[0:-10]+'\t'+npz_file[:-4]+'_cov.npz\t'+str(datetime.now())+'\t'+npz_file)  
     file.close()
     # save results ; .npz contains two .npy cov_pos and cov_neg
-    np.savez(os.getcwd()+'/rnaseq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
+    np.savez(basedir+"data/"+gen+'/rnaseq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
 
 ##### MAIN #####
 # for a list of .bam
@@ -689,4 +694,596 @@ def cov_is_zero(cov,winlen=20,maxval=5):
 """
 Vincent CABELI
 """
+
+
+def write_genes_fc(gen,*args,**kwargs):
+    gen.load_fc_pval()
+    thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
+    thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated 
+    pathdb = "/home/raphael/Documents/GO_ihfA/"
+    if not os.path.exists(pathdb):
+      os.makedirs(pathdb)
+
+    res = {}
+    for cond_fc in gen.genes_valid.keys():
+        res[cond_fc] = {'act':[],'rep':[],'non':[]}
+        for gene in gen.genes_valid[cond_fc]:
+            g = gen.genes[gene]
+            if g.fc_pval[cond_fc][1] <= thresh_pval:
+                if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
+                    res[cond_fc]['rep'].append(gene)
+                elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
+                    res[cond_fc]['act'].append(gene)
+                else:
+                    res[cond_fc]['non'].append(gene)
+            else:
+                    res[cond_fc]['non'].append(gene)
+
+    ihf = kwargs.get('ihfa', False)
+    if not ihf:
+        for cond_fc in res.keys():
+            res[cond_fc]['act'] = ','.join(res[cond_fc]['act'])
+            res[cond_fc]['rep'] = ','.join(res[cond_fc]['rep'])
+            res[cond_fc]['non'] = ','.join(res[cond_fc]['non'])
+        df = pd.DataFrame.from_dict(res,orient='index')
+        df.drop(['non'],axis=1,inplace=True)
+        df.to_csv(pathdb+'list_genes.csv')
+
+    if ihf:
+        for c in res.keys():
+            titl = "{}_act_{}.txt".format(len(res[c]['act']),c)           
+            file = open(pathdb+titl,"w")
+            for g in res[c]['act']:
+                file.write(g+"\n")
+            file.close()
+
+            titl = "{}_rep_{}.txt".format(len(res[c]['rep']),c)           
+            file = open(pathdb+titl,"w")
+            for g in res[c]['rep']:
+                file.write(g+"\n")
+            file.close()
+
+
+
+        pairs = [["WT_expo_vs_ihfA_expo","WT_stat_vs_ihfA_stat"],["WT_nov_expo_vs_ihfA_nov_expo","WT_nov_stat_vs_ihfA_nov_stat"],["ihfA_nov_expo_vs_ihfA_expo","ihfA_nov_stat_vs_ihfA_stat"],["WT_nov_expo_vs_WT_expo","WT_nov_stat_vs_WT_stat"], ["ihfA_PGA_stat_vs_ihfA_stat","ihfA_PGA_nov_stat_vs_ihfA_nov_stat"], ["WT_PGA_stat_vs_WT_stat","WT_PGA_nov_stat_vs_WT_nov_stat"],["WT_stat_vs_WT_expo","ihfA_stat_vs_ihfA_expo"],["WT_nov_stat_vs_WT_nov_expo","ihfA_nov_stat_vs_ihfA_nov_expo"]]
+
+        for pair in pairs:
+            A = res[pair[0]]
+            B = res[pair[1]]
+
+            Aact = set(A['act']) ; Arep = set(A['rep'])
+            Bact = set(B['act']) ; Brep = set(B['rep'])
+            
+            inter = Aact & Bact ; Aonly = Aact - Bact ; Bonly = Bact - Aact
+
+            titl = "{}_act_{}_{}.txt".format(str(len(inter)),pair[0],pair[1])           
+            file = open(pathdb+titl,"w")
+            for g in inter:
+                file.write(g+"\n")
+            file.close()
+
+            fig_width = 3.5 ; fig_height = 3.5
+            fig = plt.figure(figsize=(fig_width,fig_height))
+            d = venn2([Aact, Bact], set_labels = (pair[0], pair[1]))
+            d.get_label_by_id('A').set_fontsize(5)
+            d.get_label_by_id('B').set_fontsize(5)
+            plt.title("Activated")
+            plt.tight_layout()
+            plt.savefig(pathdb+titl[0:-4]+'.png',transparent=False, dpi=300)
+            plt.close('all')
+
+            
+            inter = Arep & Brep ; Aonly = Arep - Brep ; Bonly = Brep - Arep
+
+            titl = "{}_rep_{}_{}.txt".format(str(len(inter)),pair[0],pair[1])           
+            file = open(pathdb+titl,"w")
+            for g in inter:
+                file.write(g+"\n")
+            file.close()
+
+            fig_width = 3.5 ; fig_height = 3.5
+            fig = plt.figure(figsize=(fig_width,fig_height))
+            d = venn2([Arep, Brep], set_labels = (pair[0], pair[1]))
+            d.get_label_by_id('A').set_fontsize(5)
+            d.get_label_by_id('B').set_fontsize(5)
+            plt.title("Repressed")
+            plt.tight_layout()
+            plt.savefig(pathdb+titl[0:-4]+'.png',dpi=300,transparent=False)
+            plt.close('all')
+
+
+
+
+
+def compare_fc_conds(self,c1,c2,*args,**kwargs):
+    self.load_fc_pval()
+    thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
+    thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
+    res = {}
+    states = ['+*','+','-*','-']
+    for st1 in states:
+        res[st1] = {}
+        for st2 in states:
+            res[st1][st2] = 0
+
+    for gene in self.genes.keys():
+        try:
+            g = self.genes[gene]
+            if g.fc_pval[c1][1] <= thresh_pval:
+                stat1 = '*'
+            else:
+                stat1 = ''
+            if g.fc_pval[c1][0] > thresh_fc:
+                sign1 = '+'
+            else:
+                sign1 = '-'
+
+
+            if g.fc_pval[c2][1] <= thresh_pval:
+                stat2 = '*'
+            else:
+                stat2 = ''
+            if g.fc_pval[c2][0] > thresh_fc:
+                sign2 = '+'
+            else:
+                sign2 = '-'
+
+            st1 = sign1+stat1 ; st2 = sign2+stat2
+            res[st1][st2] += 1
+        except:
+            pass
+
+    df = pd.DataFrame.from_dict(res,orient='index')
+    df.sort_index(axis=1,inplace=True) ; df.sort_index(axis=0,inplace=True)
+    df.to_csv('/home/raphael/Documents/test.csv')
     
+
+def compare_genomes(gen1,gen2,*args,**kwargs):
+    '''
+    Compare genes in common among two genomes based on name, and compare roughly promoter sequences
+    '''
+    gen1.load_annotation()
+    gen1.load_seq()
+
+    gen2.load_annotation()
+    gen2.load_seq()
+
+    prom = kwargs.get('prom',250)
+    res1 = {}
+    res2 = {}
+    for gene in gen1.genes.keys():
+        g = gen1.genes[gene]
+        if g.strand:
+            seq = gen1.seq[g.start-prom:g.start]
+        else:
+            seq = gen1.seqcompl[g.start:g.start+prom]
+        res1[g.name] = seq
+          
+    for gene in gen2.genes.keys():
+        g = gen2.genes[gene]
+        if g.strand:
+            seq = gen2.seq[g.start-prom:g.start]
+        else:
+            seq = gen2.seqcompl[g.start:g.start+prom]
+        res2[g.name] = seq
+    print res1
+    print res2
+    print len(res1.keys()),len(res2.keys())
+
+    res = {}
+    for g1 in res1.keys():
+        if g1 in res2.keys():
+            mismatches = sum(c1!=c2 for c1,c2 in zip(res1[g1],res2[g1]))
+            if mismatches not in res.keys():
+                res[mismatches] = 1
+            else:
+                res[mismatches] += 1
+    print res
+    print sum(res[c] for c in res.keys())
+
+
+def load_TSS_from_common_genome(gen,genref,*arg,**kwargs):
+    prom_region = kwargs.get('prom',False)
+    genref.compute_magic_prom(prom=prom_region)
+    gen.load_annotation()
+    gen.load_seq()
+    check = kwargs.get('check',200)
+    thresh = kwargs.get('thresh',200)
+    gnames = {} # dict {gene_name:gene_id} to map names to ID
+    gen.TSSs = {} # init TSS
+    for g in gen.genes.keys():
+        gnames[gen.genes[g].name] = g
+
+    for TSScond in genref.TSSs.keys():
+        try:
+
+            gen.TSSs[TSScond] = genref.TSSs[TSScond] # init TSS cond
+            for pos in gen.TSSs[TSScond].keys(): # for each TSS
+                TSS = gen.TSSs[TSScond][pos]
+                newgenes = []
+                for gene in TSS.genes:
+                    try:
+                        gref = genref.genes[gene]
+                        g = gen.genes[gnames[gref.name]]
+                        if g.strand and gref.strand:
+                            s = gen.seq[g.start-check-1:g.start]
+                            sref = genref.seq[gref.start-check-1:gref.start]
+                        elif not g.strand and not gref.strand:
+                            s = gen.seqcompl[g.start-1:g.start+check][::-1]
+                            sref = genref.seqcompl[gref.start-1:gref.start+check][::-1]
+                        if sum(c1!=c2 for c1,c2 in zip(s,sref)) <= thresh:
+                            newgenes.append(gnames[gref.name])
+
+                    except:
+                        pass
+                TSS.genes = newgenes
+        except:
+            pass
+
+def load_fc_from_common_genome(genTSS,genFC,*arg,**kwargs):
+    genFC.load_fc_pval() # genome from which we want to extrapolate FC (ecoli_b)
+    genTSS.load_fc_pval() # genome where we want to extrapolate FC (ecoli)
+    check = kwargs.get('check',200) # nb of bp to test upstream gene start to evaluate gene similarity in genomes
+    thresh = kwargs.get('thresh',10) # if nb of different nucleotides in the genome > thresh for a given gene, no extrapolation (5% differences max)
+    
+    if not hasattr(genTSS, 'seq'):
+        genTSS.load_seq()
+    if not hasattr(genFC, 'seq'):
+        genFC.load_seq()
+
+    gnames = {} # dict {gene_name:gene_id} to map names to ID for genome
+    for g in genFC.genes.keys():
+        gnames[genFC.genes[g].name] = g
+
+    for cond in genFC.genes_valid.keys(): # prepare conditions to be loaded in reference genome
+        genTSS.genes_valid[cond] = []
+
+    d = {}
+    for idref in genTSS.genes.keys(): # for each gene of reference genome
+    # test whether or not upstream regions of gene start are similar between the two genomes
+        try:
+            gref = genTSS.genes[idref]
+            g = genFC.genes[gnames[gref.name]] # works if the gene name in genTSS exists in gen 
+            if g.strand and gref.strand:
+                s = genFC.seq[g.start-check-1:g.start]
+                sref = genTSS.seq[gref.start-check-1:gref.start]
+            elif not g.strand and not gref.strand:
+                s = genFC.seqcompl[g.start-1:g.start+check][::-1]
+                sref = genTSS.seqcompl[gref.start-1:gref.start+check][::-1]
+
+            s = sum(c1!=c2 for c1,c2 in zip(s,sref))
+            try:
+                d[s] += 1
+            except:
+                d[s] = 1
+            if s <= thresh:
+                gref.fc_pval = g.fc_pval
+                for cond in gref.fc_pval.keys():
+                    genTSS.genes_valid[cond].append(idref)
+        except:
+            pass
+    print d
+
+def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.05, barh=.05, fs=12, maxasterix=None, dt=0, bold = False):
+    """ 
+    Annotate barplot with p-values.
+
+    :param num1: number of left bar to put bracket over
+    :param num2: number of right bar to put bracket over
+    :param data: string to write or number for generating asterixes
+    :param center: centers of all bars (like plt.bar() input)
+    :param height: heights of all bars (like plt.bar() input)
+    :param yerr: yerrs of all bars (like plt.bar() input)
+    :param dh: height offset over bar / bar + yerr in axes coordinates (0 to 1)
+    :param barh: bar height in axes coordinates (0 to 1)
+    :param fs: font size
+    :param maxasterix: maximum number of asterixes to write (for very small p-values)
+    """
+    lx, ly = center[num1], height[num1]
+    rx, ry = center[num2], height[num2]
+    if yerr:
+        ly += yerr[num1]
+        ry += yerr[num2]
+
+    ax_y0, ax_y1 = plt.gca().get_ylim()
+    dh *= (ax_y1 - ax_y0)
+    barh *= (ax_y1 - ax_y0)
+
+    y = max(ly, ry) + dh
+
+    barx = [lx, lx, rx, rx]
+    bary = [y, y+barh, y+barh, y]
+    mid = ((lx+rx)/2, y+barh)
+
+    plt.plot(barx, bary, c='black')
+    if bold:
+        plt.text(mid[0],mid[1]+dt, text, fontsize=fs, ha='center', fontweight = "bold")
+    else:
+        plt.text(mid[0],mid[1]+dt, text, fontsize=fs, ha='center')
+
+
+
+def significance(pval):
+    if pval <= 0.001:
+        s = '***'
+    elif pval <= 0.01:
+        s = '**' 
+    elif pval <= 0.05:
+        s = '*' 
+    else:
+        s = 'ns'
+    return s
+
+
+def fill_cov_file(gen):
+    gen.load_seq()
+    with open(basedir+"data/"+gen.name+"/rnaseq_cov/cov_txt.info","r") as file:
+        header = next(file)
+        for line in file:
+            line = line.strip('\n').split('\t')
+            print 'Loading condition:',line[0]
+            cov_neg = {}
+            cov_pos = {}
+            with open(basedir+"data/"+gen.name+"/rnaseq_cov/"+line[1], 'r') as f:
+                i = 1
+                while i < int(line[3]):
+                    header=next(f)
+                    i+=1
+                for l in f:
+                    l = l.strip('\n').split('\t')
+                    cov_neg[int(l[0])] = float(l[1])
+            f.close()
+            fnew = open(basedir+"data/"+gen.name+"/rnaseq_cov/"+line[1][:-4]+'_treated.wig', 'w')
+            for i in range(1,len(gen.seq)+1):
+                try:
+                    cov = cov_neg[i]
+                except:
+                    cov = 0
+                fnew.write('{}\t{}\n'.format(str(i),str(cov)))
+            fnew.close()
+
+            with open(basedir+"data/"+gen.name+"/rnaseq_cov/"+line[2], 'r') as f:
+                i = 1
+                while i < int(line[3]):
+                    header=next(f)
+                    i+=1
+                for l in f:
+                    l = l.strip('\n').split('\t')
+                    cov_pos[int(l[0])] = float(l[1])
+            f.close()
+            fnew = open(basedir+"data/"+gen.name+"/rnaseq_cov/"+line[2][:-4]+'_treated.wig', 'w')
+            for i in range(1,len(gen.seq)+1):
+                try:
+                    cov = cov_pos[i]
+                except:
+                    cov = 0
+                fnew.write('{}\t{}\n'.format(str(i),str(cov)))
+            fnew.close()
+
+def export_rpkm(gen):
+    gen.com
+    res = {}
+    for gene in gen.genes.keys():
+        try:
+            res[gene] = gen.genes[gene].rpkm
+        except:
+            pass
+
+        df = pd.DataFrame.from_dict(res,orient='index', dtype=float) ; df.sort_index(axis=1,inplace=True)
+        df = df.applymap(np.log2)
+        df.to_csv(basedir+"data/"+gen.name+"/expression/log2rpkm.csv") 
+
+
+def write_FC_from_rpkm(gen):
+    gen.load_cov()
+    gen.compute_rpkm_from_cov()
+    f = open(basedir+"data/"+gen.name+"/expression/seco_rnaseq_clean_FC.csv", 'w')
+    f.write('gene\tcold_shock_10mn\tcold_shock_30mn\n')
+    for gene in gen.genes.keys():
+        g = gen.genes[gene]
+        try:
+            c1 = g.rpkm['WT'] 
+            c2 = g.rpkm['WT2'] 
+            c = np.mean([c1,c2])
+
+            t1 = g.rpkm['cold_shock_10mn']
+            fc1 = np.log2(t1/c)
+            
+            t2 = g.rpkm['cold_shock_30mn']
+            fc2 = np.log2(t2/c)
+
+            f.write('{}\t{}\t{}\n'.format(gene,str(fc1),str(fc2)))
+        except Exception as e:
+
+            pass
+    f.close()
+
+
+def load_expression_bartholomaus(gen,*arg,**kwargs):
+    gen.load_annotation()
+    gnames = {} # dict {gene_name:gene_id} to map names to ID
+    for g in gen.genes.keys():
+        gnames[gen.genes[g].name] = g
+
+    path = basedir+"data/"+gen.name+"/expression/"+"jozefczuk_cold-heat-ox/"
+    for file in os.listdir(path):
+        df = pd.read_table(path+file,sep="\t")
+        def replace_name(df,d):
+            '''
+            Clean DF : for each row, convert gene names to bnames
+            '''
+            def cleandf(row,row_accumulator,d):
+                old_row = row.to_dict()
+                new_row = row.to_dict()
+                try:           
+                    g = d[new_row['ORF']]
+                    new_row['ORF'] = g
+                    row_accumulator.append(new_row)
+                except:
+                    pass
+            
+            new_rows = []
+            df.apply(cleandf,axis=1,args=(new_rows,d))
+            new_df = pd.DataFrame(new_rows)
+            return new_df
+
+        newdf = replace_name(df,gnames)
+        newdf.to_csv(path+file[:-4]+"_clean.csv",sep='\t',header=True,index=False)
+    #     with open(path+file, 'r') as f:
+    #         header = next(f).strip().split('\t')
+    #         gen.genes_valid[header[2]] = []
+    #         for line in f:
+    #             line=line.strip().split('\t')
+    #             try:
+    #                 if not hasattr(gen.genes[gnames[line[0]]],'fc_pval'):
+    #                     gen.genes[gnames[line[0]]].fc_pval={}
+    #                 gen.genes[gnames[line[0]]].fc_pval[header[2]] = (math.log(float(line[2])/float(line[1]),2),0)
+    #                 gen
+    #                 gen.genes[gnames[line[0]]].fc_pval[header[3]] = (math.log(float(line[3])/float(line[1]),2),0)
+    #             except Exception as e:
+    #                 print e
+    #                 pass
+    # gen.load_fc_pval()
+    # gnames = {} # dict {gene_name:gene_id} to map names to ID
+    # for g in gen.genes.keys():
+    #     gnames[gen.genes[g].name] = g
+    # file = kwargs.get("file","stress_osmotic_heat.csv")
+
+
+def rpkm_from_raw_counts(gen,*arg,**kwargs):
+    file = kwargs.get('file','seco_rnaseq.csv')
+    gen.load_annotation()
+    df = pd.read_table(basedir+"data/"+gen.name+"/expression/"+file,sep="\t")
+    def replace_name(df,d):
+        '''
+        Clean DF : for each row, convert gene names to bnames
+        '''
+        def cleandf(row,row_accumulator,d):
+            new_row = row.to_dict()
+            try:
+                new_row['length'] = gen.genes[new_row['Gene']].length
+                row_accumulator.append(new_row)
+            except:
+                pass
+        new_rows = []
+        df.apply(cleandf,axis=1,args=(new_rows,d))
+        new_df = pd.DataFrame(new_rows)
+        return new_df
+
+    newdf = replace_name(df,{})
+    newdf.to_csv(basedir+"data/"+gen.name+"/expression/"+file[:-4]+"_clean.csv",sep='\t',header=True,index=False)
+
+
+def check_TSS_strand_add_genes(gen,cond):
+    f = open(basedir+"data/"+gen.name+"/TSS/checked.txt",'w')
+    f.write("TSS\tStrand\tGenes\n")
+    for TSSpos in gen.TSSs[cond].keys(): # for all TSS in cond_tss
+        TSSu = gen.TSSs[cond][TSSpos] # single TS
+        genes = []
+        for gene in gen.genes.keys():
+            g = gen.genes[gene]
+            if TSSu.strand:
+                if g.start - TSSpos <= 200 and  g.start - TSSpos > 1:
+                    genes.append(gene)
+            else:
+                if TSSpos - g.start <= 200 and  TSSpos - g.start > 1:
+                    genes.append(gene)             
+
+        f.write("{}\t{}\t{}\n".format(TSSpos,TSSu.strand,','.join(genes)))
+    f.close()
+
+def extract_prom(gen,cond):
+    gen.compute_magic_prom()
+    if not hasattr(gen,'genes_valid'):
+        gen.load_fc_pval()
+    f = open(basedir+"data/"+gen.name+"/TSS/promoters.txt",'w')
+    f.write("TSS\tPromoter\n")
+    for TSS in gen.TSSs[cond].keys():
+        TSSu = gen.TSSs[cond][TSS]
+        try:
+            f.write("{}\t{}\n".format(str(TSS),TSSu.promoter[sigfactor]['discr_model']))
+        except:
+            pass
+    f.close()
+
+
+
+
+
+
+
+
+def ci_mean_binomial(obs,n):
+    p = float(obs) / n
+    sd = float(stats.binom.std(n, p, loc=0))
+    sdmean = sd/np.sqrt(n)
+    cimean = obs - weightstats._tconfint_generic(obs,sdmean,n-1,0.05,"two-sided")[0]
+    return p,sd,sdmean, cimean
+
+def ci_mean_std(mean,std,n):
+    sdmean = std/np.sqrt(n)  
+    cimean = n - weightstats._tconfint_generic(mean,sdmean,n-1,0.05,"two-sided")[0]
+    return cimean
+
+# function for calculating the t-test for two independent samples
+def independent_ttest(m1,m2,std1,std2,n1,n2,alpha):
+    # standard error on the difference between the samples
+    sed = np.sqrt(std1**2.0 + std2**2.0)
+    # calculate the t statistic
+    t_stat = (m1 - m2) / sed
+    # degrees of freedom
+    df = n1 + n2 - 2
+    # calculate the critical value
+    cv = stats.t.ppf(1.0 - alpha, df)
+    # calculate the p-value
+    p = (1.0 - stats.t.cdf(abs(t_stat), df)) * 2.0
+    # return everything
+    return t_stat, p
+
+
+
+
+
+
+def student_mean_ci(data):
+    mean = np.mean(data)
+    # evaluate sample variance by setting delta degrees of freedom (ddof) to
+    # 1. The degree used in calculations is N - ddof
+    stddev = std(data, ddof=1)
+    # Get the endpoints of the range that contains 95% of the distribution
+    t_bounds = stats.t.interval(0.95, len(data) - 1)
+    # sum mean to the confidence interval
+    ci = [mean + critval * stddev / sqrt(len(data)) for critval in t_bounds]
+    return mean, (ci[0],ci[1])
+
+
+
+def clean_operon_file(gen):
+    gen.load_annotation()
+    path = basedir+"data/"+gen.name+"/operon_raph_raw"
+    d = {} ; operons = [["Start","Stop","Strand","Genes"]]
+    for g in gen.genes.keys():
+        d[gen.genes[g].start] = g
+
+    if os.path.exists(path):
+        with open(path,"r") as f:
+            header = next(f)
+            for line in f:
+                try:
+                    line = line.strip('\n')
+                    line=line.split('\t')
+                    genes = line[1].split(",")
+                    starts = [] ; stops = [] ; strands = []
+                    for gene in genes:
+                        g = gen.genes[gene]
+                        starts.append(g.start) ; stops.append(g.end) ; strands.append(g.strand)
+                    starts = sorted(starts) ; stops = sorted(stops)
+                    if all(item == True for item in strands):
+                        operons.append([starts[0],stops[-1],True,[d[st] for st in starts]])
+                    elif all(item == False for item in strands):
+                        operons.append([starts[-1],stops[0],False,[d[st] for st in starts][::-1]])
+                except Exception as e:
+                    print e
+                    pass
+    df = pd.DataFrame(operons)
+    df.to_csv(basedir+"data/"+gen.name+"/operon_raph_clean.csv",header=True,sep="\t")    

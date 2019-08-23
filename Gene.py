@@ -94,6 +94,7 @@ class Gene:
                     self.id = annotations_list_gff[8][k]
                 if k == 'gene':
                     self.symbol = annotations_list_gff[8][k]
+                    self.name = annotations_list_gff[8][k]
                 if k == 'Parent':
                     self.replichore = annotations_list_gff[8][k]
                 if k == 'Name':
@@ -105,11 +106,33 @@ class Gene:
             self.start = self.right
             self.end = self.left
 
+        annot_gbk = kwargs.get('annot_gbk')
+        if annot_gbk:
+            self.id = annot_gbk[0]
+            self.name = annot_gbk[1]
+            self.left = annot_gbk [2]
+            self.right = annot_gbk[3]
+            self.strand = annot_gbk[4]
 
-    def add_single_rpkm(self, condition, expression_value):
+            if self.strand == 1:
+                self.strand = True
+            else:
+                self.strand = False
+
+            if self.strand:
+                self.start = self.left
+                self.end = self.right
+            else:
+                self.start = self.right
+                self.end = self.left
+        if not self.name:
+            self.name = self.gene_id
+
+
+    def add_single_rpkm(self, condition, expression_value, factor):
         if not hasattr(self, 'rpkm'):
             self.rpkm = {}
-        self.rpkm[condition] = expression_value
+        self.rpkm[condition] = (expression_value*np.power(10,9)) / (factor)
 
     def set_model_parameters(self, k_on, p_off, condition):
         """ Sets the gene's k_on and p_off parameters. p_off is the probability
@@ -165,7 +188,11 @@ class Gene:
         correspond to the different conditions. The conditions and expression
         values are passed as lists.
         """
-        self.expression = dict(zip(conditions, expression_values))
+        if not hasattr(self,'expression'):
+            self.expression = {}
+        
+        self.expression.update(dict(zip(conditions, expression_values)))
+
         self.mean_expression = np.mean(self.expression.values())
 
 

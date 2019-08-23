@@ -3,6 +3,9 @@ import statsmodels.api as sm
 from globvar import *
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+from useful_functions import *
+from statsmodels.stats import proportion
 
 params = {
     'pdf.fonttype': 42,
@@ -17,6 +20,7 @@ params = {
    'axes.titlesize':11,
    'axes.spines.top':True,
    'axes.spines.right':True,
+   'font.family': "Arial"
    }
 plt.rcParams.update(params)
 
@@ -103,7 +107,7 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
     miscell = kwargs.get('miscell', False)
     # compute and write results
     # title for results
-    titl = '{}-{}-fc{}-pval{}-agg{}-genes{}'.format(cond_fc,cond_tss,str(thresh_fc),str(thresh_pval),str(aggregation),str(l_genes))
+    titl = '{}-{}-fc{}-pval{}-agg{}-genes{}'.format(cond_fc.replace('/',''),cond_tss,str(thresh_fc),str(thresh_pval),str(aggregation),str(l_genes))
     # path to database
     pathdb = '{}data/{}/spacer'.format(basedir,gen.name)
     if not os.path.exists(pathdb):
@@ -229,7 +233,8 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
     xval = []
     yval = []
     meanstd = []
-
+    cis = []
+    cim = []
     for sp in spacers: # compute proportion of activated promoters with CI for each spacer length using binomial law
         val = spacer_sigma[sigfactor][sp]['expr_valid']
         act = val[val > thresh_fc].shape[0]
@@ -240,31 +245,40 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
         ci = np.array(stats.binom.interval(0.95, tot, pexp, loc=0))/tot
         meanval = np.array(stats.binom.mean(tot, pexp, loc=0))/tot
         std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+
+        ci = proportion.proportion_confint(act, tot, alpha=0.05, method='normal')
+        cim.append((ci[1] - ci[0])/2)
         
         yval.append(meanval)
         meanstd.append(std)
         xval.append(sp)
+        cis.append([meanval - ci[0], ci[1] - meanval])
 
     # weighted linear regression
     X = sm.add_constant(xval)
-    wls_model = sm.WLS(yval, X, weights=1/np.power(np.array(meanstd),2)) # weights proportional to the inverse of std²
+    wls_model = sm.WLS(yval, X, weights=1/np.power(np.array(meanstd),2)) # weights proportional to the inverse of std2
     results = wls_model.fit()
     slope = results.params[1]
     OR = results.params[0]
     pval = results.pvalues[1]
-
-    width = 5 ; height = width / 1.618
+    width = 3 ; height = width / 1.4
     fig, ax = plt.subplots()
-    plt.plot(xval, yval, 'rD', markersize=7, linestyle='None')
-    plt.errorbar(xval, yval,yerr=meanstd,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')
+    plt.plot(xval, yval , marker='o', color='black',markersize=6, linestyle='None', fillstyle='none')
+
+    yerrs = [[x[0] for x in cis],[x[1] for x in cis]]
+    
+    plt.errorbar(xval, yval,yerr=cim,mec='black', capsize=5, elinewidth=1,mew=1,linestyle='None', color='black')
     xval = [14] + xval + [20] # delimit plot
     plt.plot(xval,np.array(xval)*slope + OR, linestyle='dashed', color='black')    
     
     fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-    ax.set_ylabel('Activated promoters proportion',fontweight='bold')
-    ax.set_xlabel('Spacer length (bp)',fontweight='bold')
+    ax.set_ylabel('proportion of\nactivated promoters')
+    ax.set_xlabel('spacer length (bp)')
+
+    #ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
+    ax.set_title(cond_fc)
     ax.set_xlim(14,20)
-    ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
+    ax.set_xticks([15,16,17,18,19])
 
     #ax.set_title(str(round(stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2,3)),fontweight='bold')
     fig.set_size_inches(width, height)
@@ -272,57 +286,119 @@ def compute_spacer_response(gen,cond_fc,cond_tss,*arg,**kwargs):
     save_single_fig('spacers')   
 
     # compute spacer lengths mean and std for activated, repressed or non affected promoters
-    allact = []
-    allrep = []
-    allnone = []
-    for sp in spacers:
-        val = spacer_sigma[sigfactor][sp]['expr_valid']
-        act = val[val > thresh_fc].shape[0]
-        rep = val[val < thresh_fc].shape[0]
-        non = spacer_sigma[sigfactor][sp]['expr_non'].shape[0]
+    try:
+        drop_16 = kwargs.get('drop16',True)
 
-        allact.extend([sp]*act)
-        allrep.extend([sp]*rep)
-        allnone.extend([sp]*non)
+        allact = []
+        allrep = []
+        allnone = []
+        for sp in spacers:
+            if drop_16:
+                if sp != 16:
+                    val = spacer_sigma[sigfactor][sp]['expr_valid']
+                    act = val[val > 0 + thresh_fc].shape[0]
+                    rep = val[val < 0 - thresh_fc].shape[0]
+                    non = spacer_sigma[sigfactor][sp]['expr_non'].shape[0] + val[(val > 0 - thresh_fc) & (val < 0 + thresh_fc)].shape[0]
 
-    mact = np.mean(allact) # spacer length mean of act promoters
-    mrep = np.mean(allrep) # spacer length mean of rep promoters
+                    allact.extend([sp]*act)
+                    allrep.extend([sp]*rep)
+                    allnone.extend([sp]*non)
+            else:
+                val = spacer_sigma[sigfactor][sp]['expr_valid']
+                act = val[val > thresh_fc].shape[0]
+                rep = val[val < thresh_fc].shape[0]
+                non = spacer_sigma[sigfactor][sp]['expr_non'].shape[0]
 
-    eact = np.std(allact)/np.sqrt(len(allact)) # 95 CI on mean
-    erep = np.std(allrep)/np.sqrt(len(allrep)) # 95 CI on mean
-    
-    if allnone != []: # if non affected promoters
-        mnone = np.mean(allnone)
-        enone = np.std(allnone)/np.sqrt(len(allnone))
-        xval = [1,2,3]
-        yval = [mact,mnone,mrep]
-        stdval = [eact,enone,erep]
-        col = ['red','black','blue']
-        labs = ['Activated','Non','Repressed']
-    else: # only act and rep promoters (e.g. Peter et al.)
-        xval = [1,2]
-        yval = [mact,mrep]
-        stdval = [eact,erep]
-        col = ['red','blue']
-        labs = ['Activated','Repressed']
+                allact.extend([sp]*act)
+                allrep.extend([sp]*rep)
+                allnone.extend([sp]*non)
 
-    width = 4 ; height = width / 1.618
-    fig, ax = plt.subplots()
 
-    plt.scatter(xval,yval ,marker='D',color=col,s=50)# markersize=9 ,linestyle='None'
-    plt.errorbar(xval, yval,yerr=stdval,linestyle='None', capsize=10, ecolor='black', elinewidth=1, mew=1)
+        mact = np.mean(allact) # spacer length mean of act promoters
+        mrep = np.mean(allrep) # spacer length mean of rep promoters
 
-    ax.set_xlabel('Promoters',fontweight='bold')    
-    ax.set_ylabel('Spacer length (bp)',fontweight='bold')
-    ax.set_xlim(xval[0]-1,xval[-1]+1)
-    ax.set_ylim(yval[0]-0.3,yval[1]+0.4)
-    plt.xticks(xval,labs)
-    ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
-    print str(round(stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2,3))
-    a = stats.ttest_ind(allact,allnone,equal_var=False)[1] / 2
-    b = stats.ttest_ind(allnone,allrep,equal_var=False)[1] / 2
-    c = a*b
-    print c
-    fig.set_size_inches(width, height)
-    plt.tight_layout()
-    save_single_fig('ttest')
+        eact = 1.96*(np.std(allact)/np.sqrt(len(allact))) # 95 CI
+        erep = 1.96*(np.std(allrep)/np.sqrt(len(allrep))) # 95 CI
+
+        if allnone != []:# if non affected promoters
+            mnone = np.mean(allnone)
+            enone = 1.96*(np.std(allnone)/np.sqrt(len(allnone)))
+            xval = [1,2,3]
+            yval = [mact,mnone,mrep]
+            stdval = [eact,enone,erep]
+            col = ['red','black','blue']
+            labs = ['Activated','Non','Repressed']
+        else: # only act and rep promoters (e.g. Peter et al.)
+            xval = [1,2]
+            yval = [mact,mrep]
+            stdval = [eact,erep]
+            col = ['red','blue']
+            labs = ['Activated','Repressed']
+
+        cat = kwargs.get('cat',True)
+        if cat:
+            pval = stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2
+            print pval
+            pval = stats.ttest_ind(allact,allrep,equal_var=False)[1] / 2
+            print pval
+            s = significance(pval)
+            if s == 'ns':
+                fs = 14
+                dt = 0.01
+            else:
+                fs = 18
+                dt = 0
+
+            fig_width = 2 ; fig_height = 2.2
+            fig = plt.figure(figsize=(fig_width,fig_height))
+            plt.bar(xval, yval, yerr = stdval, width = 0.6, color = 'white',edgecolor = 'black', linewidth = 2, ecolor = 'black', capsize = 3.5)
+            if len(xval) == 2:
+                plt.xticks(xval,["act","rep"],rotation = 45)
+                plt.xlim(0.5, 2.5)
+                barplot_annotate_brackets(0, 1, s, xval,yval,yerr=stdval,dh=.005, barh=.003, fs=fs, dt=dt)
+            else:
+                plt.xticks(xval,["act", "non", "rep"],rotation = 45)
+                plt.xlim(0.5, 3.5)
+                barplot_annotate_brackets(0, 2, s, xval,yval,yerr=stdval,dh=.005, barh=.003, fs=fs, dt=dt)
+
+            plt.ylabel("spacer length (bp)")
+            plt.xlabel("")
+            plt.ylim(min(yval)-0.1,max(yval)+0.55)
+
+            fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+            plt.title('{}'.format(cond_fc),fontsize=11)
+            plt.tight_layout()
+            save_single_fig('catplot')
+        else:
+            width = 3 ; height = width / 1.618
+            fig, ax = plt.subplots()
+
+            plt.scatter(xval,yval ,marker='D',color=col, s=50,linestyle='None')
+            plt.errorbar(xval, yval,yerr=stdval,linestyle='None', capsize=10, ecolor='black', elinewidth=1, mew=1)
+
+            ax.set_xlabel('Promoters')    
+            ax.set_ylabel('Spacer length (bp)')
+            ax.set_xlim(xval[0]-1,xval[-1]+1)
+            #ax.set_ylim(yval[0]+0.3,yval[1]-0.4)
+            plt.xticks(xval,labs)
+            #ax.set_title('Escherichia coli ({} et al.)'.format(cond_fc),fontweight='bold')
+            ax.set_title(cond_fc)
+            # print str(round(stats.ttest_ind(allrep,allact,equal_var=False)[1] / 2,3))
+            # a = stats.ttest_ind(allact,allnone,equal_var=False)[1] / 2
+            # b = stats.ttest_ind(allnone,allrep,equal_var=False)[1] / 2
+            # c = a*b
+            # print c
+            fig.set_size_inches(width, height)
+            plt.tight_layout()
+            save_single_fig('ttest')
+
+
+    except Exception as e:
+        print e
+
+
+
+
+
+
+

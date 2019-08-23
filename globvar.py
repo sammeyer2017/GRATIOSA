@@ -7,6 +7,7 @@ except KeyError:
     print "Please set the environment variable TOPO_DATABASE_PATH"
     sys.exit()
 
+resdir = '/home/raphael/Documents/topo/results/'
 # --------- rpkm
 # multiplicative constant btw rpkm values and coverage values: use same unit as rpkm for coverage
 multconst=1.
@@ -28,7 +29,7 @@ radius = fig_width / 1.4 # radius circles
 # parameters for bTSS finder
 PROM_LENGTH = 200
 TSS_DOWNSTREAM = 50
-taxon = {'ecoli':'e','dickeya':'e','salmonella':'e', 'synechococcus':'c', 'streptococcus':'c', 'staphylococcus':'c', 'mycoplasma_pneu':'c'}
+taxon = {'ecoli':'e','dickeya':'e','salmonella':'e', 'synechococcus':'c', 'streptococcus':'c', 'staphylococcus':'c', 'mycoplasma_pneu':'e', 'streptococcus_D39':'e'}
 # parameters for spacer analysis
 sigfactor = 'sigma70'
 spacers = [15,16,17,18,19]

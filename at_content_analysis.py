@@ -1,25 +1,28 @@
 from Bio.SeqUtils import GC
 from scipy import stats
-#import statsmodels.api as sm
+import statsmodels.api as sm
 from globvar import *
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from useful_functions import *
+from collections import Counter
+from statsmodels.stats import proportion
 
 params = {
-	'pdf.fonttype': 42,
-	'ps.fonttype': 42,
-   'axes.labelsize': 22,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+   'axes.labelsize': 11,
    'font.size': 11,
-   'font.family':'Arial',
    'legend.fontsize': 9,
-   'xtick.labelsize': 11,
-   'ytick.labelsize': 11,
+   'xtick.labelsize': 10,
+   'ytick.labelsize': 10,
    'text.usetex': False,
    'axes.linewidth':1.5, #0.8
    'axes.titlesize':11,
    'axes.spines.top':True,
    'axes.spines.right':True,
+   'font.family': "Arial"
    }
 plt.rcParams.update(params)
 
@@ -29,21 +32,23 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	classified activated, repressed or non regulated based on FC / pvalues data and AT contents 
 	between groups are compared. gen : genome object, cond_fc : FC condition, cond_tss : list of TSS used
 	'''
-	# Requirements
-	gen.load_fc_pval()
-	gen.load_TSS() 
-	gen.load_seq() 
+	# requirements
+	#gen.load_TSS()
+	gen.load_seq()
+	if not hasattr(gen,'genes_valid'):
+            gen.load_fc_pval()
+	if not hasattr(gen,'TSSs'):
+            gen.load_TSS()	#gen.load_fc_pval()
+
 	# kwargs
 	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
 	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
 	align = kwargs.get('align',-10) # position where promoters are aligned for comparison
 	before = kwargs.get('bef',35) # number of bp to look below TSS position
 	after = kwargs.get('aft',10) # number of bp to look above TSS position
-	methstat = kwargs.get('methstat','actvsrep') # stat method to compute pvalue between groups. Actvsrep : ttest(activated > repressed). Actvsnone : ttest(act > none)*ttest(rep < none).
-	statw = kwargs.get('statw',False) # True : write pval results for each position in a text file 
-	draw = kwargs.get('draw', 'CI') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
 	org = kwargs.get('org', gen.name) # organism name to use for plot title
-	wind2 = kwargs.get('windows',6) # length of windows to compute AT contents
+
+	wind2 = kwargs.get('windows',4) # length of windows to compute AT contents
 	wind = wind2/2
 	shift = kwargs.get('shift',1) # shift of windows, per default one windows computed every nt 
 
@@ -130,7 +135,11 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	if sigma == 'all':
 		align = 0
 
-	titl = '{}-{}-{}-{}-FC{}-PVAL{}'.format(cond_tss,cond_fc,sigma,methstat,thresh_fc,thresh_pval)
+	pathdb = '{}data/{}/discriminator'.format(basedir,gen.name)
+	if not os.path.exists(pathdb):
+		os.makedirs(pathdb)
+
+	titl = '{}-{}-{}-FC{}-PVAL{}'.format(cond_tss,cond_fc.replace('/',''),sigma,thresh_fc,thresh_pval)
 
 	nb_act = len(at[sigma]['act'])
 	nb_rep = len(at[sigma]['rep'])
@@ -143,76 +152,36 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	mact = [np.mean(x) for x in at_act]
 	mrep = [np.mean(x) for x in at_rep]
 	mnone = [np.mean(x) for x in at_none]
+	
 	pvals = []
-	if methstat == 'actvsrep':
-		for a,r in zip(at_act,at_rep): # H0 : ATact <= ATrep, H1 : ATact > ATrep, t-test(act,rep), pval / 2
-			val = stats.ttest_ind(a,r,equal_var=False)[1] / 2
-			pvals.append(val)
-
-	elif methstat == 'actvsnone': # H0 : ATact <= ATnone and ATrep >= ATnone, H1 : ATact > ATnone and ATrep < ATnone
-		for a,r,n in zip(at_act,at_rep,at_none):
-			val = (stats.ttest_ind(a,n,equal_var=False)[1] / 2) * (stats.ttest_ind(n,r,equal_var=False)[1] / 2)
-			pvals.append(val)
-
-	if statw == True: # write pvalues in file for each position
-		res = open("{}res/jet4/{}-bef{}-aft{}.txt".format(basedir,titl,before,after),'w')
-		for val in pvals:
-			res.write('{}\n'.format(str(val)))
-		res.close()
-
 	pos = [x for x in range(-before,after+1,shift)]
 
-	if draw == 'std':
-		fig, ax = plt.subplots()
-		act = plt.plot(pos,mact,'rD',linestyle='solid', color='red', markersize=3,label=str(nb_act)+' Activated')
-		rep = plt.plot(pos,mrep,'bD',linestyle='solid', color='blue',markersize=3,label=str(nb_rep)+' Repressed')
-		try:
-			if nb_none > 1:
-				plt.plot(pos,mnone,'kD',linestyle='solid', color='black',markersize=3,label=str(nb_none)+' Non affected')
-		except:
-			pass
-		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
+	methstat = kwargs.get('methstat','actvsrep') # stat method to compute pvalue between groups. Actvsrep : ttest(activated > repressed). Actvsnone : ttest(act > none)*ttest(rep < none).
+	statw = kwargs.get('statw',True) # True : write pval results for each position in a text file 
+	if statw == True: # write pvalues in file for each position
+		if methstat == 'actvsrep':
+			for a,r in zip(at_act,at_rep): # H0 : ATact <= ATrep, H1 : ATact > ATrep, t-test(act,rep), pval / 2
+				val = stats.ttest_ind(a,r,equal_var=False)[1] / 2
+				pvals.append(val)
 
-		i = - before
-		for val in pvals: 
-			if val <= 0.001:
-				s = '***'
-			elif val <= 0.01:
-				s = '**' 
-			elif val <= 0.05:
-				s = '*' 
-			else:
-				s = ''
+		# elif methstat == 'actvsnone': # H0 : ATact <= ATnone and ATrep >= ATnone, H1 : ATact > ATnone and ATrep < ATnone
+		# 	for a,r,n in zip(at_act,at_rep,at_none):
+		# 		val = (stats.ttest_ind(a,n,equal_var=False)[1] / 2) * (stats.ttest_ind(n,r,equal_var=False)[1] / 2)
+		# 		pvals.append(val)
 
-			if s != '':
-				plt.text(i,min(min(mact),min(mrep))+1,s,fontweight='bold')
-			i += shift
+		res = open(pathdb+"/{}.txt".format(titl),'w')
+		res.write('position\tp-value unilateral t-test\n')
+		for p,val in zip(pos,pvals):
+			res.write('{}\t{}\n'.format(str(p),str(val)))
+		res.close()
 
-		width = 6
-		height = width / 1.618
-		fig.set_size_inches(width, height)
-
-		ax.set_ylabel('AT content (%)',fontweight='bold')
-		ax.set_xlabel('Position (nt)',fontweight='bold')
-		ax.set_xlim(-before,after)
-		ax.set_title(titl,fontweight='bold')
-		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
-		plt.tight_layout()
-
-		if sigma == 'all':
-			leg = 'All Promoters'
-		else:
-			leg = '$\sigma {}$ Promoters'.format(sigma.replace('sigma',''))
-		
-		ax.legend(title=leg,ncol=1,loc='upper left')
-		plt.savefig("/home/raphael/Documents/topo/results/stage/{}-bef{}-aft{}.svg".format(titl,before,after),transparent=False)
-		plt.close('all')
-
+	draw = kwargs.get('draw', 'CI') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
 	if draw == 'CI':
 		fig, ax = plt.subplots()		
-		ciact = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_act]
-		cirep = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_rep]
-		cinone = [(np.mean(x)-np.std(x)/np.sqrt(len(x)),np.mean(x)+np.std(x)/np.sqrt(len(x))) for x in at_none]
+		fact = 1
+		ciact = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_act]
+		cirep = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_rep]
+		cinone = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_none]
 
 		plt.fill_between(pos,[x[0] for x in ciact], [x[1] for x in ciact], facecolor = 'red', alpha = 0.5, label=str(nb_act)+' Activated',linewidth=0)
 		plt.fill_between(pos,[x[0] for x in cirep], [x[1] for x in cirep], facecolor = 'blue', alpha = 0.5, label=str(nb_rep)+' Repressed',linewidth=0)
@@ -220,19 +189,15 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		plt.plot(pos,mact, linestyle = 'solid', color = 'red', linewidth = 1.5, alpha=0.8)
 		plt.plot(pos,mrep, linestyle = 'solid', color = 'blue', linewidth = 1.5, alpha=0.8)
 		try:
-			if nb_none > 1:
+			if nb_none > 20:
 				plt.plot(pos,mnone, linestyle = 'solid', color = 'black', label=str(nb_none)+' Non affected', linewidth = 1.5)
 		except:
 			pass
 
-		width = 10
-		height = width / 1.618
-		fig.set_size_inches(width, height)
-
 		ax.set_ylabel('AT content (%)',fontweight='bold')
 		ax.set_xlabel('Position (nt)',fontweight='bold')
 		ax.set_xlim(-before,after)
-		ax.set_title(org,fontweight='bold')
+		ax.set_title(org+'_{}'.format(cond_fc),fontweight='bold')
 		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
 		plt.tight_layout()
 
@@ -242,9 +207,119 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 			leg = '$\sigma {}$ Promoters'.format(sigma.replace('sigma',''))
 		
 		ax.legend(title=leg,ncol=1,loc='upper left')
-		plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
-		plt.savefig("/home/raphael/Documents/topo/results/stage/{}-bef{}-aft{}.svg".format(titl,before,after),transparent=False)
+		#plt.arrow(align,0,0, max(max(mact),max(mrep)),linestyle='dashed',color='gray')
+
+		width = 5 ; height = width / 1.618
+		fig.set_size_inches(width, height)
+		plt.tight_layout()
+		plt.savefig(pathdb+"/{}.svg".format(titl),transparent=False)
 		plt.close('all')
+
+	fullplots = kwargs.get('fullplots',True)
+	locs = kwargs.get('locs',[-2]) # positions where AT contents are compared
+	if fullplots:
+		for loc in locs:
+			idx = before + loc # index of at_act list corresponding to loc position
+			a = Counter(at_act[idx]) # dict of nb of occurences of each element
+			a['idx'] = 'act'
+			r = Counter(at_rep[idx])
+			r['idx'] = 'rep'
+			if nb_none > 20:
+				n = Counter(at_none[idx])
+				n['idx'] = 'non'
+			else:
+				n = {}
+			res_loc = {}	
+			for d in [a,r,n]:
+				for k in d.keys():
+					if k != 'idx':
+						if k not in res_loc.keys():
+							res_loc[k] = {'act':0,'rep':0,'non':0}
+						res_loc[k][d['idx']] += d[k]
+
+			x = [] ; y = [] ; stds = [] ; cim = []
+			for k in res_loc.keys():
+				tot = res_loc[k]['act']+res_loc[k]['rep']
+				if tot > 7:
+					pexp = float(res_loc[k]['act']) / float(tot)
+					std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+					ci = proportion.proportion_confint(res_loc[k]['act'], tot, alpha=0.05, method='normal')
+					cim.append((ci[1] - ci[0])/2)
+
+					x.append(k)
+					y.append(pexp)
+					stds.append(std)
+
+			X = sm.add_constant(x)
+			wls_model = sm.WLS(y, X, weights=1/np.power(np.array(stds),2)) # weights proportional to the inverse of std2
+			results = wls_model.fit()
+			slope = results.params[1]
+			OR = results.params[0]
+			pval = str(round(results.pvalues[1],3))
+			spearman = str(round(stats.spearmanr(x,y)[1],3))
+			pearson = str(round(stats.pearsonr(x,y)[1],3))
+			width = 3 ; height = width / 1.4
+			fig, ax = plt.subplots()
+			plt.plot(x, y, marker='o', color='black',markersize=6, linestyle='None', fillstyle='none')
+			plt.errorbar(x, y,yerr=cim,mec='black', capsize=5, elinewidth=1,mew=1,linestyle='None', color='black')
+			plt.plot([-20]+x+[120],np.array([-20]+x+[120])*slope + OR, color='black',linewidth=0.5)   
+			ax.set_ylabel("proportion of\nactivated promoters")
+			ax.set_xlabel('AT %')
+			ax.set_xlim(-10,110)
+			ax.set_title("Reg: {}, Pear.: {}, Spear.: {}".format(pval,spearman,pearson),fontsize=9)
+			fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+			fig.set_size_inches(width, height)
+			plt.tight_layout()
+			plt.savefig(pathdb+"/"+titl+"_pos"+str(loc)+"_reg.svg",transparent=False)
+			plt.close('all')
+
+			print x,y,cim
+			fact = 1.96
+			if nb_none > 20:
+				labs = ["act","non","rep"]
+				yval = [np.mean(at_act[idx]),np.mean(at_none[idx]),np.mean(at_rep[idx])]
+				stdval = [fact*np.std(at_act[idx])/np.sqrt(len(at_act[idx])),fact*np.std(at_none[idx])/np.sqrt(len(at_none[idx])),fact*np.std(at_rep[idx])/np.sqrt(len(at_rep[idx]))]
+				xval = [0,1,2]
+				col = ['red','black','blue']
+			else:
+				labs = ["act","rep"]
+				yval = [np.mean(at_act[idx]),np.mean(at_rep[idx])]
+				stdval = [fact*np.std(at_act[idx])/np.sqrt(len(at_act[idx])),fact*np.std(at_rep[idx])/np.sqrt(len(at_rep[idx]))]
+				xval = [0,1]
+				col = ['red','blue']
+
+			s = significance(pvals[idx])
+			print pvals[idx],idx
+			if s == 'ns':
+				fs = 14
+				dt = 0.01
+			else:
+				fs = 18
+				dt = 0
+
+			fig_width = 2 ; fig_height = 2.2
+			fig = plt.figure(figsize=(fig_width,fig_height))
+			plt.bar(xval, yval, yerr = stdval, width = 0.6, color = 'white',edgecolor = 'black', linewidth = 2, ecolor = 'black', capsize = 3.5)
+			plt.xticks(xval,labs,rotation = 45)
+			plt.xlim(xval[0]-0.5,xval[-1]+0.5)
+			if len(xval) == 2:
+				barplot_annotate_brackets(0,1, s, xval,yval,yerr=stdval,fs=fs, dt=dt,barh=0.01)
+			else:
+				barplot_annotate_brackets(0,2, s, xval,yval,yerr=stdval,fs=fs, dt=dt,barh=0.01)
+
+			plt.ylabel("AT %")
+			ylim1 = min(yval) - 5
+			ylim2 = max(yval) + 10
+			plt.ylim(ylim1,ylim2)
+
+			fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+			#plt.title('{}'.format(cond_fc),fontsize=11)
+			plt.tight_layout()
+			plt.savefig(pathdb+"/"+titl+"_pos"+str(loc)+"_group.svg",transparent=False)
+			plt.close('all')
+ 
+
+
 
 def compute_at_spacer(gen,cond_tss,*arg,**kwargs):
 
@@ -321,92 +396,131 @@ def compute_at_spacer(gen,cond_tss,*arg,**kwargs):
 	plt.close('all')
 
 
-
-def compute_at_discr(gen,*arg,**kwargs):
+def compute_at_evolution2(gen,cond_fc,cond_tss,*arg,**kwargs):
 	'''
 	'''
-
-	gen.load_fc_pval()
-	gen.load_TSS() 
-	gen.load_seq() 
 
 	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
 	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-	wind = kwargs.get('wind', 6)
-	cond_tss = kwargs.get('cond_tss', 'biocyc')
-	cond_fc = kwargs.get('cond_fc', 'Blot')
-
-	ATactref = kwargs.get('actref', 0.08)
-	ATrepref = kwargs.get('repref', 0.02)
-	ATref = 100 - GC(gen.seq)
-	ATact = []
-	ATrep = []
-
+	
+	at = {'act':{'FC':[],'AT':[]},'rep':{'FC':[],'AT':[]},'non':{'FC':[],'AT':[]}}
+	at_vals = {}
 	for TSS in gen.TSSs[cond_tss].keys():
+		TSSu = gen.TSSs[cond_tss][TSS]
+		expr = [] ; expr_none = [] ; at_val = []
 		try:
-			TSSu = gen.TSSs[cond_tss][TSS]
-			if TSSu.strand == True:
-				AT = 100 - GC(gen.seq[TSSu.promoter[sigfactor]['sites'][1]:TSSu.promoter[sigfactor]['sites'][1]+wind])
-			elif TSSu.strand == False:
-				AT = 100 - GC(gen.seq[TSSu.promoter[sigfactor]['sites'][0]-wind-1:TSSu.promoter[sigfactor]['sites'][0]-1])
-
-			expr = []
+			at_val = 100 - GC(TSSu.promoter['region'])
+			print at_val
+			if at_val not in at_vals.keys():
+				at_vals[at_val] = []
 			for gene in TSSu.genes:
 				try:
 					if gen.genes[gene].fc_pval[cond_fc][1] <= thresh_pval:
 						expr.append(gen.genes[gene].fc_pval[cond_fc][0])
+					else:
+						expr_none.append(gen.genes[gene].fc_pval[cond_fc][0])
 				except:
 					pass
-
 			if expr != []:
+				at_vals[at_val].append(np.mean(expr))
 				if np.mean(expr) < 0 - thresh_fc:
-					ATact.append(AT)
+					at['rep']['AT'].append(at_val)
+					at['rep']['FC'].append(np.mean(expr))
 				elif np.mean(expr) > 0 + thresh_fc:
-					ATrep.append(AT)
+					at['act']['AT'].append(at_val)
+					at['act']['FC'].append(np.mean(expr))
+				else:
+					if expr_none == []:
+						at['non']['AT'].append(at_val)
+						at['non']['FC'].append(np.mean(expr))
+			elif expr_none != []:
+				at_vals[at_val].append(np.mean(expr_none))
+				at['non']['AT'].append(at_val)
+				at['non']['FC'].append(np.mean(expr_none))
 		except:
 			pass
 
-	ATs = ATact + ATrep
-	titl = '{}_{}_FC{}_PVAL{}'.format(cond_tss,cond_fc,str(thresh_fc),str(thresh_pval))
+	nb_act = len(at['act']['AT'])
+	nb_rep = len(at['rep']['AT'])
+	nb_none = len(at['non']['AT'])
+	x = [] ; y = [] ; stds = []
+	for at_val in at_vals.keys():
+		try:
+			val = np.array(at_vals[at_val])
+			if val.shape[0] > 10:
+				act = val[val > 0 + thresh_fc].shape[0]
+				rep = val[val < 0 - thresh_fc].shape[0]
+				tot = act + rep
+				pexp = float(act) / float(tot)
+				std = np.array(stats.binom.std(tot, pexp, loc=0))/tot
+				x.append(at_val)
+				y.append(pexp)
+				stds.append(std)
+		except:
+			pass
+	X = sm.add_constant(x)
+	wls_model = sm.WLS(y, X, weights=1/np.power(np.array(stds),2)) # weights proportional to the inverse of std2
+	results = wls_model.fit()
+	slope = results.params[1]
+	OR = results.params[0]
+	pval = results.pvalues[1]
 
-	fig = plt.figure()
-	fig.set_size_inches(8,10)
+	# lists of AT contents per position instead of lists of AT contents per promoter
+	# mean of AT contents per position for act, rep and non regulated promoters
+	titl = '{}_{}_FC{}_PVAL{}'.format(cond_tss,cond_fc.replace('/',''),str(thresh_fc),str(thresh_pval))
+	pathdb = '{}data/{}/discriminator'.format(basedir,gen.name)
+	if not os.path.exists(pathdb):
+		os.makedirs(pathdb)
 
-	plt.subplot(321)
-	plt.hist(ATs,normed=True,align='left',edgecolor='black',color='lightgray')
-	plt.title('All promoters', fontweight='bold')
-	plt.xlim(0,100)
+	meth = kwargs.get('meth',2)
+	if meth ==1:
+		x = at['act']['AT'] + at['rep']['AT']# + at['non']['AT']
+		y = at['act']['FC'] + at['rep']['FC']# + at['non']['FC']
+
+	if not os.path.exists(pathdb+'/stats.txt'):
+		res = open(pathdb+'/stats.txt','w')
+		res.close()
+	res = open(pathdb+'/stats.txt','a')
+	spearman = 	stats.spearmanr(x,y)
+	pearson = stats.pearsonr(x,y)
+	s0 = str(round(spearman[0],4)) ; s1 = str(round(spearman[1],4))
+	p0 = str(round(pearson[0],4)) ; p1 = str(round(pearson[1],4))
+	res.write('{}\tPearson = {}|{}\tSpearman= {}|{}\tWLR = {}\n'.format(cond_fc.replace('/',''), s0, s1, p0, p1,str(round(pval,4))))
+	res.close()
+
+
+	if meth == 1:
+		fig, ax = plt.subplots()
+		plt.scatter(at['act']['AT'], at['act']['FC'], label=str(nb_act)+' Activated', color='red')		
+		plt.scatter(at['rep']['AT'], at['rep']['FC'], label=str(nb_rep)+' Repressed', color='blue')		
+		plt.scatter(at['non']['AT'], at['non']['FC'], label=str(nb_none)+' Non affected', color='lightgray')		
+
+		ax.set_ylabel('log2FC')
+		ax.set_xlabel('AT %')
+		ax.set_title(cond_fc)
+		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+		leg = 'All Promoters'	
+		ax.legend(title=leg,ncol=1,loc='upper left')
+		width = 4 ; height = width / 1.618
+		fig.set_size_inches(width, height)
+		plt.tight_layout()
+		plt.savefig(pathdb+"/"+titl+".svg",transparent=False)
+		plt.close('all')
+	elif meth == 2:
+		fig, ax = plt.subplots()
+		plt.plot(x, y, 'rD', markersize=7, linestyle='None')
+		plt.errorbar(x, y,yerr=stds,mec='black', capsize=10, elinewidth=1,mew=1,linestyle='None', color='black')
+		plt.plot(x,np.array(x)*slope + OR, linestyle='dashed', color='black')    
+		ax.set_ylabel("Activated promoters proportion")
+		ax.set_xlabel('AT %')
+		ax.set_title(cond_fc)
+		fig.subplots_adjust(left=.15, bottom=.16, right=.99, top=.97)
+		width = 4 ; height = width / 1.618
+		fig.set_size_inches(width, height)
+		plt.tight_layout()
+		plt.savefig(pathdb+"/"+titl+".svg",transparent=False)
+		plt.close('all')
 	
-	plt.subplot(323)
-	plt.hist(ATact,normed=True,align='left',edgecolor='black',color='red')
-	plt.title('Activated promoters', fontweight='bold')
-	plt.xlim(0,100)
-
-	plt.subplot(325)
-	plt.hist(ATrep,normed=True,align='left',edgecolor='black',color='blue')
-	plt.ylabel('Proportion', fontweight='bold')
-	plt.xlabel('AT %', fontweight='bold')
-	plt.title('Repressed promoters', fontweight='bold')
-	plt.xlim(0,100)
-
-#####
-
-	plt.subplot(322)
-	plt.hist(np.random.binomial(len(ATs),ATref/100),normed=True,align='left',edgecolor='black',color='lightgray')
-	plt.title('All promoters', fontweight='bold')
-	
-	plt.subplot(324)
-	plt.hist(np.random.binomial(len(ATact),ATactref),normed=True,align='left',edgecolor='black',color='red')
-	plt.title('Activated promoters', fontweight='bold')
-
-	plt.subplot(326)
-	plt.hist(np.random.binomial(len(ATrep),ATrepref),normed=True,align='left',edgecolor='black',color='blue')
-	plt.ylabel('Proportion', fontweight='bold')
-	plt.xlabel('AT %', fontweight='bold')
-	plt.title('Repressed promoters', fontweight='bold')
-	
-	plt.savefig("{}res/jet4/{}.svg".format(basedir,titl),transparent=False)
-	plt.close('all')
 
 def write_genes(gen,cond_fc):
 	act = open(basedir+'data/genes_act.txt','w')
