@@ -43,7 +43,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	# kwargs
 	thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
 	thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-	align = kwargs.get('align',-10) # position where promoters are aligned for comparison
+	align = kwargs.get('align',-10) # position where promoters are aligned for comparison ; either -10 element, -35 or TSS
 	before = kwargs.get('bef',35) # number of bp to look below TSS position
 	after = kwargs.get('aft',10) # number of bp to look above TSS position
 	org = kwargs.get('org', gen.name) # organism name to use for plot title
@@ -76,7 +76,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 					expr_none.append(gen.genes[gene].fc_pval[cond_fc][0])
 			except:
 				pass
-
+		# Classifies promoter act, rep or non affected depending on gene expresion values
 		if expr != [] and at_val != []:
 			if np.mean(expr) < 0 - thresh_fc:
 				at['all']['rep'].append(at_val)
@@ -132,6 +132,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 				pass
 
 	sigma = kwargs.get('sigma',sigfactor)
+	# if sigma = all, aligns on TSS
 	if sigma == 'all':
 		align = 0
 
@@ -141,6 +142,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 
 	titl = '{}-{}-{}-FC{}-PVAL{}'.format(cond_tss,cond_fc.replace('/',''),sigma,thresh_fc,thresh_pval)
 
+	# Number of act rep and non affected promoters 
 	nb_act = len(at[sigma]['act'])
 	nb_rep = len(at[sigma]['rep'])
 	nb_none = len(at[sigma]['none'])
@@ -178,7 +180,7 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 	draw = kwargs.get('draw', 'CI') # std : draw AT curves with annotated pvalues. If draw == 'CI', draw CI
 	if draw == 'CI':
 		fig, ax = plt.subplots()		
-		fact = 1
+		fact = 1 
 		ciact = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_act]
 		cirep = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_rep]
 		cinone = [(np.mean(x)-fact*(np.std(x)/np.sqrt(len(x))),np.mean(x)+fact*(np.std(x)/np.sqrt(len(x)))) for x in at_none]
@@ -216,9 +218,12 @@ def compute_at_windows(gen,cond_fc,cond_tss,*arg,**kwargs):
 		plt.close('all')
 
 	fullplots = kwargs.get('fullplots',True)
+	# Creates additional graphes: 
+	#	% activated promoters for each possible AT content for given windows for given position, default -2 (typical )
+	#	Comparison of mean AT contents between activated, non affected and repressed promoters for given position
 	locs = kwargs.get('locs',[-2]) # positions where AT contents are compared
 	if fullplots:
-		for loc in locs:
+		for loc in locs: # for each position to be compared
 			idx = before + loc # index of at_act list corresponding to loc position
 			a = Counter(at_act[idx]) # dict of nb of occurences of each element
 			a['idx'] = 'act'

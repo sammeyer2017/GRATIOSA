@@ -13,6 +13,7 @@ from itertools import groupby
 from globvar import *
 from Gene import Gene
 from TSS import TSS
+from TTS import TTS
 from TU import TU
 from Operon import Operon
 from Terminator import Terminator
@@ -315,11 +316,52 @@ def load_seq(filename):
     my_file.close
     return seq
 
-def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, strand, *args, **kwargs):
+
+def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, *args, **kwargs):
     TSS_dict = {} # dict of TSS objects
-    sig = kwargs.get('sig')
-    tag_column = kwargs.get('tag_column')
-    sites = kwargs.get('sites')
+    with open(filename, 'r') as f:
+        i = 1
+        while i < start_line:
+            header=next(f)
+            i+=1
+        for line in f:
+            line = line.strip('\n')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line=line.split(separator)
+            try:
+                pos = int(line[TSS_column])
+                strand = True if line[strandcol] in ["True","plus","+"] else False
+                genes = line[genescol] if genescol != None else []
+                sig = line[sigcol] if sigcol != None else None
+                sites = line[sitescol] if sitescol != None else None
+                
+                # if TSS needs to be init
+                if pos not in TSS_dict.keys():
+                    # init object tss
+                    TSS_dict[pos] = TSS(pos = pos)
+                    TSS_dict[pos].add_strand(strand)
+                    if genes != []:
+                        TSS_dict[pos].add_genes(genes,genes_dict)
+                        for gene in TSS_dict[pos].genes: # add TSS to gene attributes
+                            genes_dict[gene].add_id_TSS(pos)
+
+                # Add sigma factor and binding sites to the promoter dict
+                if sig != None: # if sigma column
+                    if sites != None:
+                        TSS_dict[pos].add_promoter(sig, sites = sites)
+                    else:
+                        TSS_dict[pos].add_promoter(sig)
+
+
+            except Exception as e:
+                print 'Error in line, wrong information type :',e
+
+    return TSS_dict
+
+def load_TTS_cond(filename, separator, start_line, leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol, *args, **kwargs):
+    TTS_dict = {} # dict of TSS objects
     with open(filename, 'r') as f:
         i=1
         while i < start_line:
@@ -332,30 +374,21 @@ def load_TSS_cond(genes_dict,filename, TSS_column, start_line , separator, stran
             else:
                 line=line.split(separator)
             try:
-                pos = int(line[TSS_column])
-                # if TSS need to be init
-                if pos not in TSS_dict.keys():
-                    # init object tss
-                    TSS_dict[pos] = TSS(pos = pos)
-                    TSS_dict[pos].add_strand(line[strand])
-                    if tag_column or tag_column == 0: # if tag column
-                        TSS_dict[pos].add_genes(line[tag_column],genes_dict)
-                        for gene in TSS_dict[pos].genes: # add TSS to gene attributes
-                            genes_dict[gene].add_id_TSS(pos)
-                # Add sigma factor and binding sites to the promoter dict
-                if sig: # if sigma column
-                    if line[sig] != '':
-                        if sites:
-                            if line[sites] != '':
-                                TSS_dict[pos].add_promoter(line[sig], sites = line[sites])
-                        else:
-                            TSS_dict[pos].add_promoter(line[sig])
+                left = int(line[leftcol])
+                right = int(line[rightcol])
+                strand = True if line[strandcol] in ["True","plus","+"] else False
+                rho_dpdt = True if line[rhocol] in ["True","TRUE","1"] else False
+                seq = line[seqcol] if seqcol != None else ""
+                score = line[scorecol] if scorecol != None else None
+                genes = line[genescol] if genescol != None else []
+
+                newTTS = TTS(left = left, right = right, strand = strand, rho_dpdt = rho_dpdt, seq = seq, score =  score, genes = genes)
+                TTS_dict[newTTS.start] = newTTS
 
             except Exception as e:
                 print 'Error in line, wrong information type :',e
 
-    return TSS_dict
-
+    return TTS_dict
 
 def proportion_of(dict, list_genes, composition, seq_plus, seq_minus):
     dict_proportion={}
@@ -531,13 +564,13 @@ class Genome:
         """
         self.name = kwargs.get('name')
         self.length = kwargs.get('length')
-        self.genes=kwargs.get('genes')
+        #self.genes=kwargs.get('genes')
         self.TSS_complete = {}
         self.TSS_plus={}
         self.TSS_minus={}
 
     def load_seq(self):
-        self.seq=load_seq(basedir+"data/"+self.name+"/sequence.fasta")
+        self.seq=load_seq(basedir+"data/"+self.name+"/sequence.fasta").upper()
         self.seqcompl=''
         if(self.length):
             if(self.length != len(self.seq)):
@@ -596,6 +629,10 @@ class Genome:
         """
         if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
             self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
+        elif os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff"):
+            self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff")
+
+
         elif os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
             with open(basedir+"data/"+self.name+"/annotation/annotation.info","r") as f:
                 for line in f:
@@ -657,26 +694,26 @@ class Genome:
                 for line in f:
                     line = line.strip('\n')
                     line = line.split('\t')
+
+                    filename = line[1] ; startline = int(line[4]) ; sep = line[5] ; strand = int(line[6]) ; TSScol = int(line[3])
+                    genescol = int(line[2]) if line[2] != "" else None
+                    sigcol = int(line[7]) if line[7] != "" else None
+                    sitescol = int(line[8]) if line[8] != "" else None
+
                     try: # successively try to load :
-                        try: # sites + tag non tested because sites without sig not possible
-                            try: # tag + sig + sites
-                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]), sig=int(line[7]), sites =int(line[8]))
-                            except: # tag + sig
-                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]), sig=int(line[7]))
-                        except:
-                            try: # sig + sites
-                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), sig=int(line[7]), sites =int(line[8]))
-                            except: # tag
-                                self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]), tag_column = int(line[2]))
-                    except: # if no tag, no sig, no sites
-                            self.TSSs[line[0]]=load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+line[1], int(line[3]), int(line[4]), line[5], int(line[6]))
-                    # append all entries to all TSS dict
-                    for entry in self.TSSs[line[0]].keys():
-                        try: # works if entry already in dict
-                            self.TSSs['all_TSS'][entry].append(line[0])
-                        except: # init list of conditions for entry
-                            self.TSSs['all_TSS'][entry] = []
-                            self.TSSs['all_TSS'][entry].append(line[0])
+                        self.TSSs[line[0]] = load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+filename, TSScol, startline, sep,strand, genescol, sigcol, sitescol)
+                        # append all entries to all TSS dict
+                        for entry in self.TSSs[line[0]].keys():
+                            try: # works if entry already in dict
+                                self.TSSs['all_TSS'][entry].append(line[0])
+                            except: # init list of conditions for entry
+                                self.TSSs['all_TSS'][entry] = []
+                                self.TSSs['all_TSS'][entry].append(line[0])
+
+                    except Exception as e:
+                        print "Error loading",cond,e
+
+
         else:
             print("No TSS.info, unable to load TSS")
 
@@ -871,8 +908,7 @@ class Genome:
         , fc column, file separator, startline, pvalcolumn (if not available leave empty)
         '''
         self.genes_valid = {} # for each condition, list of genes having a FC /pval value
-        if not self.genes: # if no genes loaded
-            # try to load them
+        if not hasattr(self,'genes'):
             self.load_annotation()
 
         if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"):
@@ -1002,6 +1038,7 @@ class Genome:
         self.load_neighbour_all()
         bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
         couple = kwargs.get('couple',3)
+        res = {"tandem":0,"divergent":0,"convergent":0,"isolated":0}
         for gene in self.genes:
             try:               
                 g = self.genes[gene]
@@ -1011,30 +1048,41 @@ class Genome:
                     if (g.start - lg.start) < bound and (rg.start - g.start) < bound:
                         if not lg.strand and not rg.strand:
                             self.genes[gene].add_orientation('tandem')
+                            res["tandem"] += 1
                         elif lg.strand and rg.strand:
                             self.genes[gene].add_orientation('tandem')
+                            res["tandem"] += 1
                         elif lg.strand and not rg.strand:
                             self.genes[gene].add_orientation('convergent')
+                            res["convergent"] += 1
                         elif not lg.strand and rg.strand:
                             self.genes[gene].add_orientation('divergent')
+                            res["divergent"] += 1
                     else:
                         self.genes[gene].add_orientation('isolated')
+                        res["isolated"] += 1
                 
                 elif couple == 2:
                     if g.strand:
                         if (g.start - lg.start) < bound:
                             if lg.strand:
                                 self.genes[gene].add_orientation('tandem')
+                                res["tandem"] += 1
                             elif not lg.strand:
                                 self.genes[gene].add_orientation('divergent')
+                                res["divergent"] += 1
                     if not g.strand:
                         if (rg.start - g.start) < bound:
                             if rg.strand:
                                 self.genes[gene].add_orientation('divergent')
+                                res["divergent"] += 1
                             elif not rg.strand:
                                 self.genes[gene].add_orientation('tandem')
+                                res["tandem"] += 1
             except:
                 pass
+                
+        self.orientation = res
 
     def compute_state_from_fc(self,*args,**kwargs):
         if not hasattr(self, 'genes_valid'):
@@ -1061,7 +1109,7 @@ class Genome:
         ''' Load TUs specified in TU.info
         '''
         self.TUs = {}
-        if not self.genes: # if no genes loaded
+        if not hasattr(self,"genes"): # if no genes loaded
             # try to load them
             self.load_annotation()
 
@@ -1079,6 +1127,32 @@ class Genome:
         else:
             print("No TU.info file, please create one")
 
+    def load_TTS(self,*args, **kwargs):
+        ''' Load TTS specified in TTS.info
+        '''
+        self.TTSs = {}
+        if not self.genes: # if no genes loaded
+            # try to load them
+            self.load_annotation()
+
+        if os.path.exists(basedir+"data/"+self.name+"/TTS/TTS.info"):
+            with open(basedir+"data/"+self.name+"/TTS/TTS.info","r") as f:
+                skiphead = next(f) # skip head
+                for header in f:
+                    header=header.strip()
+                    header=header.split('\t')
+                    leftcol = int(header[2]) ; rightcol = int(header[3]) ; strandcol = int(header[4]) ; rhocol = int(header[10])
+                    seqcol = int(header[7]) if header[7] != "" else None
+                    scorecol = int(header[8]) if header[8] != "" else None
+                    genescol = int(header[9]) if header[9] != "" else None
+                    try:                
+                        self.TTSs[header[0]]=load_TTS_cond(basedir+"data/"+self.name+"/TTS/"+header[1],header[6], int(header[5]), leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol)
+                    except Exception as e:
+                        print e
+                        print("Error loading cond",header[0])
+            f.close()
+        else:
+            print("No TTS.info file, please create one")
 
 ###################### ANTOINE #############################
 

@@ -19,12 +19,6 @@ class TSS:
 
     def add_strand(self,strand):
         self.strand = strand
-        if self.strand == '+':
-            self.strand= True
-        elif self.strand == '-':
-            self.strand=False
-        else:
-            self.strand = None
 
     def add_genes(self,tags,genes_dict):
         # tags must have the shape : [gene1,gene2]

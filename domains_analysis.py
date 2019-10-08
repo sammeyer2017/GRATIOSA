@@ -161,6 +161,9 @@ def compute_domains_scores(gen,*arg, **kwargs):
     
 
 def correlation_matrix(gen,*arg, **kwargs):
+    '''
+    Draws correlation matrix for all genes starting from FC (/! not expression)
+    '''
     if not hasattr(gen, 'genes_valid'): # if no fc loaded 
         try:
             print 'Trying to load FC...'
@@ -191,7 +194,7 @@ def correlation_matrix(gen,*arg, **kwargs):
     size= kwargs.get('size',250) # default value
 
     i = 0
-    dfs = [] ;
+    dfs = [] # In order to generate comprehensive images of correlation matrix, divides it into smaller matrix
     for i in range(1,df.shape[0],size): # create bins depending on windows size and increment value
         if (i+size) <= df.shape[0]: # enough length to create a bin
             dfs.append(df[i:i+size])

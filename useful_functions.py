@@ -237,110 +237,7 @@ def search_link(list):
         i+=1
 
 
-def compare_TSS_lists(TSSd1,TSSd2,*arg,**kwargs):
-    match = {'len':[len(TSSd1.keys()),len(TSSd2.keys())]}
-    bound = kwargs.get('bound',5)
-    sig = kwargs.get('sig',sigfactor)
 
-    match[0] = {'tot':0,'tot_sig':0,'m1035':0,'m10!35':0,'m35!10':0,'discr':0,'discrm1':0}
-    for b in range(0,bound+1):
-    # tot : total TSS matching
-    # tot_sig : among TSS matching, those which have a spacer for sigfactor
-        #match[b] = {'tot':0,'tot_sig':0,'m10':0,'m35':0}
-        match[0][b] = 0
-        # for bb in range(0,bound+1):
-        #     match[b][bb] = 0
-    dist = [[],[]]
-
-    for TSS1 in TSSd1.keys():
-        for TSS2 in TSSd2.keys():
-            TSSdiff = abs(TSS1-TSS2) # shift between TSS
-            try: # if TSSdiff between 0 (perfect match) and bound
-                match[TSSdiff]['tot'] += 1
-                SPdiff = abs(len(TSSd1[TSS1].promoter[sig]['spacer'])-len(TSSd2[TSS2].promoter[sig]['spacer'])) #shift between spacer lengths
-                match[TSSdiff]['tot_sig'] += 1 # both TSS have spacer for sigfactor
-                
-                if TSSd1[TSS1].strand == True:
-                    d1 = TSSd1[TSS1].pos - TSSd1[TSS1].promoter[sig]['sites'][1]-1
-                    d2 = TSSd2[TSS2].pos - TSSd2[TSS2].promoter[sig]['sites'][1]-1
-                
-                elif TSSd2[TSS2].strand == False:
-                    d1 = TSSd1[TSS1].promoter[sig]['sites'][0] - TSSd1[TSS1].pos -1
-                    d2 = TSSd2[TSS2].promoter[sig]['sites'][0] - TSSd2[TSS2].pos -1
-
-                dist[0].append(d1)
-                dist[1].append(d2)
-
-                if d == 0:
-                    match[TSSdiff]['discr'] += 1
-                elif d == 1:
-                    match[TSSdiff]['discrm1'] += 1
-
-                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
-                    match[TSSdiff]['m1035'] += 1
-                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] != TSSd2[TSS2].promoter[sig]['minus35']:
-                    match[TSSdiff]['m10!35'] += 1
-                if TSSd1[TSS1].promoter[sig]['minus10'] != TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
-                    match[TSSdiff]['m35!10'] += 1
-
-                match[TSSdiff][SPdiff] += 1
-            except: # key error
-                pass
-
-    return match,dist
-
-def draw_d(d):
-    plt.hist([d[0],d[1]], label=['Biocyc','bTSS'], range = (4,9), bins = 6,normed=True)
-    plt.ylabel('Frequency',fontweight='bold')
-    plt.xlabel('Discriminator length',fontweight='bold')
-    plt.legend()
-    plt.show()
-    # plt.title('Discriminator')
-
-
-
-def valid_TSS(gen,cond_fc,cond_tss,thresh_fc,*arg,**kwargs):
-    '''
-    For given TSS cond / FC cond, extract valid TSS (TSS with genes having a valid FC value).
-    '''
-    sig = kwargs.get('sig',sigfactor)
-    if not hasattr(gen, 'genes_valid'): # if no FC loaded 
-        gen.load_fc_pval()
-    if not hasattr(gen, 'TSSs'): # if no TSS loaded
-        gen.load_TSS() 
-    if not hasattr(gen, 'seq'): # if no seq loaded
-        gen.load_seq() 
-
-    validTSS = {'act':{'TSS':{},'values':[]},'rep':{'TSS':{},'values':[]}, 'all':{'TSS':{},'values':[]}}
-    for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
-        TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
-        expr = []
-        try:
-            if sig in TSSu.promoter.keys():
-                try:
-                    TSSu.compute_magic_prom(gen.seq,gen.seqcompl)
-                    spacer = len(TSSu.promoter[sig]['spacer'])
-                except: # if spacer length instead of sites coordinates
-                    spacer = TSSu.promoter[sig]['sites'][0]
-
-                if spacer in spacers:
-                    for gene in TSSu.genes:
-                        if gene in gen.genes_valid[cond_fc]:
-                            expr.append(gen.genes[gene].fc_pval[cond_fc][0])
-                    if expr != []:
-                        validTSS['all']['TSS'][TSSpos] = TSSu
-                        val = np.mean(expr)
-                        validTSS['all']['values'].append(val)
-                        if val > float(thresh_fc):
-                            validTSS['act']['TSS'][TSSpos] = TSSu
-                            validTSS['act']['values'].append(val)
-                        else:
-                            validTSS['rep']['TSS'][TSSpos] = TSSu
-                            validTSS['rep']['values'].append(val)
-        except Exception as e:
-            print e
-    
-    return validTSS
 
 
 ########## BAM2NPZ RNA_SEQ ANALYSIS, RAPHAEL ##########
@@ -696,100 +593,6 @@ Vincent CABELI
 """
 
 
-def write_genes_fc(gen,*args,**kwargs):
-    gen.load_fc_pval()
-    thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-    thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated 
-    pathdb = "/home/raphael/Documents/GO_ihfA/"
-    if not os.path.exists(pathdb):
-      os.makedirs(pathdb)
-
-    res = {}
-    for cond_fc in gen.genes_valid.keys():
-        res[cond_fc] = {'act':[],'rep':[],'non':[]}
-        for gene in gen.genes_valid[cond_fc]:
-            g = gen.genes[gene]
-            if g.fc_pval[cond_fc][1] <= thresh_pval:
-                if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                    res[cond_fc]['rep'].append(gene)
-                elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                    res[cond_fc]['act'].append(gene)
-                else:
-                    res[cond_fc]['non'].append(gene)
-            else:
-                    res[cond_fc]['non'].append(gene)
-
-    ihf = kwargs.get('ihfa', False)
-    if not ihf:
-        for cond_fc in res.keys():
-            res[cond_fc]['act'] = ','.join(res[cond_fc]['act'])
-            res[cond_fc]['rep'] = ','.join(res[cond_fc]['rep'])
-            res[cond_fc]['non'] = ','.join(res[cond_fc]['non'])
-        df = pd.DataFrame.from_dict(res,orient='index')
-        df.drop(['non'],axis=1,inplace=True)
-        df.to_csv(pathdb+'list_genes.csv')
-
-    if ihf:
-        for c in res.keys():
-            titl = "{}_act_{}.txt".format(len(res[c]['act']),c)           
-            file = open(pathdb+titl,"w")
-            for g in res[c]['act']:
-                file.write(g+"\n")
-            file.close()
-
-            titl = "{}_rep_{}.txt".format(len(res[c]['rep']),c)           
-            file = open(pathdb+titl,"w")
-            for g in res[c]['rep']:
-                file.write(g+"\n")
-            file.close()
-
-
-
-        pairs = [["WT_expo_vs_ihfA_expo","WT_stat_vs_ihfA_stat"],["WT_nov_expo_vs_ihfA_nov_expo","WT_nov_stat_vs_ihfA_nov_stat"],["ihfA_nov_expo_vs_ihfA_expo","ihfA_nov_stat_vs_ihfA_stat"],["WT_nov_expo_vs_WT_expo","WT_nov_stat_vs_WT_stat"], ["ihfA_PGA_stat_vs_ihfA_stat","ihfA_PGA_nov_stat_vs_ihfA_nov_stat"], ["WT_PGA_stat_vs_WT_stat","WT_PGA_nov_stat_vs_WT_nov_stat"],["WT_stat_vs_WT_expo","ihfA_stat_vs_ihfA_expo"],["WT_nov_stat_vs_WT_nov_expo","ihfA_nov_stat_vs_ihfA_nov_expo"]]
-
-        for pair in pairs:
-            A = res[pair[0]]
-            B = res[pair[1]]
-
-            Aact = set(A['act']) ; Arep = set(A['rep'])
-            Bact = set(B['act']) ; Brep = set(B['rep'])
-            
-            inter = Aact & Bact ; Aonly = Aact - Bact ; Bonly = Bact - Aact
-
-            titl = "{}_act_{}_{}.txt".format(str(len(inter)),pair[0],pair[1])           
-            file = open(pathdb+titl,"w")
-            for g in inter:
-                file.write(g+"\n")
-            file.close()
-
-            fig_width = 3.5 ; fig_height = 3.5
-            fig = plt.figure(figsize=(fig_width,fig_height))
-            d = venn2([Aact, Bact], set_labels = (pair[0], pair[1]))
-            d.get_label_by_id('A').set_fontsize(5)
-            d.get_label_by_id('B').set_fontsize(5)
-            plt.title("Activated")
-            plt.tight_layout()
-            plt.savefig(pathdb+titl[0:-4]+'.png',transparent=False, dpi=300)
-            plt.close('all')
-
-            
-            inter = Arep & Brep ; Aonly = Arep - Brep ; Bonly = Brep - Arep
-
-            titl = "{}_rep_{}_{}.txt".format(str(len(inter)),pair[0],pair[1])           
-            file = open(pathdb+titl,"w")
-            for g in inter:
-                file.write(g+"\n")
-            file.close()
-
-            fig_width = 3.5 ; fig_height = 3.5
-            fig = plt.figure(figsize=(fig_width,fig_height))
-            d = venn2([Arep, Brep], set_labels = (pair[0], pair[1]))
-            d.get_label_by_id('A').set_fontsize(5)
-            d.get_label_by_id('B').set_fontsize(5)
-            plt.title("Repressed")
-            plt.tight_layout()
-            plt.savefig(pathdb+titl[0:-4]+'.png',dpi=300,transparent=False)
-            plt.close('all')
 
 
 
@@ -1287,3 +1090,341 @@ def clean_operon_file(gen):
                     pass
     df = pd.DataFrame(operons)
     df.to_csv(basedir+"data/"+gen.name+"/operon_raph_clean.csv",header=True,sep="\t")    
+
+
+def correct_fasta(gen,res):
+    print gen.name
+    for gene in gen.genes.keys():
+        g = gen.genes[gene]
+        if g.name == "mioC" or g.name == "mnmG":
+            print gene, g.name, g.start
+            res[gene] = (g.name,g.start)
+
+    if res["mioC"][1] > 1000 and res["mioC"][1] > res["mnmG"][1]:
+        newstart = res["mioC"][1] ; newstop = res["mnmG"][1]
+
+
+def load_annot_detailed(gen, *arg,**kwargs):
+    if not hasattr(gen,'genes'):
+        gen.load_annotation()
+
+    with open(basedir+"data/"+gen.name+"/annotation/annot_detailed.info","r") as f:
+        skiphead = next(f) # skip head        
+        for line in f:
+            line=line.strip()
+            line=line.split('\t')
+            locuscol = int(line[0]) ; ordercol = int(line[1]) ; operoncol = int(line[2])
+            snamecol = int(line[3]) ; domaincol = int(line[4]) ; LScol = int(line[5])
+            replichorecol = int(line[6]) ; myclassifcol = int(line[7]) ; mysubclasscol = int(line[8])
+            mylvlcol = int(line[9])
+        f.close()    
+    
+    with open(basedir+"data/"+gen.name+"/annotation/annot_detailed.csv","r") as f:
+        skiphead = next(f) # skip head        
+        for line in f:
+            line=line.strip()
+            line=line.split('\t')
+            try:
+                gen.genes[line[locuscol]].order = int(line[ordercol])
+                gen.genes[line[locuscol]].operon = int(line[operoncol])
+                gen.genes[line[locuscol]].sname = line[snamecol]
+                gen.genes[line[locuscol]].domain = int(line[domaincol])
+                gen.genes[line[locuscol]].leading_strand = int(line[LScol])
+                gen.genes[line[locuscol]].replichore = line[replichorecol]
+                gen.genes[line[locuscol]].myclassif = line[myclassifcol]
+                gen.genes[line[locuscol]].mysubclass = line[mysubclasscol]
+                gen.genes[line[locuscol]].mylvl = line[mylvlcol]
+                gen.genes[line[locuscol]].locus_tag = line[locuscol]
+            except Exception as e:
+                pass
+
+        f.close()  
+    gen.annot_detailed = True
+
+def export_annot_detailed(gen, l, name, *arg,**kwargs):
+    res = {}
+    for g in l:
+        res[g] = gen.genes[g].__dict__
+
+    df = pd.DataFrame.from_dict(res, orient='index')
+    df.sort_index(inplace=True)
+    df = df[["locus_tag","sname","left","right","strand","replichore","leading_strand","order","domain","myclassif","mysubclass","mylvl"]]
+    df.to_csv(basedir+"data/"+gen.name+"/annotation/"+name+".csv",sep='\t',encoding='utf-8', index=False)
+
+
+
+
+
+
+def write_genes_fc(gen,*args,**kwargs):
+    gen.load_fc_pval()
+    thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
+    thresh_fc = kwargs.get('thresh_fc', 1) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated 
+    # pathdb = "/home/raphael/Documents/GO_ihfA/"
+    # if not os.path.exists(pathdb):
+    #   os.makedirs(pathdb)
+
+    res = {}
+    for cond_fc in gen.genes_valid.keys():
+        res[cond_fc] = {'act':[],'rep':[],'non':[]}
+        for gene in gen.genes_valid[cond_fc]:
+            g = gen.genes[gene]
+            if g.fc_pval[cond_fc][1] <= thresh_pval:
+                if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
+                    res[cond_fc]['rep'].append(gene)
+                elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
+                    res[cond_fc]['act'].append(gene)
+                else:
+                    res[cond_fc]['non'].append(gene)
+            else:
+                    res[cond_fc]['non'].append(gene)
+
+    groups = [["WT_expo_vs_ihfA_expo", "WT_stat_vs_ihfA_stat", "WT_PGA_stat_vs_ihfA_PGA_stat"],
+    ["WT_nov_expo_vs_ihfA_nov_expo","WT_nov_stat_vs_ihfA_nov_stat","WT_PGA_nov_stat_vs_ihfA_PGA_nov_stat"],
+    ["WT_nov_expo_vs_WT_expo","WT_nov_stat_vs_WT_stat","WT_PGA_nov_stat_vs_WT_PGA_stat"],
+    ["ihfA_nov_expo_vs_ihfA_expo","ihfA_nov_stat_vs_ihfA_stat","ihfA_PGA_nov_stat_vs_ihfA_PGA_stat"]]
+
+    lgd = ["ihfA responsive","ihfA responsive under relaxation","relaxation responsive","relaxation responsive without ihfA"]
+
+    reslist = {}
+    i = 0
+    for group in groups:
+        A = res[group[0]] ; B = res[group[1]] ; C = res[group[2]]
+        Aact = A["act"] ; Arep = A["rep"]
+        Bact = B["act"] ; Brep = B["rep"]
+        Cact = C["act"] ; Crep = C["rep"]
+
+        allact = set(Aact) | set(Bact) | set(Cact) 
+        allrep = set(Arep) | set(Brep) | set(Crep)
+
+        reslist[lgd[i]] = {"act":list(allact),"rep":list(allrep)}
+        i += 1
+        print group
+        print len(Aact),len(Bact),len(Cact),len(allact),len(Aact)+len(Bact)+len(Cact)
+        print len(Arep),len(Brep),len(Crep),len(allrep),len(Arep)+len(Brep)+len(Crep)
+
+    for group in reslist.keys():
+        for reg in reslist[group].keys():
+            pathDB = basedir+"data/"+gen.name+"/GO_analysis/res_lists_DB/{}_{}.txt".format(group,reg)           
+            file = open(pathDB,"w")
+            for g in reslist[group][reg]:
+                file.write(g+"\n")
+            file.close()
+
+
+    # ihf = kwargs.get('ihfa', False)
+    # if not ihf:
+    #     for cond_fc in res.keys():
+    #         res[cond_fc]['act'] = ','.join(res[cond_fc]['act'])
+    #         res[cond_fc]['rep'] = ','.join(res[cond_fc]['rep'])
+    #         res[cond_fc]['non'] = ','.join(res[cond_fc]['non'])
+    #     df = pd.DataFrame.from_dict(res,orient='index')
+    #     df.drop(['non'],axis=1,inplace=True)
+    #     df.to_csv(pathdb+'list_genes.csv')
+
+    # if ihf:
+    #     for c in res.keys():
+    #         titl = "{}_act_{}.txt".format(len(res[c]['act']),c)           
+    #         file = open(pathdb+titl,"w")
+    #         for g in res[c]['act']:
+    #             file.write(g+"\n")
+    #         file.close()
+
+    #         titl = "{}_rep_{}.txt".format(len(res[c]['rep']),c)           
+    #         file = open(pathdb+titl,"w")
+    #         for g in res[c]['rep']:
+    #             file.write(g+"\n")
+    #         file.close()
+
+
+
+    #    pairs = [["WT_expo_vs_ihfA_expo","WT_stat_vs_ihfA_stat"],["WT_nov_expo_vs_ihfA_nov_expo","WT_nov_stat_vs_ihfA_nov_stat"],["ihfA_nov_expo_vs_ihfA_expo","ihfA_nov_stat_vs_ihfA_stat"],["WT_nov_expo_vs_WT_expo","WT_nov_stat_vs_WT_stat"], ["ihfA_PGA_stat_vs_ihfA_stat","ihfA_PGA_nov_stat_vs_ihfA_nov_stat"], ["WT_PGA_stat_vs_WT_stat","WT_PGA_nov_stat_vs_WT_nov_stat"],["WT_stat_vs_WT_expo","ihfA_stat_vs_ihfA_expo"],["WT_nov_stat_vs_WT_nov_expo","ihfA_nov_stat_vs_ihfA_nov_expo"]]
+
+
+    
+    # pairs = [["WT_expo_vs_ihfA_expo","WT_nov_expo_vs_ihfA_nov_expo"],["WT_stat_vs_ihfA_stat","WT_nov_stat_vs_ihfA_nov_stat"]]
+    # pairs = [["WT_nov_expo_vs_WT_expo","ihfA_nov_expo_vs_ihfA_expo"], ["WT_nov_stat_vs_WT_stat","ihfA_nov_stat_vs_ihfA_stat"]]
+    # for pair in pairs:
+    #     A = res[pair[0]] ; B = res[pair[1]]
+
+        # Aact = set(A["act"]) ; Arep = set(A["rep"]) ; Bact = set(B["act"]) ; Brep = set(B["rep"])
+
+        # titl = "{}_{}.txt".format(pair[0],pair[1])           
+        # file = open(pathdb+titl,"w")
+        # for cond in [(Aact,pair[0],"act"),(Arep,pair[0],"rep"),(Bact,pair[1],"act"),(Brep,pair[1],"rep")]:
+        #     file.write(cond[2]+" "+cond[1]+"\n")
+        #     for g in cond[0]:
+        #         file.write(g+"\n")
+        # file.close()
+
+
+        # for reg in ["act","rep"]:
+        #     Areg = set(A[reg]) ; Breg = set(B[reg])
+        #     inter = Areg & Breg ; Aonly = Areg - Breg ; Bonly = Breg - Areg
+        #     export_annot_detailed(gen, inter, "{}_{}_I_{}".format(reg,pair[0],pair[1]))
+        #     export_annot_detailed(gen, Aonly, "{}_{}_only".format(reg,pair[0]))
+        #     export_annot_detailed(gen, Bonly, "{}_{}_only".format(reg,pair[1]))
+
+        # fig_width = 3.5 ; fig_height = 3.5
+        # fig = plt.figure(figsize=(fig_width,fig_height))
+        # d = venn2([Aact, Bact], set_labels = (pair[0], pair[1]))
+        # d.get_label_by_id('A').set_fontsize(5)
+        # d.get_label_by_id('B').set_fontsize(5)
+        # plt.title("Activated")
+        # plt.tight_layout()
+        # plt.savefig(pathdb+titl[0:-4]+'.png',transparent=False, dpi=300)
+        # plt.close('all')
+
+        
+        # inter = Arep & Brep ; Aonly = Arep - Brep ; Bonly = Brep - Arep
+
+        # titl = "{}_rep_{}_{}.txt".format(str(len(inter)),pair[0],pair[1])           
+        # file = open(pathdb+titl,"w")
+        # for g in inter:
+        #     file.write(g+"\n")
+        # file.close()
+
+        # fig_width = 3.5 ; fig_height = 3.5
+        # fig = plt.figure(figsize=(fig_width,fig_height))
+        # d = venn2([Arep, Brep], set_labels = (pair[0], pair[1]))
+        # d.get_label_by_id('A').set_fontsize(5)
+        # d.get_label_by_id('B').set_fontsize(5)
+        # plt.title("Repressed")
+        # plt.tight_layout()
+        # plt.savefig(pathdb+titl[0:-4]+'.png',dpi=300,transparent=False)
+        # plt.close('all')
+
+def compute_zscore_binomial(nbtot, nbobs, pexp):
+    '''
+    Approximation of binomial law by normal law and zscore computation
+    '''
+    return (nbobs - nbtot*pexp) / (np.sqrt((nbtot)*pexp*(1-pexp)))
+
+def compute_zscore_2means(X1, X2, mudiff, sd1, sd2, n1, n2):
+    pooledSE = np.sqrt(sd1**2/n1 + sd2**2/n2)
+    z = ((X1 - X2) - mudiff)/pooledSE
+    return z
+
+
+def correct_sequence(gen,orient,mioC):
+    print gen.name
+    gen.load_seq()
+    print len(gen.seq)
+
+    if orient:
+        newseq = gen.seq[mioC-1:] + gen.seq[0:mioC-1]
+    else:
+        newseq = gen.seqcompl[mioC-1:] + gen.seqcompl[0:mioC-1]     
+        newseq = newseq[::-1
+        ]
+    print len(newseq)
+    f = open(basedir+"data/"+gen.name+"/sequence.fasta","w")
+    f.write("> "+gen.name+"\n")
+    f.write(newseq)
+    f.close()
+
+
+def compare_TSS_lists(TSSd1,TSSd2,*arg,**kwargs):
+    match = {'len':[len(TSSd1.keys()),len(TSSd2.keys())]}
+    bound = kwargs.get('bound',5)
+    sig = kwargs.get('sig',sigfactor)
+
+    match[0] = {'tot':0,'tot_sig':0,'m1035':0,'m10!35':0,'m35!10':0,'discr':0,'discrm1':0}
+    for b in range(0,bound+1):
+    # tot : total TSS matching
+    # tot_sig : among TSS matching, those which have a spacer for sigfactor
+        #match[b] = {'tot':0,'tot_sig':0,'m10':0,'m35':0}
+        match[0][b] = 0
+        # for bb in range(0,bound+1):
+        #     match[b][bb] = 0
+    dist = [[],[]]
+
+    for TSS1 in TSSd1.keys():
+        for TSS2 in TSSd2.keys():
+            TSSdiff = abs(TSS1-TSS2) # shift between TSS
+            try: # if TSSdiff between 0 (perfect match) and bound
+                match[TSSdiff]['tot'] += 1
+                SPdiff = abs(len(TSSd1[TSS1].promoter[sig]['spacer'])-len(TSSd2[TSS2].promoter[sig]['spacer'])) #shift between spacer lengths
+                match[TSSdiff]['tot_sig'] += 1 # both TSS have spacer for sigfactor
+                
+                if TSSd1[TSS1].strand == True:
+                    d1 = TSSd1[TSS1].pos - TSSd1[TSS1].promoter[sig]['sites'][1]-1
+                    d2 = TSSd2[TSS2].pos - TSSd2[TSS2].promoter[sig]['sites'][1]-1
+                
+                elif TSSd2[TSS2].strand == False:
+                    d1 = TSSd1[TSS1].promoter[sig]['sites'][0] - TSSd1[TSS1].pos -1
+                    d2 = TSSd2[TSS2].promoter[sig]['sites'][0] - TSSd2[TSS2].pos -1
+
+                dist[0].append(d1)
+                dist[1].append(d2)
+
+                if d == 0:
+                    match[TSSdiff]['discr'] += 1
+                elif d == 1:
+                    match[TSSdiff]['discrm1'] += 1
+
+                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m1035'] += 1
+                if TSSd1[TSS1].promoter[sig]['minus10'] == TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] != TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m10!35'] += 1
+                if TSSd1[TSS1].promoter[sig]['minus10'] != TSSd2[TSS2].promoter[sig]['minus10'] and TSSd1[TSS1].promoter[sig]['minus35'] == TSSd2[TSS2].promoter[sig]['minus35']:
+                    match[TSSdiff]['m35!10'] += 1
+
+                match[TSSdiff][SPdiff] += 1
+            except: # key error
+                pass
+
+    return match,dist
+
+def draw_d(d):
+    plt.hist([d[0],d[1]], label=['Biocyc','bTSS'], range = (4,9), bins = 6,normed=True)
+    plt.ylabel('Frequency',fontweight='bold')
+    plt.xlabel('Discriminator length',fontweight='bold')
+    plt.legend()
+    plt.show()
+    # plt.title('Discriminator')
+
+
+
+def valid_TSS(gen,cond_fc,cond_tss,thresh_fc,*arg,**kwargs):
+    '''
+    For given TSS cond / FC cond, extract valid TSS (TSS with genes having a valid FC value).
+    '''
+    sig = kwargs.get('sig',sigfactor)
+    if not hasattr(gen, 'genes_valid'): # if no FC loaded 
+        gen.load_fc_pval()
+    if not hasattr(gen, 'TSSs'): # if no TSS loaded
+        gen.load_TSS() 
+    if not hasattr(gen, 'seq'): # if no seq loaded
+        gen.load_seq() 
+
+    validTSS = {'act':{'TSS':{},'values':[]},'rep':{'TSS':{},'values':[]}, 'all':{'TSS':{},'values':[]}}
+    for TSSpos in gen.TSSs[cond_tss].keys(): # for all TSS in cond_tss
+        TSSu = gen.TSSs[cond_tss][TSSpos] # single TS
+        expr = []
+        try:
+            if sig in TSSu.promoter.keys():
+                try:
+                    TSSu.compute_magic_prom(gen.seq,gen.seqcompl)
+                    spacer = len(TSSu.promoter[sig]['spacer'])
+                except: # if spacer length instead of sites coordinates
+                    spacer = TSSu.promoter[sig]['sites'][0]
+
+                if spacer in spacers:
+                    for gene in TSSu.genes:
+                        if gene in gen.genes_valid[cond_fc]:
+                            expr.append(gen.genes[gene].fc_pval[cond_fc][0])
+                    if expr != []:
+                        validTSS['all']['TSS'][TSSpos] = TSSu
+                        val = np.mean(expr)
+                        validTSS['all']['values'].append(val)
+                        if val > float(thresh_fc):
+                            validTSS['act']['TSS'][TSSpos] = TSSu
+                            validTSS['act']['values'].append(val)
+                        else:
+                            validTSS['rep']['TSS'][TSSpos] = TSSu
+                            validTSS['rep']['values'].append(val)
+        except Exception as e:
+            print e
+    
+    return validTSS

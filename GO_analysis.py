@@ -8,48 +8,70 @@ from statsmodels.stats.multitest import *
 import Genome
 
 def load_GO(gen,*args,**kwargs):
-	if not gen.genes: # if no genes loaded
+	'''
+	Loads file specified in GO.info to assign GO terms to genes
+	One condition corresponds to one annotation system, e.g. GO, COG, but also domain assignment for domain enrichment
+	'''
+	if not hasattr(gen, "genes"): # if no genes loaded
 		# try to load them
 		gen.load_annotation()
 
+	gen.GO = {}
 	if os.path.exists(basedir+"data/"+gen.name+"/GO_analysis/GO.info"):
-		with open(basedir+"data/"+gen.name+"/GO_analysis/GO.info","r") as f:
-			skiphead = next(f) # skip head
-			for header in f:
+		with open(basedir+"data/"+gen.name+"/GO_analysis/GO.info","r") as f1:
+			skiphead = next(f1) # skip head
+			for header in f1:
 				header=header.strip()
 				header=header.split('\t')
-		 		file = header[0]
-				tagcol = int(header[1])
-				GOcol = int(header[2])
-		f.close()
+				cond = header[0] # condition name
+		 		file = header[1] # file containing assignment gene / functions
+				tagcol = int(header[2])
+				GOcol = int(header[3])
+				gen.GO[cond] = {}
+
+				with open(basedir+"data/"+gen.name+"/GO_analysis/"+file, 'r') as f2:
+					header=next(f2)
+					for line in f2: 
+						line = line.strip('\n').split('\t')
+						try:
+							try:
+								gen.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
+							except:
+								gen.genes[line[tagcol]].GO = {}
+								gen.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
+						except Exception as e:
+							# print e
+							pass   
+				f2.close()
+				for gene in gen.genes.keys():
+					try:
+						g = gen.genes[gene]
+						for term in g.GO[cond]:
+							if term not in gen.GO[cond].keys():
+								gen.GO[cond][term] = []
+							gen.GO[cond][term].append(gene)
+					except Exception as e:
+						# print e
+						pass
+
+		f1.close()
 	else:
 		print("No GO.info file, please create one")
 
-	with open(basedir+"data/"+gen.name+"/GO_analysis/"+file, 'r') as f:
-		header=next(f)
-		for line in f:
-			line = line.strip('\n').split('\t')
-			try:
-				gen.genes[line[tagcol]].GO = line[GOcol].split(',')
-			except:
-				pass    
-	f.close()
-	gen.GO = {}
-	for gene in gen.genes.keys():
-		try:
-			g = gen.genes[gene]
-			for term in g.GO:
-				if term not in gen.GO.keys():
-					gen.GO[term] = []
-				gen.GO[term].append(gene)
-		except:
-			pass
+ 
 
 def GO_enrichment(gen,*args,**kwargs):
-    if not hasattr(gen,'GO'):
-        load_GO(gen)
-    files = os.listdir(basedir+"data/"+gen.name+"/GO_analysis/lists/")
-    for filename in files:
+	'''
+	Computes GO enrichment analysis from lists of genes
+	'''
+	if not hasattr(gen,'GO'):
+		load_GO(gen)
+	cond = kwargs.get("cond","GO")
+
+	files = os.listdir(basedir+"data/"+gen.name+"/GO_analysis/lists/")
+	files.remove("old_lists")
+	# Lists of genes within GO enrichment analysis has to be computed
+	for filename in files:
 		with open(basedir+"data/"+gen.name+"/GO_analysis/lists/"+filename) as f:
 			content = [x.strip() for x in f.readlines()] ; f.close()
 		res = {}
@@ -57,7 +79,7 @@ def GO_enrichment(gen,*args,**kwargs):
 		for gene in content:
 			try:
 				g = gen.genes[gene]
-				for term in g.GO:
+				for term in g.GO[cond]:
 					if term not in res.keys():
 						res[term] = {}
 						res[term]['list'] = []
@@ -71,22 +93,23 @@ def GO_enrichment(gen,*args,**kwargs):
 		g = len(content) # number of submitted genes
 		k = len(list(set(valid_genes))) # selection = number of submitted genes annotated at least once
 		
-		l = [gen.GO[a] for a in gen.GO.keys()] 
+		l = [gen.GO[cond][a] for a in gen.GO[cond].keys()] 
 		N = len(list(set([item for sublist in l for item in sublist]))) # total number of genes with some annotation in the category e.g. BP
-		d = GO_dict(gen)
+		d = GO_dict(gen,cond)
 		# selection of k balls in an urn containing m marked and n non-marked balls, and the observation that the selection contains x marked ball
 		file = []
 		for term in res.keys():
 			try:
-				m = len(gen.GO[term]) # number of marked elements = genes annotated for selected term
+				m = len(gen.GO[cond][term]) # number of marked elements = genes annotated for selected term
 				n = N - m # number of non marked elements = with some annotation but not to the selected GO term
 				x = res[term]['input']# number of marked elements in selection
 
 				pval = np.round(stats.hypergeom.sf(x-1,N,m,k),5) # pval = probability to observe at least x marked balls in the selection.
-				if m > 4:
+				if m > 4: # If there is at least 4 genes annotated to that term, otherwise it is not relevant
 					file.append([term,d[term],pval,x,m])
 			except:
 				pass
+		
 		df = pd.DataFrame(data=file,columns=['GO','Description','P-value','Count','Genome'])
 		df['P-value adj (FDR)'] = fdrcorrection(df['P-value'])[1]
 		df['%'] = (df['Count']/df['Genome'])*100
@@ -96,15 +119,17 @@ def GO_enrichment(gen,*args,**kwargs):
 		df = df[['GO','Description','Count','Genome','%','P-value adj (FDR)','P-value']]
 		df.to_csv(basedir+"data/"+gen.name+"/GO_analysis/res/"+filename[0:-4]+'_results.csv',sep='\t',index=False)
 
-def GO_dict(gen):
+def GO_dict(gen,cond):
 	d = {}
-	with open(basedir+"data/"+gen.name+"/GO_analysis/GOall.csv") as f:
+	name = "GOall.csv" if cond == "GO" else "domains_descr.csv"
+	with open(basedir+"data/"+gen.name+"/GO_analysis/"+name) as f:
 		skiphead = next(f)
 		for line in f:
 			line = line.strip().split(',')
 			d[line[0]] = line[2]
 	f.close()
 	return d
+
 
 # print'total number in population: ' + sys.argv[1]
 # print 'total number with condition in population: ' + sys.argv[2]

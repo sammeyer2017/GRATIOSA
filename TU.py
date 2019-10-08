@@ -74,3 +74,21 @@ class TU:
         """
         self.expression_ratio = expr_ratio
         self.mean_expression_ratio = np.mean([x[2] for x in expr_ratio])
+
+    def add_idx_corr_ratio(self, idx):
+        """ 
+        """
+        self.idx_corr_ratio = idx
+        self.mean_idx_corr_ratio = np.mean([x[2] for x in idx])
+
+    def add_TSS(self, TSS):
+        """
+        Attributes potential TSS i.e. those located 100 bp upstream TU first start 
+        """
+        self.TSS = TSS
+
+    def add_TTS(self, TTS):
+        """
+        Attributes potential TTS i.e. those located 100 bp downstream TU last stop 
+        """
+        self.TTS = TTS

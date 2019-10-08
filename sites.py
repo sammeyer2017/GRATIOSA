@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
+from matplotlib import patches
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+from matplotlib import ticker
+
 import matplotlib.font_manager as font_manager
 from useful_functions import *
 plt.rcParams.update({'pdf.fonttype': 42})
@@ -74,6 +79,7 @@ def characterize_sites(gen,cond,*args, **kwargs):
     # sort by position
     genes_pos=[x[0] for x in sorted(list(genes.items()), key=operator.itemgetter(0))]
 
+    res = {}
     for s in gen.sites[cond].keys():
         try:
             site = gen.sites[cond][s]
@@ -81,43 +87,163 @@ def characterize_sites(gen,cond,*args, **kwargs):
             l = sorted([(abs(x-s),x) for x in genes_pos])
             # g1 = closest to site, g2 = 2nd closest
             g1 = gen.genes[genes[l[0][1]]] ; g2 = gen.genes[genes[l[1][1]]]
-            # if no FC data
-            if cond_FC == "No expr":
-                expr1 = ("NA","NA") ; expr2 = ("NA","NA")
-            else: # try to find corresponding FC data, shape (FC,pvalue)
-                try:
-                    expr1 = g1.fc_pval[cond_FC]
-                except:
-                    expr1 = ("NA","NA")
-                try:
-                    expr2 = g2.fc_pval[cond_FC]
-                except:
-                    expr2 = ("NA","NA")
+            site["Gene 1 locus tag / name"] = "{} / {}".format(g1.gene_id,g1.name)
+            site["Gene 1 strand"] = g1.strand
+            site["Gene 1 distance to site"] = abs(g1.start - s)
 
-            # extract relevant informations from g1 and g2 for site: locus tag, name, distance to site, strand, FC data
-            site["g1"] = [g1.gene_id, g1.name, abs(g1.start - s), g1.strand, expr1]
-            site["g2"] = [g2.gene_id, g2.name, abs(g2.start - s), g2.strand, expr2]
+            site["Gene 2 locus tag / name"] = "{} / {}".format(g2.gene_id,g2.name)
+            site["Gene 2 strand"] = g2.strand
+            site["Gene 2 distance to site"] = abs(g2.start - s)
 
+            if cond_FC != "No expr":
+             # try to find corresponding FC data, shape (FC,pvalue)
+                for c in cond_FC:
+                    try:
+                        site["Gene 1 (log2FC) "+c] = g1.fc_pval[c][0]
+                        site["Gene 1 (adjpvalue) "+c] = g1.fc_pval[c][1]
+                    except:
+                        site["Gene 1 (log2FC) "+c] = "NA"
+                        site["Gene 1 (adjpvalue) "+c] = "NA"
+                    try:
+                        site["Gene 2 (log2FC) "+c] = g2.fc_pval[c][0]
+                        site["Gene 2 (adjpvalue) "+c] = g2.fc_pval[c][1]
+                    except:
+                        site["Gene 2 (log2FC) "+c] = "NA"
+                        site["Gene 2 (adjpvalue) "+c] = "NA"
+
+                    # try:
+                    #     site["Gene 1 (log2FC / adjpvalue) "+c] = g1.fc_pval[c]
+                    # except:
+                    #     site["Gene 1 (log2FC / adjpvalue) "+c] = ("NA","NA")
+                    # try:
+                    #     site["Gene 2 (log2FC / adjpvalue) "+c] = g2.fc_pval[c]
+                    # except:
+                    #     site["Gene 2 (log2FC / adjpvalue) "+c] = ("NA","NA")
+            res[s] = site
         except Exception as e:
             print e
             pass
 
     if export_csv:
-    	# export data
-        titl = "{}".format(cond)
-        res = open(pathdb+"/{}.csv".format(titl),'w')
-        res.write('Left\tRight\tStrand\tSequence\tScore\tGene 1 locus tag\tGene 1 name\tDistance to ATG\tStrand\t{} log2(FC)\t{} adj pvalue\tGene 2 locus tag\tGene 2 name\tDistance to ATG\tStrand\t{} log2(FC)\t{} adj pvalue\n'.format(cond_FC,cond_FC,cond_FC,cond_FC))
-        
-        sites = gen.sites[cond].keys() ; sites.sort()
-        for s in sites:
-            site = gen.sites[cond][s]
-            try:
-                res.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(str(site["left"]),str(site["right"]), site["strand"], site["seq"], site["score"], site["g1"][0], site["g1"][1], str(site["g1"][2]), str(site["g1"][3]), str(site["g1"][4][0]), str(site["g1"][4][1]), site["g2"][0], site["g2"][1], str(site["g2"][2]), str(site["g2"][3]), str(site["g2"][4][0]), str(site["g2"][4][1])))
-            except Exception as e:
-                print e
-                pass
+        df = pd.DataFrame.from_dict(res,orient='index')
+        df.sort_index(inplace=True)
+        df.to_csv(basedir+"data/"+gen.name+"/sites/results/"+cond+".csv",sep='\t',encoding='utf-8', index=False)
 
-        res.close()
+
+        # df.sort_values(by="Gene 1 (adjpvalue) "+cond_FC[0],inplace=True)
+        # df.sort_values(by="Gene 1 (adjpvalue) "+cond_FC[1],inplace=True)
+
+def draw_sites(gen,cond,windows=500000, increment=4000,*args, **kwargs):
+    '''
+    Draws binding sites density on genome
+    '''
+    if not hasattr(gen, 'sites'):
+        load_sites(gen)
+    if not hasattr(gen,'seq'):
+        gen.load_seq()
+
+    pathdb = '{}data/{}/sites/results'.format(basedir,gen.name)
+    if not os.path.exists(pathdb):
+      os.makedirs(pathdb)
+
+    colormap= kwargs.get('colormap','jet') # default value
+    try:
+        cScale_fc = plt.get_cmap(colormap)
+    except:
+        print 'Incorrect colormap, please check https://matplotlib.org/users/colormaps.html'
+        print 'Loading default'
+        cScale_fc = plt.get_cmap('jet')
+
+    bins = [] # bins = windows of the genome : [start coordinate,end coordinate]
+    bins_overlap = []
+    for i in range(1,len(gen.seq),increment): # create bins depending on windows size and increment value
+        if (i+windows) <= len(gen.seq): # enough length to create a bin
+            bins.append([i,i+windows, 0])
+        else: # i + windows > genome size, overlap with the beginning (circular chromosome)
+            bins_overlap.append([i, windows - (len(gen.seq)-i), 0])
+    
+    bins = np.array(bins) # convert to .npy
+    bins_overlap = np.array(bins_overlap)
+    for s in gen.sites[cond].keys():
+        bins[np.where((bins[:,0] <= s) & (bins[:,1] >= s)),2] += 1
+        bins_overlap[np.where((bins_overlap[:,0] <= s) | (bins_overlap[:,1] >= s)),2] += 1
+
+    bins = np.concatenate((bins,bins_overlap)).astype(float)
+    new_bins = []
+    pexp = float(len(gen.sites[cond].keys())) / float(len(gen.seq))
+    nbexp = pexp*windows
+    for start,end,nbsites in bins:
+        zscore = (nbsites - nbexp) / np.sqrt(nbexp*(1-pexp))
+        new_bins.append([start,end,zscore])
+
+    new_bins = np.array(new_bins)
+
+    vmin = kwargs.get('vmin', -4)
+    vmax = kwargs.get('vmax', +4)       
+    # normalisation of colors
+    cNorm_fc  = colors.Normalize(vmin=vmin, vmax=vmax) 
+    # map which assigns a colour depending on value between vmin and vmax
+    cMap_fc = cmx.ScalarMappable(norm=cNorm_fc, cmap=cScale_fc) 
+    # config, see globvar for more
+    # init plots
+    width = 3.5 ; height = width/1
+    fig, ax = plt.subplots()
+    #plt.axis([0, width, 0, height]) ; 
+    ax.set_axis_off() 
+
+    angle = 360.0/np.shape(bins)[0] # angle between two fragments
+    # display colour in the middle of the windows
+    start_angle = angle * (windows/2 - increment/2)  / increment
+
+    i=0
+    for value in new_bins[:,2]:
+        # edgecolor = assign a colour depending on value using cMap
+        # draw arc on circle
+        arc = patches.Arc((center_x,center_y), radius, radius, angle=90,theta1=-(start_angle+i+angle), theta2=-(start_angle+i), edgecolor=cMap_fc.to_rgba(value),lw=7)
+        ax.add_patch(arc)
+        i+= angle
+
+    # cMap_fc._A = [] # fake array to print map
+    # cbar = fig.colorbar(cMap_fc,fraction=0.025, pad=0.04)#,shrink=0.3)
+    # cbar.set_label("Z-score")
+    # tick_locator = ticker.MaxNLocator(nbins=4)
+    # cbar.locator = tick_locator
+    # cbar.update_ticks() 
+    # cbar.ax.tick_params(direction='out', labelleft=False, labelright=True,right=True, left=False)
+    # plt.annotate('OriC', xy=(center_x,radius), xytext=(center_x,radius+0.1),verticalalignment = 'center', horizontalalignment = 'center', wrap=True)
+    # plt.annotate('Ter', xy=(center_x,0), xytext=(center_x,-0.3),verticalalignment = 'center', horizontalalignment = 'center', wrap=True)
+    # plt.annotate('ihfA sites', xy=(center_x,radius), xytext=(center_x,center_y),verticalalignment = 'center', horizontalalignment = 'center', wrap=True)
+    plt.axis("equal")
+    fig.set_size_inches(width, height)
+    plt.tight_layout()
+    plt.savefig(pathdb+cond+"density.png", dpi=1000, transparent=True)
+    plt.savefig(pathdb+cond+"density.svg")
+
+    plt.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # THIS PART WAS USED TO CHARACTERIZE GYRASE CLEAVAGE SITES, AN ANALYSIS IMPOSED BY NAR REVIEWERS FOR THE 
