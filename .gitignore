@@ -2,6 +2,17 @@
 *.pyc
 # ignore model files (raph)
 modeling_spacer
+# ignore analysis files (raph)
+at_content_analysis.py
+spacers_analysis.py
+orientation_analysis.py
+domains_analysis.py
+TU_analysis.py
+spacers_analysis_main.py
+discriminator_modelling.py
+GO_analysis
+utils_raph.py
+sites.py
 # ignore virtualenv and others
 venv
 SIST

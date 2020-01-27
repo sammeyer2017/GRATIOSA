@@ -49,32 +49,37 @@ def annotations_parser_general(annotations_filename,separator,tag_column,strand_
             header=next(f)
             i+=1
         for line in f:
-            gene=[]
-            line=line.strip()
-            if separator == '\\t':
-                line=line.split('\t')
-            else:
-                line=line.split(separator)
+            try:
+                gene=[]
+                line=line.strip()
+                if separator == '\\t':
+                    line=line.split('\t')
+                else:
+                    line=line.split(separator)
+                gene.append(line[tag_column])
+                if line[strand_column]=="complement":
+                    gene.append('-')
+                elif line[strand_column]=="forward":
+                    gene.append('+')
+                elif line[strand_column]== "1":
+                    gene.append('+')
+                elif line[strand_column]== "-1":
+                    gene.append('-')
+                else:
+                    gene.append(line[strand_column])
 
-            gene.append(line[tag_column])
-            if line[strand_column]=="complement":
-                gene.append('-')
-            elif line[strand_column]=="forward":
-                gene.append('+')
-            elif line[strand_column]== "1":
-                gene.append('+')
-            elif line[strand_column]== "-1":
-                gene.append('-')
-            else:
-                gene.append(line[strand_column])
+                gene.append(line[left_column])
+                gene.append(line[right_column])
+                gene.append(line)
+                if line[tag_column] in genes_dict:
+                    print("Warning! Overwriting value for gene ")
+                    print(line[tag_column])
+                
+                genes_dict[line[tag_column]]=Gene(annotations_general=gene, head=headl)
 
-            gene.append(line[left_column])
-            gene.append(line[right_column])
-            gene.append(line)
-            if line[tag_column] in genes_dict:
-                print("Warning! Overwriting value for gene ")
-                print(line[tag_column])
-            genes_dict[line[tag_column]]=Gene(annotations_general=gene, head=headl)
+            except:
+                pass
+
     return genes_dict
 
 def annotations_parser_gff(annotations_filename):
@@ -317,7 +322,7 @@ def load_seq(filename):
     return seq
 
 
-def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, *args, **kwargs):
+def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, scorecol,*args, **kwargs):
     TSS_dict = {} # dict of TSS objects
     with open(filename, 'r') as f:
         i = 1
@@ -354,6 +359,8 @@ def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, stra
                     else:
                         TSS_dict[pos].add_promoter(sig)
 
+                if scorecol != None:
+                    TSS_dict[pos].add_score(int(line[scorecol]))
 
             except Exception as e:
                 print 'Error in line, wrong information type :',e
@@ -432,7 +439,8 @@ def add_expression_to_genes(genes_dict, filename, tag_col, first_expression_col,
     """ Adds expression data to Gene objects by parsing a file with as many
     columns as there are different conditions in the experiment, plus one for
     the gene names (first column).
-    """
+    """        
+    genes_valid = {} 
     with open(filename, 'r') as f:
         header=next(f)
         header=header.strip()
@@ -441,6 +449,7 @@ def add_expression_to_genes(genes_dict, filename, tag_col, first_expression_col,
         else:
             header=header.split(separator)        
         header=header[first_expression_col:]
+        genes_valid["conditions"] = header
         for line in f:
             line=line.strip()
             if separator == '\\t':
@@ -452,13 +461,13 @@ def add_expression_to_genes(genes_dict, filename, tag_col, first_expression_col,
                     genes_dict[line[tag_col]].add_expression_data(header,[math.log(float(i),2) for i in line[first_expression_col:]])
                 else:
                     genes_dict[line[tag_col]].add_expression_data(header,[float(i) for i in line[first_expression_col:]])
+                genes_valid[line[tag_col]] = genes_dict[line[tag_col]]
             except KeyError:
                 if line[tag_col] == 'none':
                     print("expressions without locus tag")
                 else:
                     print(line[tag_col] + " not in annotation")
-    genes_dict["conditions"] = header
-    return genes_dict
+    return genes_valid
 
 def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, *args, **kwargs):
     ''' Called by load_fc_pval, allows expression data to be loaded by specifying files, and where each
@@ -551,8 +560,8 @@ def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, se
             else:
                 line=line.split(separator)
             try:
-                TUs[int(line[startcol])] = TU(start=int(line[startcol]), stop=int(line[stopcol]), orientation=line[strandcol], genes = line[genescol].split(","))   
-            except:
+                TUs[int(float(line[startcol]))] = TU(start=int(float(line[startcol])), stop=int(float(line[stopcol])), orientation=line[strandcol], genes = line[genescol].split(","))   
+            except Exception as e:
                 pass
     f.close()
     return TUs
@@ -627,26 +636,28 @@ class Genome:
         if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 =
         Locus column,3 = Strand column, 4,5 Left Rigth column, 6 start line)
         """
-        if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
-            self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
-        elif os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff"):
-            self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff")
-
-
-        elif os.path.exists(basedir+"data/"+self.name+"/annotation/annotation.info"):
+        custom = 0
+        if custom:
             with open(basedir+"data/"+self.name+"/annotation/annotation.info","r") as f:
                 for line in f:
                     line=line.strip()
                     line=line.split('\t')
                     self.genes=annotations_parser_general(basedir+"data/"+self.name+'/annotation/'+line[0],line[1],int(line[2]),int(line[3]),int(line[4]),int(line[5]),int(line[6]))
                 f.close()
-        else:
-            try:
-                self.genes = annotations_gbk(basedir+"data/"+self.name+'/annotation/sequence.gbk')
 
-            except Exception as e:
-                print e
-                print('No GFF file nor annotation.info, unable to load annotation')
+        else:     
+            if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
+                self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
+            elif os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff"):
+                self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff")
+
+            else:
+                try:
+                    self.genes = annotations_gbk(basedir+"data/"+self.name+'/annotation/sequence.gbk')
+
+                except Exception as e:
+                    print e
+                    print('No GFF file nor annotation.info, unable to load annotation')
 
 
     def load_neighbour(self):
@@ -685,7 +696,7 @@ class Genome:
         8 = Sites column if much other condition give it in the seconde line of file and change TSS column """
         self.TSSs = {} # shape (dict of dict) : TSSs = {TSScond : {TSS:attr}}
         self.TSSs['all_TSS'] = {} # dict containing all TSS and where they appear (shape all_TSS = {pos:[conditions]})
-        if not (self.genes):
+        if not hasattr(self,"genes"):
             self.load_annotation()
 
         if os.path.exists(basedir+"data/"+self.name+"/TSS/TSS.info"):
@@ -699,9 +710,9 @@ class Genome:
                     genescol = int(line[2]) if line[2] != "" else None
                     sigcol = int(line[7]) if line[7] != "" else None
                     sitescol = int(line[8]) if line[8] != "" else None
-
+                    scorecol = int(line[9]) if line[9] != "" else None
                     try: # successively try to load :
-                        self.TSSs[line[0]] = load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+filename, TSScol, startline, sep,strand, genescol, sigcol, sitescol)
+                        self.TSSs[line[0]] = load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+filename, TSScol, startline, sep,strand, genescol, sigcol, sitescol,scorecol)
                         # append all entries to all TSS dict
                         for entry in self.TSSs[line[0]].keys():
                             try: # works if entry already in dict
@@ -881,6 +892,41 @@ class Genome:
             print 'cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder'
         print 'Done'
 
+    def load_cov_start_end(self):
+        '''new attribute cov : cov_start & cov_end for both + and - strands
+        Corresponds to the density of RNA fragments start and ends (to locate TSS / TTS)
+         & shape {[condition]:{pos:.npy, neg:.npy}}
+        '''
+        self.cov_start = {} # 
+        self.cov_end = {} #
+        # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
+        # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
+        if os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_start_stop.info'): # cov.info available, cov.info opening instead of cov_txt.info
+            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_start_stop.info","r") as f:
+                header = next(f)
+                for line in f: # for each condition
+                    line=line.strip().split('\t')
+                    print 'Loading condition',line[0]
+                    # load attributes
+                    self.cov_start[line[0]] = {}
+                    self.cov_end[line[0]] = {}
+
+                    self.cov_start[line[0]][0] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_start_neg"]
+                    self.cov_start[line[0]][1] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_start_pos"]
+                    self.cov_end[line[0]][0] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_end_neg"]
+                    self.cov_end[line[0]][1] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_end_pos"]
+
+            f.close()
+
+        else:
+            print 'cov_start_stop.info not available please check /rnaseq_cov/ folder'
+
+        self.cov_start_all = {0:np.sum([self.cov_start[x][0] for x in self.cov_start.keys()],axis=0), 1:np.sum([self.cov_start[x][1] for x in self.cov_start.keys()],axis=0)} # 
+        self.cov_end_all = {0:np.sum([self.cov_end[x][0] for x in self.cov_end.keys()],axis=0), 1:np.sum([self.cov_end[x][1] for x in self.cov_end.keys()],axis=0)} #
+
+        print 'Done'
+
+
     def compute_rpkm_from_cov(self, before=100):
         '''
         Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account
@@ -889,6 +935,9 @@ class Genome:
         if not self.genes: # if no genes loaded
             # try to load them
             self.load_annotation()
+        if not hasattr(self,"cov_pos"):
+            self.load_cov()
+
         try:
             for g in self.genes.keys(): # for each gene
                 if self.genes[g].strand:
@@ -931,7 +980,7 @@ class Genome:
         '''
         if not hasattr(self,'genes_valid_expr'):
             self.genes_valid_expr = {}
-        if not self.genes: # if no genes loaded
+        if not hasattr(self, "genes"): # if no genes loaded
             # try to load them
             self.load_annotation()
 
@@ -942,8 +991,6 @@ class Genome:
                     header=header.strip()
                     header=header.split('\t')
                     self.genes_valid_expr[header[0]]=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+header[0], int(header[1]), int(header[2]), header[3], header[4])
-                    # self.genes_valid_expr[header[0]]["conditions"]=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+header[0], int(header[1]), int(header[2]), header[3], header[4])
-
             f.close()
         else:
             print("No expression.info file, please create one")
@@ -1131,7 +1178,7 @@ class Genome:
         ''' Load TTS specified in TTS.info
         '''
         self.TTSs = {}
-        if not self.genes: # if no genes loaded
+        if not hasattr(self,"genes"): # if no genes loaded
             # try to load them
             self.load_annotation()
 
@@ -1151,6 +1198,9 @@ class Genome:
                         print e
                         print("Error loading cond",header[0])
             f.close()
+            self.TTSs["all"] = {}
+            for x in self.TTSs.keys():
+                self.TTSs["all"].update(self.TTSs[x])
         else:
             print("No TTS.info file, please create one")
 

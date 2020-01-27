@@ -156,7 +156,7 @@ def run_btssfinder(obj,list_TSS,fileOutName,freedom): #running bTSSfinder
             '''
             print "run_bTSSfinder("+pathTemp+fileOutName+") status : terminated"
             lines = sum(1 for _ in open(pathTemp+fileOutName+".gff"))
-            if lines < 20:
+            if lines < 1:
                 os.remove(pathTemp+fileOutName+".gff") ; os.remove(pathTemp+fileOutName+".bed")
                 print "/!\ No data written in gff file ! Check the trainee's code…"
                 sys.exit()

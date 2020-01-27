@@ -40,20 +40,6 @@ class TU:
         """
         self.genes=genes
 
-    def add_TSS_cond(self, condition, TSS):
-        """ Adds a list of TSSs to the TU corresponding to given condition.
-        """
-        if not hasattr(self, 'TSSs_cond'):
-            self.TSS_cond = {}
-        self.TSS_cond[condition]=TSS
-
-    def add_TTS_cond(self, condition, TTS):
-        """ Adds a list of TTSs to the TU corresponding to a given condition.
-        """
-        if not hasattr(self, 'TTSs'):
-            self.TTS_cond = {}
-        self.TTS_cond[condition]=TTS
-
     def add_correlation(self, correlations):
         """ Adds a list of expression correlation values among genes of TU
             Shape [(gene1,gene2,correlation among conditions),...]
@@ -81,14 +67,76 @@ class TU:
         self.idx_corr_ratio = idx
         self.mean_idx_corr_ratio = np.mean([x[2] for x in idx])
 
-    def add_TSS(self, TSS):
-        """
-        Attributes potential TSS i.e. those located 100 bp upstream TU first start 
-        """
-        self.TSS = TSS
 
-    def add_TTS(self, TTS):
+
+    def add_TSS_primary(self, TSS):
         """
-        Attributes potential TTS i.e. those located 100 bp downstream TU last stop 
+        Attributes potential primary TSS = TSS of TU
         """
-        self.TTS = TTS
+        self.TSS_prim = TSS
+
+    def add_TTS_primary(self, TTS):
+        """
+        Attributes potential primary TTS = TTS of TU
+        """
+        self.TTS_prim = TTS
+   
+    def add_TSS_internal(self, x, TSS):
+        """
+        Attributes potential internal TSS
+        """
+        if not hasattr(self, 'TSS_intern'):
+            self.TSS_intern = {}
+        self.TSS_intern[x] = TSS
+
+    def add_TTS_internal(self, x, TTS):
+        """
+        Attributes potential internal TTS
+        """
+        if not hasattr(self, 'TTS_intern'):
+            self.TTS_intern = {}
+        self.TTS_intern[x] = TTS
+
+
+
+    def add_TSS_cov(self, x, TSS):
+        """
+        Attributes potential TSS detected by cov
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TSS_cov'):
+            self.TSS_cov = {}
+        
+        self.TSS_cov[x] = TSS
+
+    def add_TTS_cov(self, x, TTS):
+        """
+        Attributes potential TTS detected by cov
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TTS_cov'):
+            self.TTS_cov = {}
+        
+        self.TTS_cov[x] = TTS
+
+    def add_TSS(self, x, TSS):
+        """
+        Attributes potential TSS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        TSS = tuple (position, proportion of total starts)
+        """
+        if not hasattr(self, 'TSS'):
+            self.TSS = {}
+        
+        self.TSS[x] = TSS
+
+    def add_TTS(self, x, TTS):
+        """
+        Attributes potential TTS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        TTS = tuple (position, type of terminator)
+        """
+        if not hasattr(self, 'TTS'):
+            self.TTS = {}
+        
+        self.TTS[x] = TTS

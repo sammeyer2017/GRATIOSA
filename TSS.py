@@ -20,6 +20,9 @@ class TSS:
     def add_strand(self,strand):
         self.strand = strand
 
+    def add_score(self,score):
+        self.score = score
+
     def add_genes(self,tags,genes_dict):
         # tags must have the shape : [gene1,gene2]
         for tag in tags.strip().replace(' ','').split(','):
