@@ -16,8 +16,6 @@ from TSS import TSS
 from TTS import TTS
 from TU import TU
 from Operon import Operon
-from Terminator import Terminator
-from domain_phuc import Domain
 from datetime import datetime
 from math import sqrt
 from btssfinder import *

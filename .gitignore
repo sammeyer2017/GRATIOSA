@@ -3,6 +3,7 @@
 # ignore model files (raph)
 modeling_spacer
 # ignore analysis files (raph)
+raph
 at_content_analysis.py
 spacers_analysis.py
 orientation_analysis.py
