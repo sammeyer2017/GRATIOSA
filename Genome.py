@@ -15,10 +15,9 @@ from Gene import Gene
 from TSS import TSS
 from TTS import TTS
 from TU import TU
-from Operon import Operon
 from datetime import datetime
 from math import sqrt
-from btssfinder import *
+from btssfinder import *FOpe
 from scipy import stats
 
 from BCBio import GFF
@@ -27,10 +26,11 @@ from Bio import SeqIO
 #==============================================================================#
 
 # -------------------
-# useful functions
+##### functions called by genome methods #####
 
 def annotations_parser_general(annotations_filename,separator,tag_column,strand_column,left_column,right_column,start_line):
-    ''' Called by load annotation, allows genes to be loaded from info file
+    ''' Called by load annotation, allows genes to be loaded from info file although most of the time, annotation is loaded
+    from gff/gbk files
     '''
     genes_dict = {}
     with open(annotations_filename, 'r') as f:
@@ -113,7 +113,7 @@ def annotations_parser_gff(annotations_filename):
     return genes_dict
 
 def annotations_gbk(file):
-    ''' Called by load annotation, allows genes to be loaded from gff
+    ''' Called by load annotation, allows genes to be loaded from gbk
     '''
     genes_dict = {}
     gb_record = SeqIO.read(open(file,"r"), "genbank")
@@ -136,53 +136,6 @@ def annotations_gbk(file):
 
     return genes_dict
 
-
-def add_operon(dict_genes,file):
-    dict_operon={}
-    under_dict={}
-    i = 1
-    my_file = open(file, "r")
-    for line in my_file.readlines():
-        if line[0]!= '#':
-            line=line.strip()
-            line=line.split('\t')
-            dict_operon[i]=Operon(int(line[3]),int(line[4]),line[6])
-            underline=line[8]
-            underline=underline.split(';')
-            for x in underline:
-                x=x.split('=')
-                under_dict[x[0]]=x[1]
-            for x in under_dict:
-                if 'Genes' in x:
-                    dict_operon[i].add_genes(under_dict[x])
-                if 'ID' in x:
-                    dict_operon[i].add_ID(under_dict[x])
-            for x in dict_operon[i].genes:
-                if x in list(dict_genes.keys()):
-                    dict_genes[x].add_id_operon(i)
-                else:
-                    print(x+" not in annotation")
-            i+=1
-            under_dict={}
-    return dict_operon
-
-def add_terminator(file):
-    dict_terminator={}
-    under_dict={}
-    my_file = open(file, "r")
-    for line in my_file.readlines():
-        if line[0]!= '#':
-            line=line.strip()
-            line=line.split('\t')
-            underline=line[8]
-            underline=underline.split(';')
-            for x in underline:
-                x=x.split('=')
-                under_dict[x[0]]=x[1]
-            for x in under_dict:
-                if 'ID' in x:
-                    dict_terminator[int(under_dict[x])]=Terminator(int(line[3]),int(line[4]),line[6], int(under_dict[x]), under_dict)
-    return dict_terminator
 
 def add_single_rpkm_to_genes(genes_dict, expression_filename, condition, TSS_column, start_line, separator,tag_column):
     """ Adds rpkm data to Gene objects by parsing a file with two columns:
@@ -277,38 +230,9 @@ def load_expr_cond(genes_dict, filename, condition, tag_col, nb_replicates, expr
                             print("fc without locus")
     f.close()
 
-
-def domain_parser(genes_dict, domain_filename):
-    """ Creates a list of domains from a dictionnary of Gene objects and a text
-    file.
-    """
-    domains = []
-    with open(domain_filename, 'r') as f:
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_list = [genes_dict[gene_name] for gene_name in line]
-                domains.append(Domain(genes_list))
-            except KeyError:
-                print("Domains : Could not find gene " + line)
-    return domains
-
-
-def operon_domains(genes_dict):
-    """ Creates a list of domains from the operon attribute of Gene objects.
-    """
-    domains = []
-    genes = list(genes_dict.values())
-    operons_list = [x.operon for x in list(genes_dict.values())]
-    operons_list = np.unique(operons_list)
-    for operon in operons_list:
-        operon_genes = [genes[i] for i in np.where([x.operon==operon
-            for x in genes])[0]]
-        domains.append(Domain(operon_genes))
-    return domains
-
 def load_seq(filename):
+    ''' Called by load_seq, allows genomic sequence to be loaded from .fasta file
+    '''
     seq=str()
     my_file = open(filename, "r")
     for i in my_file.readlines():
@@ -321,6 +245,8 @@ def load_seq(filename):
 
 
 def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, scorecol,*args, **kwargs):
+    ''' Called by load_TSS, allows TSS data to be loaded from .info file
+    '''
     TSS_dict = {} # dict of TSS objects
     with open(filename, 'r') as f:
         i = 1
@@ -366,6 +292,8 @@ def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, stra
     return TSS_dict
 
 def load_TTS_cond(filename, separator, start_line, leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol, *args, **kwargs):
+    ''' Called by load_TTS, allows TTS data to be loaded from .info file
+    '''
     TTS_dict = {} # dict of TSS objects
     with open(filename, 'r') as f:
         i=1
@@ -395,34 +323,6 @@ def load_TTS_cond(filename, separator, start_line, leftcol, rightcol, strandcol,
 
     return TTS_dict
 
-def proportion_of(dict, list_genes, composition, seq_plus, seq_minus):
-    dict_proportion={}
-    dict_proportion['plus']=0.0
-    dict_proportion['minus']=0.0
-    activated=0
-    repressed=0
-    for i in list_genes:
-        if dict[i].relax_log_fc > 0.0:
-            if dict[i].strand:
-                dict_proportion['plus']+= float(seq_plus[int(dict[i].left):int(dict[i].right)].count(composition))/float(dict[i].length)
-            else:
-                dict_proportion['plus']+= float(seq_minus[int(dict[i].left):int(dict[i].right)].count(composition))/float(dict[i].length)
-            activated +=1
-        if dict[i].relax_log_fc < 0.0:
-            if dict[i].strand:
-                dict_proportion['minus']+= float(seq_plus[int(dict[i].left):int(dict[i].right)].count(composition))/float(dict[i].length)
-            else:
-                dict_proportion['minus']+= float(seq_minus[int(dict[i].left):int(dict[i].right)].count(composition))/float(dict[i].length)
-            repressed+=1
-    if activated !=0:
-        dict_proportion['plus']=dict_proportion['plus']/float(activated)
-    else:
-        dict_proportion['plus']=0.0
-    if repressed !=0:
-        dict_proportion['minus']=dict_proportion['minus']/float(repressed)
-    else:
-        dict_proportion['minus']=0.0
-    return dict_proportion
 
 def add_neighbour(dict_genes,list):
     for i in range(len(list)):
@@ -501,34 +401,10 @@ def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separato
     return genes_valid
 
 
-def add_single_expression_to_genes(genes_dict, expression_filename):
-    """ Adds expression data to Gene objects by parsing a file with as many
-    columns as there are different conditions in the experiment, plus one for
-    the gene names (first column).
-    """
-    condition = expression_filename[expression_filename.rfind('/')+1:
-                                    expression_filename.rfind('/')+3]
-    with open(expression_filename, 'r') as f:
-        header = next(f)
-        header = header.strip('\n').split(',')
-        header = header[1:]
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_dict[line[0]].add_single_expression(
-                    #log2(x+1)
-                    condition, np.log2(float(line[1])+1))
-            except KeyError:
-                print("Expressions : Could not find gene " + line[0])
-                #genes_dict[line[0]] = Gene(name=line[0], left=int(line[2]),
-                #                          right=int(line[3]),
-                #                          orientation=(line[4]=='+'))
-                #genes_dict[line[0]].add_single_expression(
-                #    expression_filename[i:i+3], float(line[1]))
-    return genes_dict
-
 def set_mean_expression(genes_dict, expression_filename):
+    """ 
+    For each gene of genome object, set mean expression value based on loaded expression data in various conditions
+    """
     with open(expression_filename, 'r') as f:
         header = next(f)
         header = header.strip('\n').split(',')
@@ -564,6 +440,10 @@ def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, se
     f.close()
     return TUs
 
+
+
+#####  #####
+
 class Genome:
 
     def __init__(self, *args, **kwargs):
@@ -595,39 +475,6 @@ class Genome:
         l=l.replace('g','G')
         self.seqcompl=l
 
-    def give_proportion_of(self,*args, **kwargs):
-        self.load_fc()
-        self.load_seq()
-        composition = kwargs.get('composition')
-        if composition:
-            values=[0.0,0.0]
-            for i in composition:
-                values[0]+=proportion_of(self.genes, self.list_genes_fc, i, self.seq, self.seq_reverse)['plus']
-                values[1]+=proportion_of(self.genes, self.list_genes_fc, i, self.seq, self.seq_reverse)['minus']
-            return values
-        else:
-            val_plus=[0.0,0.0,0.0,0.0]
-            val_minus=[0.0,0.0,0.0,0.0]
-            explode = (0,0,0,0)
-            name = ['A','T','G','C']
-            val_plus[0]+=proportion_of(self.genes, self.list_genes_fc, 'A', self.seq, self.seq_reverse)['plus']
-            val_plus[1]+=proportion_of(self.genes, self.list_genes_fc, 'T', self.seq, self.seq_reverse)['plus']
-            val_plus[2]+=proportion_of(self.genes, self.list_genes_fc, 'G', self.seq, self.seq_reverse)['plus']
-            val_plus[3]+=proportion_of(self.genes, self.list_genes_fc, 'C', self.seq, self.seq_reverse)['plus']
-            val_minus[0]+=proportion_of(self.genes, self.list_genes_fc, 'A', self.seq, self.seq_reverse)['minus']
-            val_minus[1]+=proportion_of(self.genes, self.list_genes_fc, 'T', self.seq, self.seq_reverse)['minus']
-            val_minus[2]+=proportion_of(self.genes, self.list_genes_fc, 'G', self.seq, self.seq_reverse)['minus']
-            val_minus[3]+=proportion_of(self.genes, self.list_genes_fc, 'C', self.seq, self.seq_reverse)['minus']
-            plt.figure(1)
-            plt.subplot(211)
-            plt.pie(val_plus, explode=explode, labels=name, autopct='%1.1f%%', startangle=90, shadow=True)
-            plt.axis('equal')
-            plt.subplot(212)
-            plt.pie(val_minus, explode=explode, labels=name, autopct='%1.1f%%', startangle=90, shadow=True)
-            plt.axis('equal')
-            plt.show()
-
-
 
     def load_annotation(self):
         """ Load annotation. Two options : if gff file in directory -> load annotation from gff
@@ -657,35 +504,6 @@ class Genome:
                     print e
                     print('No GFF file nor annotation.info, unable to load annotation')
 
-
-    def load_neighbour(self):
-        if not self.genes:
-            self.load_annotation()
-        dict_plus={}
-        dict_minus={}
-        for i in self.genes:
-            if self.genes[i].strand == True:
-                dict_plus[int(self.genes[i].left)]=i
-            else:
-                dict_minus[int(self.genes[i].left)]=i
-        l_plus=sorted(list(dict_plus.items()), key=operator.itemgetter(0))
-        l_minus=sorted(list(dict_minus.items()), key=operator.itemgetter(0))
-        self.genes=add_neighbour(self.genes,l_plus)
-        self.genes=add_neighbour(self.genes,l_minus)
-
-
-    def load_genes_positions(self):
-        if not hasattr(self, 'genepos'):
-            self.genepos = {}
-        l=pd.read_csv(basedir+"data/"+self.name+"/genes_annotations.csv",header=0)
-        gp=l[l.Strand=='forward']
-        gp=gp[["Left.End.ASAP","Right.End.ASAP"]]
-        gpq=np.array(gp)
-        self.genepos["+"]=gpq[np.argsort(gpq[:,0])]
-        gm=l[l.Strand=='complement']
-        gm=gp[["Right.End.ASAP","Left.End.ASAP"]]
-        gmq=np.array(gm)
-        self.genepos["-"]=gmq[np.argsort(gmq[:,0])]
 
 
     def load_TSS(self, *args, **kwargs):
@@ -728,7 +546,7 @@ class Genome:
 
 
     def load_rpkm(self):
-        """ Laod a RPKM file information where indice 0 = Condition
+        """ Load a RPKM file information where indice 0 = Condition
         1 = filename type, 2 = RPKM  column, 3 = Start line,
         4 = type of separator, 5=locus_column """
         if not (self.genes):
@@ -744,48 +562,6 @@ class Genome:
             print(" no rpkm file in this folder ")
 
             
-
-    def load_operon(self):
-        if not self.genes:
-            self.load_annotation()
-
-        self.operon_complete=add_operon(self.genes,basedir+"data/"+self.name+"/operon")
-
-
-    def load_terminator(self):
-        if not self.genes:
-            self.load_annotation()
-
-        self.terminator_complete=add_terminator(basedir+"data/"+self.name+"/terminator")
-
-
-    def get_cov_from_accession_files(self):
-        if os.path.exists(basedir+"data/"+self.name+"/rnaseq_cov/description.info"):
-            with open(basedir+"data/"+self.name+"/rnaseq_cov/description.info","r") as f:
-                for line in f:
-                    line = line.strip('\n')
-                    line=line.split('\t')
-                    if line[1] == '2':
-                        list_cov=download_pair(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0],self.name)
-                    else:
-                        list_cov=download_single(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0],self.name)
-                    create_cov_info(list_cov,self.name)
-            f.close()
-        else:
-            print("Warning no description.info")
-
-
-    def get_profile_from_matrix(self,factor_name):
-        if not hasattr(self, 'profile'):
-            self.profile={}
-            self.load_seq()
-        a = IUPAC.unambiguous_dna
-        self.profile[factor_name]={}
-        matrix=create_matrix_from_file(basedir+"data/pwm.txt",factor_name)
-        #matrix=create_matrix_from_file_2(basedir+"data/pwm.txt",factor_name)
-        seq=Seq(self.seq,a)
-        for o in matrix.search_pwm(seq):
-            self.profile[factor_name][o[0]]=o[1]
 
     def load_SIST(self, start, end,*args, **kwargs):
         if not hasattr(self, 'SIST_profile'):
@@ -804,29 +580,13 @@ class Genome:
         else:
             self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq)
 
-    def load_dom(self):
-        i=1
-        if not hasattr(self, 'dom'):
-            self.dom={}
-            if not self.load_annotation():
-                self.load_annotation_gff()
-            self.load_expression()
-        with open(basedir+"data/"+self.name+"/domains.txt","r") as f:
-            header=next(f)
-            for line in f:
-                line=line.strip()
-                line=line.split('\t')
-                self.dom[i]=Domain(start=int(line[1]),end=int(line[2]),index=i)
-                self.dom[i].add_genes(self.genes)
-                self.dom[i].add_domain_expression()
-                self.dom[i].add_list_expression()
-                i+=1
-
-###################### RAPH #############################
+###################### RAPH GENOME METHODS #############################
 
     def load_reads(self):
         '''
-        new attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
+        Load paired end reads from .npz files that have been generated using process_bam_paired_end in useful_functions
+        and which are described in reads.info
+        New attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
         '''
         self.reads_pos = {} # reads on + strand
         self.reads_neg = {} # reads on - strand
@@ -846,7 +606,10 @@ class Genome:
             print 'Done'
 
     def load_cov(self):
-        '''new attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
+        '''
+        Load coverage either from .npz files which are described in cov.info
+        or compute coverage itself from reads attribute
+        New attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
         '''
         self.cov_pos = {} # cov on + strand
         self.cov_neg = {} # cov on - strand
@@ -891,7 +654,9 @@ class Genome:
         print 'Done'
 
     def load_cov_start_end(self):
-        '''new attribute cov : cov_start & cov_end for both + and - strands
+        '''
+        Load density of RNA fragment start / end from .npz files which are described in cov_start_stop.info
+        New attribute cov : cov_start & cov_end for both + and - strands
         Corresponds to the density of RNA fragments start and ends (to locate TSS / TTS)
          & shape {[condition]:{pos:.npy, neg:.npy}}
         '''
@@ -1130,6 +895,12 @@ class Genome:
         self.orientation = res
 
     def compute_state_from_fc(self,*args,**kwargs):
+        '''
+        Compute gene state from FC data. For each condition, below a given pvalue threshold, the gene is considered 
+        significantly activated if its FC is above a given FC treshold, repressed below, and non affected either if its 
+        pvalue is above the threshold, or if its FC is between + and - thesholds
+        '''
+
         if not hasattr(self, 'genes_valid'):
             self.load_fc_pval() 
         thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
