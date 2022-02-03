@@ -23,6 +23,9 @@ class TTS:
         self.seq= kwargs.get('seq',"")
         self.score= kwargs.get('score',None)
 
+        self.start = kwargs.get('start',None)
+        self.end = kwargs.get('end',None)
+       
         if self.strand:
             self.start = self.left
             self.end = self.right

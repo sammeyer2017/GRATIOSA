@@ -6,7 +6,6 @@ import os
 import numpy as np
 import pandas as pd
 
-
 #==============================================================================#
 
 class TU:
@@ -61,63 +60,11 @@ class TU:
         self.expression_ratio = expr_ratio
         self.mean_expression_ratio = np.mean([x[2] for x in expr_ratio])
 
-    def add_idx_corr_ratio(self, idx):
-        """ 
-        """
-        self.idx_corr_ratio = idx
-        self.mean_idx_corr_ratio = np.mean([x[2] for x in idx])
-
-
-
-    def add_TSS_primary(self, TSS):
-        """
-        Attributes potential primary TSS = TSS of TU
-        """
-        self.TSS_prim = TSS
-
-    def add_TTS_primary(self, TTS):
-        """
-        Attributes potential primary TTS = TTS of TU
-        """
-        self.TTS_prim = TTS
-   
-    def add_TSS_internal(self, x, TSS):
-        """
-        Attributes potential internal TSS
-        """
-        if not hasattr(self, 'TSS_intern'):
-            self.TSS_intern = {}
-        self.TSS_intern[x] = TSS
-
-    def add_TTS_internal(self, x, TTS):
-        """
-        Attributes potential internal TTS
-        """
-        if not hasattr(self, 'TTS_intern'):
-            self.TTS_intern = {}
-        self.TTS_intern[x] = TTS
-
-
-
-    def add_TSS_cov(self, x, TSS):
-        """
-        Attributes potential TSS detected by cov
-        x = idx of gene in TU, 1 = first gene of TU = start of TU
-        """
-        if not hasattr(self, 'TSS_cov'):
-            self.TSS_cov = {}
-        
-        self.TSS_cov[x] = TSS
-
-    def add_TTS_cov(self, x, TTS):
-        """
-        Attributes potential TTS detected by cov
-        x = idx of gene in TU, 1 = first gene of TU = start of TU
-        """
-        if not hasattr(self, 'TTS_cov'):
-            self.TTS_cov = {}
-        
-        self.TTS_cov[x] = TTS
+    # def add_idx_corr_ratio(self, idx):
+    #     """ 
+    #     """
+    #     self.idx_corr_ratio = idx
+    #     self.mean_idx_corr_ratio = np.mean([x[2] for x in idx])
 
     def add_TSS(self, x, TSS):
         """
@@ -127,8 +74,11 @@ class TU:
         """
         if not hasattr(self, 'TSS'):
             self.TSS = {}
-        
-        self.TSS[x] = TSS
+
+        if x not in self.TSS.keys():
+            self.TSS[x] = []
+
+        self.TSS[x] += TSS
 
     def add_TTS(self, x, TTS):
         """
@@ -139,4 +89,48 @@ class TU:
         if not hasattr(self, 'TTS'):
             self.TTS = {}
         
-        self.TTS[x] = TTS
+        if x not in self.TTS.keys():
+            self.TTS[x] = []
+
+        self.TTS[x] += TTS
+
+    def add_TSS_treated(self, x, TSS):
+        """
+        Attributes treated TSS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TSS_treated'):
+            self.TSS_treated = {}
+
+        self.TSS_treated[x] = TSS
+
+    def add_TTS_treated(self, x, TTS):
+        """
+        Attributes treated TTS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TTS_treated'):
+            self.TTS_treated = {}
+        
+        self.TTS_treated[x] = TTS
+
+
+    def add_TSS_strong(self, x, TSS):
+        """
+        Attributes strong enough TSS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TSS_strong'):
+            self.TSS_strong = {}
+
+        self.TSS_strong[x] = TSS
+
+    def add_TTS_strong(self, x, TTS):
+        """
+        Attributes strong enough TTS from list
+        x = idx of gene in TU, 1 = first gene of TU = start of TU
+        """
+        if not hasattr(self, 'TTS_strong'):
+            self.TTS_strong = {}
+        
+        self.TTS_strong[x] = TTS

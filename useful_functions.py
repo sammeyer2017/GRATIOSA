@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import sys
 import os
 import numpy as np
@@ -17,6 +16,8 @@ from matplotlib_venn import venn2
 
 from scipy import stats
 from statsmodels.stats import weightstats
+from operator import itemgetter
+import itertools
 
 plt.rcParams.update({'pdf.fonttype': 42})
 plt.rcParams.update({'ps.fonttype': 42})
@@ -490,49 +491,7 @@ def cov_is_zero(cov,winlen=20,maxval=5):
 
 """
 Vincent CABELI
-"""
-def compare_fc_conds(self,c1,c2,*args,**kwargs):
-    self.load_fc_pval()
-    thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-    thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-    res = {}
-    states = ['+*','+','-*','-']
-    for st1 in states:
-        res[st1] = {}
-        for st2 in states:
-            res[st1][st2] = 0
-
-    for gene in self.genes.keys():
-        try:
-            g = self.genes[gene]
-            if g.fc_pval[c1][1] <= thresh_pval:
-                stat1 = '*'
-            else:
-                stat1 = ''
-            if g.fc_pval[c1][0] > thresh_fc:
-                sign1 = '+'
-            else:
-                sign1 = '-'
-
-
-            if g.fc_pval[c2][1] <= thresh_pval:
-                stat2 = '*'
-            else:
-                stat2 = ''
-            if g.fc_pval[c2][0] > thresh_fc:
-                sign2 = '+'
-            else:
-                sign2 = '-'
-
-            st1 = sign1+stat1 ; st2 = sign2+stat2
-            res[st1][st2] += 1
-        except:
-            pass
-
-    df = pd.DataFrame.from_dict(res,orient='index')
-    df.sort_index(axis=1,inplace=True) ; df.sort_index(axis=0,inplace=True)
-    df.to_csv('/home/raphael/Documents/test.csv')
-    
+"""    
 
 def compare_genomes(gen1,gen2,*args,**kwargs):
     '''
@@ -577,48 +536,14 @@ def compare_genomes(gen1,gen2,*args,**kwargs):
     print res
     print sum(res[c] for c in res.keys())
 
-
-def load_TSS_from_common_genome(gen,genref,*arg,**kwargs):
-    prom_region = kwargs.get('prom',False)
-    genref.compute_magic_prom(prom=prom_region)
-    gen.load_annotation()
-    gen.load_seq()
-    check = kwargs.get('check',200)
-    thresh = kwargs.get('thresh',200)
-    gnames = {} # dict {gene_name:gene_id} to map names to ID
-    gen.TSSs = {} # init TSS
-    for g in gen.genes.keys():
-        gnames[gen.genes[g].name] = g
-
-    for TSScond in genref.TSSs.keys():
-        try:
-
-            gen.TSSs[TSScond] = genref.TSSs[TSScond] # init TSS cond
-            for pos in gen.TSSs[TSScond].keys(): # for each TSS
-                TSS = gen.TSSs[TSScond][pos]
-                newgenes = []
-                for gene in TSS.genes:
-                    try:
-                        gref = genref.genes[gene]
-                        g = gen.genes[gnames[gref.name]]
-                        if g.strand and gref.strand:
-                            s = gen.seq[g.start-check-1:g.start]
-                            sref = genref.seq[gref.start-check-1:gref.start]
-                        elif not g.strand and not gref.strand:
-                            s = gen.seqcompl[g.start-1:g.start+check][::-1]
-                            sref = genref.seqcompl[gref.start-1:gref.start+check][::-1]
-                        if sum(c1!=c2 for c1,c2 in zip(s,sref)) <= thresh:
-                            newgenes.append(gnames[gref.name])
-
-                    except:
-                        pass
-                TSS.genes = newgenes
-        except:
-            pass
+# It happens often that expression and TSS data come from different subspecies with different gene IDs
+# and slight structural differences. In that case, you can use the following function, that test whether
+# or not two genes with the same name have similar sequences. If it is the case, expression / TSS data are
+# extrapolated from the other subspecie (see frequent_cmd)
 
 def load_fc_from_common_genome(genTSS,genFC,*arg,**kwargs):
-    genFC.load_fc_pval() # genome from which we want to extrapolate FC (ecoli_b)
-    genTSS.load_fc_pval() # genome where we want to extrapolate FC (ecoli)
+    genFC.load_fc_pval() # genome from which we want to extrapolate FC (e.g. ecoli_b)
+    genTSS.load_fc_pval() # genome where we want to extrapolate FC (e.g. ecoli K12)
     check = kwargs.get('check',200) # nb of bp to test upstream gene start to evaluate gene similarity in genomes
     thresh = kwargs.get('thresh',10) # if nb of different nucleotides in the genome > thresh for a given gene, no extrapolation (5% differences max)
     
@@ -660,7 +585,8 @@ def load_fc_from_common_genome(genTSS,genFC,*arg,**kwargs):
             pass
     print d
 
-def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.05, barh=.05, fs=12, maxasterix=None, dt=0, bold = False):
+
+def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.05, barh=.05, fs=12, maxasterix=None, dt=0, bold = False, lw=1):
     """ 
     Annotate barplot with p-values.
 
@@ -674,6 +600,7 @@ def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.0
     :param barh: bar height in axes coordinates (0 to 1)
     :param fs: font size
     :param maxasterix: maximum number of asterixes to write (for very small p-values)
+    :param lw: bar linewidth
     """
     lx, ly = center[num1], height[num1]
     rx, ry = center[num2], height[num2]
@@ -691,11 +618,11 @@ def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.0
     bary = [y, y+barh, y+barh, y]
     mid = ((lx+rx)/2, y+barh)
 
-    plt.plot(barx, bary, c='black')
+    plt.plot(barx, bary, c='black', linewidth=lw)
     if bold:
-        plt.text(mid[0],mid[1]+dt, text, fontsize=fs, ha='center', fontweight = "bold")
+        plt.text(mid[0],mid[1]-dt, text, fontsize=fs, ha='center', fontweight = "bold")
     else:
-        plt.text(mid[0],mid[1]+dt, text, fontsize=fs, ha='center')
+        plt.text(mid[0],mid[1]-dt, text, fontsize=fs, ha='center')
 
 
 
@@ -711,7 +638,7 @@ def significance(pval):
     return s
 
 
-########## BAM2NPZ RNA_SEQ ANALYSIS, RAPHAEL ##########
+########## BAM2NPZ RNA_SEQ ANALYSIS, RAPHAEL FORQUET ##########
 import os,pysam, numpy as np, pandas as pd
 from datetime import datetime
 
@@ -797,6 +724,44 @@ def cov_from_reads(npz_file, gen, genome_length):
     # save results ; .npz contains two .npy cov_pos and cov_neg
     np.savez(basedir+"data/"+gen+'/rnaseq_cov/'+npz_file[:-4]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
 
+def paf_to_npz(gen):
+# PAF format: col 1 = read name, 2 = read length, 3 = read start, 4 = read end, 5 = strand, 6 = query name
+# 7 = mapping length, 8 = mapping start, 9 = mapping end, 10 = nb of matching bases in the mapping
+# 11 = nb of bases including gaps in the mapping, 12 = mapping quality (0-255 with 255=missing)
+    d = {"+":[[],[]], "-":[[],[]]}
+    fname = "RNAmRNA.paf"
+    path = "/home/raphael/Documents/topo/RNAseq_data/2021_nanopore/raw_reads/" + fname
+    with open(path,"r") as f:
+        for line in f:
+            line=line.strip().split('\t')
+            d[line[4]][0].append(int(line[7]))
+            d[line[4]][1].append(int(line[8]))
+    f.close()   
+
+    Rpos_start = np.array(d["+"][0],dtype=int)
+    Rpos_end = np.array(d["+"][1],dtype=int)
+    Rneg_start = np.array(d["-"][1],dtype=int)
+    Rneg_end = np.array(d["-"][0],dtype=int)
+
+    Rpos = np.column_stack((Rpos_start,Rpos_end))
+    Rneg = np.column_stack((Rneg_start,Rneg_end))
+
+    # delete rows where one coordinate is missing
+    # Rpos = Rpos[np.isfinite(Rpos).all(axis=1)] 
+    # Rneg = Rneg[np.isfinite(Rneg).all(axis=1)]
+    print np.shape(Rpos),np.shape(Rneg)
+
+    # if reads.info not exist
+    if not os.path.exists(basedir+"data/"+gen.name+'/rnaseq_reads/reads.info'):
+        file = open(basedir+"data/"+gen.name+'/rnaseq_reads/reads.info','w') 
+        file.write('Condition\tReads file\tDate\tBAM file')
+        file.close() 
+    # save results ; .npz contains two .npy Rpos and Rneg
+    file = open(basedir+"data/"+gen.name+'/rnaseq_reads/reads.info','a')
+    file.write('\n'+fname[:-4]+'\t'+fname[:-4]+'_reads.npz\t'+str(datetime.now())+'\t'+fname)  
+    file.close()    
+    np.savez(basedir+"data/"+gen.name+'/rnaseq_reads/'+fname[:-4]+'_reads.npz', Rpos=Rpos, Rneg=Rneg)
+
 ##### MAIN #####
 # for a list of .bam
 # samples=["E%d"%x for x in range(1,15)]+["F%d"%x for x in range(1,9)+[13,14]]
@@ -855,3 +820,43 @@ def cov_start_stop_from_reads(gen):
                 cov_end_pos= cov_end[1], 
                 cov_start_neg= cov_start[0], 
                 cov_end_neg= cov_end[0])
+
+def hierarchical_clustering(genes, corr, thresh):
+    '''
+    genes = list of genes, corr = matrix of correlations among genes, thresh = correlation cutoff to end clustering
+    hierarchical clustering with constraint on neighbours
+
+    '''
+    stop = False # stop = True when clusters can't fuse anymore because of thresh_corr reached
+    # init, each is cluster is a gene
+    clusters = [[x] for x in genes]
+    while not stop: # when clusters can still fuse 
+        if len(clusters) > 1:
+            corrs = [] # list of correlations among clusters
+            idx = range(len(clusters)) # idx of clusters
+            # combinations of neighbours
+            combinations = [x for x in list(itertools.combinations(idx, 2)) if x[1] - x[0] == 1]
+            for c in combinations:
+            # correlation among neighbours clusters
+                l = []
+                for g1 in clusters[c[0]]:
+                    for g2 in clusters[c[1]]:
+                        try:
+                            l.append(corr[g1][g2])
+                        except Exception as e: # no correlation data for the pair of genes
+                            pass
+                
+                # median = np.nan if no correlation data ; in that case, we still fuse the clusters
+                corrs.append((c[0], c[1], np.median(l)))
+
+            higher = max(corrs, key=itemgetter(2))
+            if higher[2] >= thresh or np.isnan(higher[2]):
+                idx_before = [x for x in idx if x < higher[0]]
+                idx_after = [x for x in idx if x > higher[1]]
+                clusters = [clusters[x] for x in idx_before] + [clusters[higher[0]] + clusters[higher[1]]] + [clusters[x] for x in idx_after] 
+            else:
+                stop = True
+        else:
+            stop = True
+
+    return clusters

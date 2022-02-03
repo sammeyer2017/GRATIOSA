@@ -13,10 +13,11 @@ import numpy as np
 class TSS:
     def __init__(self, *args, **kwargs):
         self.pos = kwargs.get('pos')
-        self.strand = None
-        self.genes=[]
+        self.strand = kwargs.get('strand',None)
+        self.genes=kwargs.get('genes',[])
         self.promoter={}
-
+        self.score= kwargs.get('score',None)
+        
     def add_strand(self,strand):
         self.strand = strand
 
@@ -47,7 +48,8 @@ class TSS:
         include on either side.
         '''
         shift = kwargs.get('shift',0) # number of nt to include beyond each region on either side, e.g. to compute angle
-        prom_region = kwargs.get('prom',False)
+        prom_region = kwargs.get('prom',False) # specify the length of the region upstream TSSs that need to be extracted if required
+        # shape [length before TSS, length after TSS] e.g. [250,100]
         if prom_region != False:
             if self.strand == True:
                 self.promoter['region'] = gen_seq[self.pos-1-prom_region[0]:self.pos+prom_region[1]+shift]
@@ -55,36 +57,24 @@ class TSS:
             elif self.strand == False:
                 self.promoter['region'] = gen_seqcompl[self.pos-prom_region[1]-1-shift:self.pos+prom_region[0]+shift][::-1]
 
-        if self.strand == True:
-            self.promoter['discr_model'] = gen_seq[self.pos-12-1:self.pos+8]
-
-        elif self.strand == False:
-            self.promoter['discr_model'] = gen_seqcompl[self.pos-8-1:self.pos+12][::-1]
-
-
         try:
             for sig in self.promoter.keys(): # for each sigma factor
                 try:                    
                     if self.strand == True:
         # if promoter on + strand, spacer length = -10L - -35R -1
                         self.promoter[sig]['spacer'] = gen_seq[self.promoter[sig]['sites'][3]-shift:self.promoter[sig]['sites'][0]-1+shift]
+                        self.promoter[sig]['spacer_model'] = gen_seq[self.promoter[sig]['sites'][3]-2:self.promoter[sig]['sites'][0]-1+2]
                         self.promoter[sig]['minus10'] = gen_seq[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift]
                         self.promoter[sig]['minus35'] = gen_seq[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift]
                         self.promoter[sig]['discriminator'] = gen_seq[self.promoter[sig]['sites'][1]-shift:self.pos-1+shift]
 
-                        lenbef = self.pos - self.promoter[sig]['sites'][0] + 1 ; rest = 21 - lenbef
-                        self.promoter[sig]['discr_model'] = gen_seq[self.promoter[sig]['sites'][0]-1:self.promoter[sig]['sites'][0]+20]
-
                     elif self.strand == False:
         # if promoter on - strand, spacer length = -35L - -10R -1
                         self.promoter[sig]['spacer'] = gen_seqcompl[self.promoter[sig]['sites'][1]-shift:self.promoter[sig]['sites'][2]-1+shift][::-1]
+                        self.promoter[sig]['spacer_model'] = gen_seqcompl[self.promoter[sig]['sites'][1]-2:self.promoter[sig]['sites'][2]-1+2][::-1]
                         self.promoter[sig]['minus10'] = gen_seqcompl[self.promoter[sig]['sites'][0]-1-shift:self.promoter[sig]['sites'][1]+shift][::-1]
                         self.promoter[sig]['minus35'] = gen_seqcompl[self.promoter[sig]['sites'][2]-1-shift:self.promoter[sig]['sites'][3]+shift][::-1]
                         self.promoter[sig]['discriminator'] = gen_seqcompl[self.pos-shift:self.promoter[sig]['sites'][0]-1+shift][::-1]
-
-                        lenbef = self.promoter[sig]['sites'][1] - self.pos + 1 ; rest = 21 - lenbef
-                        #self.promoter[sig]['discr_model'] = gen_seqcompl[self.pos-rest-1:self.promoter[sig]['sites'][1]][::-1]
-                        self.promoter[sig]['discr_model'] = gen_seqcompl[self.promoter[sig]['sites'][1]-20-1:self.promoter[sig]['sites'][1]][::-1]
 
                 except Exception as e: # sigma factor without site coordinates or invalid
                     pass

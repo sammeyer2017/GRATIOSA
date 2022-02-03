@@ -82,35 +82,39 @@ def generFasta(obj,list_TSS,filename,freedom):
     fasta = open(pathTemp+filename+".fasta",'w')
     genLen = len(obj.seq)
     for tss_pos in obj.TSSs[list_TSS].items():
-        pos = tss_pos[0]
-        brin = strand(obj.TSSs[list_TSS][pos].strand)
-        com = 'TSS position\t'+str(pos)+'\t'+'strand\t'+brin
-        mp = freedom + PROM_LENGTH #seq = mp + pos + ma
-        ma = freedom + TSS_DOWNSTREAM
-        if obj.TSSs[list_TSS][pos].strand:
-            if pos - mp < 0:
-                reste = abs(pos -1 -mp)
-                sequence = obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+ma)]
-            elif pos + ma > genLen:
-                reste = ma - (genLen -pos -1)
-                sequence = obj.seq[(pos -1 -mp):genLen] + obj.seq[0:(reste+1)]
+        try:
+
+            pos = tss_pos[0]
+            brin = strand(obj.TSSs[list_TSS][pos].strand)
+            com = 'TSS position\t'+str(pos)+'\t'+'strand\t'+brin
+            mp = freedom + PROM_LENGTH #seq = mp + pos + ma
+            ma = freedom + TSS_DOWNSTREAM
+            if obj.TSSs[list_TSS][pos].strand:
+                if pos - mp < 0:
+                    reste = abs(pos -1 -mp)
+                    sequence = obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+ma)]
+                elif pos + ma > genLen:
+                    reste = ma - (genLen -pos -1)
+                    sequence = obj.seq[(pos -1 -mp):genLen] + obj.seq[0:(reste+1)]
+                else:
+                    sequence = obj.seq[(pos-1-mp):(pos+ma)]
+                verifLen(sequence,pos,mp,ma)
+                fasta.write(seqFasta(com,sequence)+'\n\n')
+            elif not obj.TSSs[list_TSS][pos].strand:
+                if pos - ma < 0:
+                    reste = pos -1 -ma
+                    sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp+1)])
+                elif pos + mp > genLen:
+                    reste = abs(mp - (genLen -pos -1))
+                    sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp)])
+                else:
+                    sequence = compl_string(obj.seq[(pos-1-ma):(pos+mp)])
+                verifLen(sequence,pos,mp,ma)
+                fasta.write(seqFasta(com,sequence)+'\n\n')
             else:
-                sequence = obj.seq[(pos-1-mp):(pos+ma)]
-            verifLen(sequence,pos,mp,ma)
-            fasta.write(seqFasta(com,sequence)+'\n\n')
-        elif not obj.TSSs[list_TSS][pos].strand:
-            if pos - ma < 0:
-                reste = pos -1 -ma
-                sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp+1)])
-            elif pos + mp > genLen:
-                reste = abs(mp - (genLen -pos -1))
-                sequence = compl_string(obj.seq[(genLen-reste):genLen]+obj.seq[0:(pos+mp)])
-            else:
-                sequence = compl_string(obj.seq[(pos-1-ma):(pos+mp)])
-            verifLen(sequence,pos,mp,ma)
-            fasta.write(seqFasta(com,sequence)+'\n\n')
-        else:
-            print "Error in generFasta : strand undetermined for TSS "+str(obj.TSSs[list_TSS][pos])
+                print "Error in generFasta : strand undetermined for TSS "+str(obj.TSSs[list_TSS][pos])
+        except Exception as e:
+            print e
     fasta.close()
     if os.stat(pathTemp+filename+".fasta").st_size == 0:
         os.remove(pathTemp+filename+".fasta")

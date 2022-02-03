@@ -17,7 +17,7 @@ from TTS import TTS
 from TU import TU
 from datetime import datetime
 from math import sqrt
-from btssfinder import *FOpe
+from btssfinder import *
 from scipy import stats
 
 from BCBio import GFF
@@ -261,7 +261,7 @@ def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, stra
                 line=line.split(separator)
             try:
                 pos = int(line[TSS_column])
-                strand = True if line[strandcol] in ["True","plus","+"] else False
+                strand = True if line[strandcol] in ["True","plus","+","1"] else False
                 genes = line[genescol] if genescol != None else []
                 sig = line[sigcol] if sigcol != None else None
                 sites = line[sitescol] if sitescol != None else None
@@ -284,7 +284,7 @@ def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, stra
                         TSS_dict[pos].add_promoter(sig)
 
                 if scorecol != None:
-                    TSS_dict[pos].add_score(int(line[scorecol]))
+                    TSS_dict[pos].add_score(int(float(line[scorecol])))
 
             except Exception as e:
                 print 'Error in line, wrong information type :',e
@@ -440,6 +440,27 @@ def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, se
     f.close()
     return TUs
 
+def load_sites_cond(filename, condition, separator, start_line, left, right, strand, seq, score, *args, **kwargs):
+    ''' Called by load_sites, allows sites data to be loaded by specifying files, and where each information is
+    '''
+    gen_sites = {}
+    with open(filename, 'r') as f:
+        i=1
+        while i < start_line:
+            header=next(f)
+            i+=1
+        for line in f:
+            line = line.strip('\n')
+            if separator == '\\t':
+                line = line.split('\t')
+            else:
+                line=line.split(separator)
+            try:
+                gen_sites[(int(line[left]) + int(line[right]))/2] = {"left":int(line[left]),"right":int(line[right]),"score":float(line[score]), "strand":line[strand], "seq":line[seq]}
+            except:
+                pass
+    f.close()
+    return gen_sites
 
 
 #####  #####
@@ -452,9 +473,6 @@ class Genome:
         self.name = kwargs.get('name')
         self.length = kwargs.get('length')
         #self.genes=kwargs.get('genes')
-        self.TSS_complete = {}
-        self.TSS_plus={}
-        self.TSS_minus={}
 
     def load_seq(self):
         self.seq=load_seq(basedir+"data/"+self.name+"/sequence.fasta").upper()
@@ -481,7 +499,7 @@ class Genome:
         if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 =
         Locus column,3 = Strand column, 4,5 Left Rigth column, 6 start line)
         """
-        custom = 0
+        custom = False # set to True if the annotation should be loaded from a file in annotation.info rather than from other file
         if custom:
             with open(basedir+"data/"+self.name+"/annotation/annotation.info","r") as f:
                 for line in f:
@@ -538,7 +556,7 @@ class Genome:
                                 self.TSSs['all_TSS'][entry].append(line[0])
 
                     except Exception as e:
-                        print "Error loading",cond,e
+                        print "Error loading",line[0],e
 
 
         else:
@@ -695,14 +713,12 @@ class Genome:
         Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account
         DNA region upstream of the coding sequence of the gene
         '''
-        if not self.genes: # if no genes loaded
-            # try to load them
-            self.load_annotation()
+        self.load_annotation()
         if not hasattr(self,"cov_pos"):
             self.load_cov()
 
-        try:
-            for g in self.genes.keys(): # for each gene
+        for g in self.genes.keys(): # for each gene
+            try:
                 if self.genes[g].strand:
         # gene in + strand
                     for cond in self.cov_pos.keys(): # for each condition of cov
@@ -711,8 +727,9 @@ class Genome:
         # gene in - strand
                     for cond in self.cov_neg.keys():
                         self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+before)]), np.sum(self.cov_pos[cond])+np.sum(self.cov_neg[cond]))
-        except:
-            print("You need to load coverage pls")
+            except Exception as e:
+                print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
+                pass
 
 
     def load_fc_pval(self,*args, **kwargs):
@@ -826,7 +843,7 @@ class Genome:
         '''
         For each gene, find nearest neighbours (left and right) on genome, whatever their strand.
         '''
-        if not self.genes:
+        if not hasattr(self,"genes"):
             self.load_annotation()
         res={}
         # create dic with genes and position (res[position] = gene)
@@ -889,6 +906,15 @@ class Genome:
                             elif not rg.strand:
                                 self.genes[gene].add_orientation('tandem')
                                 res["tandem"] += 1
+                    if g.strand:
+                        if (rg.start - g.start) < bound:
+                            if not rg.strand:
+                                res["convergent"] += 1
+                    if not g.strand:
+                        if (g.start - lg.start) < bound:
+                            if rg.strand:
+                                res["convergent"] +=1
+                                
             except:
                 pass
                 
@@ -973,6 +999,71 @@ class Genome:
         else:
             print("No TTS.info file, please create one")
 
+    def load_sites(self,*args,**kwargs):
+        '''
+        Load sites from sites.info: left and right binding coordinates on genome, sequence of site, score, strand
+        '''
+        self.sites = {}
+        if os.path.exists(basedir+"data/"+self.name+"/sites/sites.info"):
+            with open(basedir+"data/"+self.name+"/sites/sites.info","r") as f:
+                skiphead = next(f) # skip head
+                for header in f:
+                    header=header.strip()
+                    header=header.split('\t')
+                    self.sites[header[0]] = load_sites_cond(basedir+"data/"+self.name+"/sites/"+header[1], header[0], header[2], int(header[3]), int(header[4]), int(header[5]), int(header[6]), int(header[7]), int(header[8]))
+            f.close()
+
+    def load_GO(self,*args,**kwargs):
+        '''
+        Loads file specified in GO.info to assign GO terms to genes
+        One condition corresponds to one annotation system, e.g. GO, COG, but also domain assignment for domain enrichment
+        '''
+        if not hasattr(self, "genes"): # if no genes loaded
+            # try to load them
+            self.load_annotation()
+
+        self.GO = {}
+        if os.path.exists(basedir+"data/"+self.name+"/GO_analysis/GO.info"):
+            with open(basedir+"data/"+self.name+"/GO_analysis/GO.info","r") as f1:
+                skiphead = next(f1) # skip head
+                for header in f1:
+                    header=header.strip()
+                    header=header.split('\t')
+                    cond = header[0] # condition name
+                    file = header[1] # file containing assignment gene / functions
+                    tagcol = int(header[2])
+                    GOcol = int(header[3])
+                    self.GO[cond] = {}
+
+                    with open(basedir+"data/"+self.name+"/GO_analysis/"+file, 'r') as f2:
+                        header=next(f2)
+                        for line in f2: 
+                            line = line.strip('\n').split('\t')
+                            try:
+                                try:
+                                    self.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
+                                except:
+                                    self.genes[line[tagcol]].GO = {}
+                                    self.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
+                            except Exception as e:
+                                # print e
+                                pass   
+                    f2.close()
+                    for gene in self.genes.keys():
+                        try:
+                            g = self.genes[gene]
+                            for term in g.GO[cond]:
+                                if term not in self.GO[cond].keys():
+                                    self.GO[cond][term] = []
+                                self.GO[cond][term].append(gene)
+                        except Exception as e:
+                            # print e
+                            pass
+
+            f1.close()
+        else:
+            print("No GO.info file, please create one")
+
 ###################### ANTOINE #############################
 
     def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
@@ -1017,5 +1108,4 @@ class Genome:
         else:
             print "TSS info not found"
         print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
-
 
