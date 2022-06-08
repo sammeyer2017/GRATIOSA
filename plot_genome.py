@@ -15,7 +15,7 @@ plt.rcParams.update({'font.family': "Arial"})
 #plt.rcParams.update({'usetex': True})
 
 
-def subplot_annotation_list(ax,gene_list,(beg,end), ticks=None, plot_gene_names=False):
+def subplot_annotation_list(ax,gene_list,beg,end, ticks=None, plot_gene_names=False):
     """ 
     plots a small subplot with oriented genes, with different colors corresponding to operons
     """
@@ -27,7 +27,7 @@ def subplot_annotation_list(ax,gene_list,(beg,end), ticks=None, plot_gene_names=
     ax.axhline(0, color='black')
     gw=0.2
     for i,g in enumerate(gene_list):
-        print g.name, g.start, g.end
+        print(g.name, g.start, g.end)
         if g.orientation:
             #ax.arrow(g.start,(1+i%2)*gw,g.end,(1+i%2)*gw,width=.1,fc=cols[g.operon],ec=cols[g.operon])
             # old version with ax.plot: rectangles are not well defined
@@ -37,7 +37,7 @@ def subplot_annotation_list(ax,gene_list,(beg,end), ticks=None, plot_gene_names=
             if plot_gene_names:
                 ax.text((g.start+g.end)/2,3*gw,g.name,size=6,horizontalalignment='center', color=cols[g.operon])
         else:
-rect=pat.Rectangle((g.start,-(.1.75+i%2)*gw),g.end-g.start,gw,color=cols[g.operon])
+            rect=pat.Rectangle((g.start,-(1.75+i%2)*gw),g.end-g.start,gw,color=cols[g.operon])
             ax.add_artist(rect)
 #            ax.plot([g.start,g.end], [-(1+i%2)*gw,-(1+i%2)*gw],linewidth=2,color=cols[g.operon])
             if plot_gene_names:
@@ -52,7 +52,7 @@ rect=pat.Rectangle((g.start,-(.1.75+i%2)*gw),g.end-g.start,gw,color=cols[g.opero
 
 # ,head_width=.1,head_length=.1
 # ,width=.5
-def subplot_annotation(ax, gen, (beg, end), buf=1000, ticks=None, plot_gene_names=False):
+def subplot_annotation(ax, gen, beg, end, buf=1000, ticks=None, plot_gene_names=False):
     if ticks is not None:
         ax.set_xticks(ticks)
     # take only genes in region
@@ -60,10 +60,10 @@ def subplot_annotation(ax, gen, (beg, end), buf=1000, ticks=None, plot_gene_name
     # sort list
     gene_start=np.argsort([(g.left+g.right)/2 for g in gene_list])
     gene_list=[gene_list[i] for i in gene_start]
-    subplot_annotation_list(ax,gene_list,(beg,end),ticks=ticks, plot_gene_names=plot_gene_names)
+    subplot_annotation_list(ax,gene_list,beg,end,ticks=ticks, plot_gene_names=plot_gene_names)
     return 0    
 
-def subplot_exp(ax,gen,cond,(beg,end), ticks=None):
+def subplot_exp(ax,gen,cond,beg,end, ticks=None):
     """ 
     plots experimental information for region
     gen= genome with loaded data: 
@@ -71,7 +71,7 @@ def subplot_exp(ax,gen,cond,(beg,end), ticks=None):
      - TSS
     """
     if not hasattr(gen,"cov_plus"):
-        print "ERROR: plotting requires coverage"
+        print("ERROR: plotting requires coverage")
         return 1
     x=np.arange(beg,end)
     ax.fill_between(x,gen.cov_plus[cond][beg:end],color="blue")
@@ -91,7 +91,7 @@ def subplot_exp(ax,gen,cond,(beg,end), ticks=None):
     ax.set_ylabel("coverage (exp)")
     return 0
 
-def subplot_model(ax, gen, cond, (beg, end), ticks=None):
+def subplot_model(ax, gen, cond, beg, end, ticks=None):
     x=np.arange(beg,end)
     ax.plot(x, np.zeros(len(x)), color="black")
     # ticks: around 5
@@ -104,7 +104,7 @@ def subplot_model(ax, gen, cond, (beg, end), ticks=None):
     return 1
 
 
-def plot_region(gen, cond, (beg,end), name=None, plot_gene_names=False):
+def plot_region(gen, cond, beg,end, name=None, plot_gene_names=False):
     if name is None:
         name=basedir+"plots/%d_%d_%s"%(beg,end,cond)
     fig=plt.figure(figsize=(w,sum(h)+2*dh))
@@ -115,16 +115,16 @@ def plot_region(gen, cond, (beg,end), name=None, plot_gene_names=False):
     ticks=np.arange((beg/tickdist)*tickdist,(end/tickdist+1)*tickdist,tickdist)
     # annotation
     ax=plt.subplot(gs[0])
-    subplot_annotation(ax, gen, (beg, end), buf=2000, ticks=ticks, plot_gene_names=plot_gene_names)
+    subplot_annotation(ax, gen, beg, end, buf=2000, ticks=ticks, plot_gene_names=plot_gene_names)
     # exp
     ax=plt.subplot(gs[1])
-    subplot_exp(ax,gen,cond,(beg,end), ticks=ticks)
+    subplot_exp(ax,gen,cond,beg,end, ticks=ticks)
     # model
     ax=plt.subplot(gs[2])
-    subplot_model(ax,gen,cond,(beg,end), ticks=ticks)
+    subplot_model(ax,gen,cond,beg,end, ticks=ticks)
     #plt.tight_layout()
     for ext in exts:
-        print name+ext
+        print(name+ext)
         plt.savefig(name+ext)
     plt.close()
     return 0

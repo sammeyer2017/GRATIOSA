@@ -41,7 +41,7 @@ def verifFasta(name): #test existing fasta's name
     prefix = name
     while os.path.exists(pathTemp+name) or os.path.exists(pathTemp+name + ".fasta"):
         name = prefix+".v"+str(v)
-        print "test name of "+str(name)
+        print("test name of "+str(name))
         v += 1
     return name
 
@@ -68,7 +68,7 @@ def strand(TSS):
 def verifLen(seq,tss,mp,ma):
     seqLen = mp + 1 + ma
     if len(seq) != seqLen:
-        print "/!\ Sequence's length is invalid for TSS position n°"+str(tss)
+        print("/!\ Sequence's length is invalid for TSS position n°"+str(tss))
 
 def generFasta(obj,list_TSS,filename,freedom):
     '''
@@ -112,15 +112,15 @@ def generFasta(obj,list_TSS,filename,freedom):
                 verifLen(sequence,pos,mp,ma)
                 fasta.write(seqFasta(com,sequence)+'\n\n')
             else:
-                print "Error in generFasta : strand undetermined for TSS "+str(obj.TSSs[list_TSS][pos])
+                print("Error in generFasta : strand undetermined for TSS "+str(obj.TSSs[list_TSS][pos]))
         except Exception as e:
-            print e
+            print(e)
     fasta.close()
     if os.stat(pathTemp+filename+".fasta").st_size == 0:
         os.remove(pathTemp+filename+".fasta")
-        print "/!\ No data written in fasta file ! Check the trainee's code…"
+        print("/!\ No data written in fasta file ! Check the trainee's code…")
         sys.exit()
-    print "seq fasta : PROM_LENGTH = "+str(PROM_LENGTH)+" +freedom = "+str(freedom)+" ¦TSS position¦ TSS_DOWMSTREAM = "+str(TSS_DOWNSTREAM)+" +freedom = "+str(freedom)
+    print("seq fasta : PROM_LENGTH = "+str(PROM_LENGTH)+" +freedom = "+str(freedom)+" ¦TSS position¦ TSS_DOWMSTREAM = "+str(TSS_DOWNSTREAM)+" +freedom = "+str(freedom))
 
 def run_btssfinder(obj,list_TSS,fileOutName,freedom): #running bTSSfinder
     '''
@@ -138,19 +138,19 @@ def run_btssfinder(obj,list_TSS,fileOutName,freedom): #running bTSSfinder
     stop = False
     while stop == False:
         if os.path.exists(pathTemp+fileOutName+'.gff'):#gff is important to import in database
-            print "/!\ file "+fileOutName+".gff exist… don't need to run_bTSSfinder"
+            print("/!\ file "+fileOutName+".gff exist… don't need to run_bTSSfinder")
             stop = True
         elif not os.path.exists(pathTemp+fileOutName+'.fasta'):
             generFasta(obj,list_TSS,fileOutName,freedom)
-            print "Creating "+pathTemp+fileOutName+".fasta file"
+            print("Creating "+pathTemp+fileOutName+".fasta file")
         elif os.path.exists(pathTemp+fileOutName+'.fasta'):
             try:
                 t = taxon[obj.name]
             except:
                 t = 'e'
-                print "Using default taxon's value (E.Coli), please check or renseign the new taxon key in globvar.py"
+                print("Using default taxon's value (E.Coli), please check or renseign the new taxon key in globvar.py")
             btssfinder = "bTSSfinder -i "+pathTemp+fileOutName+".fasta"+" -o "+pathTemp+fileOutName+" -t "+t+" -a 0 -b 0"
-            print btssfinder
+            print(btssfinder)
             os.system(btssfinder)
             '''
             -i for input fasta file
@@ -158,15 +158,15 @@ def run_btssfinder(obj,list_TSS,fileOutName,freedom): #running bTSSfinder
             -t taxon : cyanobacteria or E.Coli
             -[a,b,d,e,f] : minimal score accepted for the promoter (to -2 at 2)
             '''
-            print "run_bTSSfinder("+pathTemp+fileOutName+") status : terminated"
+            print("run_bTSSfinder("+pathTemp+fileOutName+") status : terminated")
             lines = sum(1 for _ in open(pathTemp+fileOutName+".gff"))
             if lines < 1:
                 os.remove(pathTemp+fileOutName+".gff") ; os.remove(pathTemp+fileOutName+".bed")
-                print "/!\ No data written in gff file ! Check the trainee's code…"
+                print("/!\ No data written in gff file ! Check the trainee's code…")
                 sys.exit()
             stop = True
         else:
-            print "/!\ Error run_bTSSfinder"
+            print("/!\ Error run_bTSSfinder")
             stop = True
 
 def find_gene(obj,list_TSS,pos,freedom):#do corresponding gene's TSS with originals genes
@@ -222,7 +222,7 @@ def gff2csv(obj,list_TSS,filename,freedom):
                     b10PosRealLeft = b10PosRealRight - len(box10seq) + 2
 
                 else:
-                    print 'error no detect strand for TSS '+pos
+                    print('error no detect strand for TSS '+pos)
                 #convert bad coordinate
                 gene = ','.join(find_gene(obj,list_TSS,pos,freedom))
                 if b10PosRealLeft < 0:
@@ -244,7 +244,7 @@ def gff2csv(obj,list_TSS,filename,freedom):
 
                 f.write(str(pos)+'\t'+line1[3]+'\t'+str(gene)+'\t'+sig+'\t'+str(b10PosRealLeft)+','+str(b10PosRealRight)+','+str(b35PosRealLeft)+','+str(b35PosRealRight)+'\n')
 
-                    #print "/!\TSS pos n°"+str(pos)+" ignored"
+                    #print("/!\TSS pos n°"+str(pos)+" ignored")
     my_file.close()
     f.close()
 

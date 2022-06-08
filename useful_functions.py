@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import operator
 from globvar import *
 from Bio.Seq import Seq
-from Bio.Alphabet import IUPAC
+#from Bio.Alphabet import IUPAC
 from Bio import motifs
 from TSS import TSS
 from matplotlib_venn import venn2
@@ -30,29 +30,29 @@ plt.rcParams.update({'font.family': "Arial"})
 # -------------------
 # useful function for weight matrix
 
-def create_matrix_from_file(filename, factor):
-    i =1
-    with open(filename,"r") as f:
-        for line in f:
-            if 'Transcription Factor Name: '+factor in line:
-                while i <5:
-                    i+=1
-                    header=next(f)
-                m = motifs.Motif()
-                a = IUPAC.unambiguous_dna
-                m.add_instance(Seq(header.strip(),a))
-                l=('*')
-                j=1
-                while j != len(header.strip()):
-                    j+=1
-                    l+='*'
-                while header[0] != '\n':
-                    header=next(f)
-                    if header[0] != '\n':
-                        m.add_instance(Seq(header.strip(),a))
-                m.set_mask(l)
-                if header[0]=='\n':
-                    return m
+#def create_matrix_from_file(filename, factor):
+#    i =1
+#    with open(filename,"r") as f:
+#        for line in f:
+#            if 'Transcription Factor Name: '+factor in line:
+#                while i <5:
+#                    i+=1
+#                    header=next(f)
+#                m = motifs.Motif()
+#                a = IUPAC.unambiguous_dna
+#                m.add_instance(Seq(header.strip(),a))
+#                l=('*')
+#                j=1
+#                while j != len(header.strip()):
+#                    j+=1
+#                    l+='*'
+#                while header[0] != '\n':
+#                    header=next(f)
+#                    if header[0] != '\n':
+#                        m.add_instance(Seq(header.strip(),a))
+#               m.set_mask(l)
+#                if header[0]=='\n':
+#                    return m
 
 def create_matrix_from_file_2(filename, factor):
     i =1
@@ -521,9 +521,9 @@ def compare_genomes(gen1,gen2,*args,**kwargs):
         else:
             seq = gen2.seqcompl[g.start:g.start+prom]
         res2[g.name] = seq
-    print res1
-    print res2
-    print len(res1.keys()),len(res2.keys())
+    print(res1)
+    print(res2)
+    print(len(res1.keys()),len(res2.keys()))
 
     res = {}
     for g1 in res1.keys():
@@ -533,8 +533,8 @@ def compare_genomes(gen1,gen2,*args,**kwargs):
                 res[mismatches] = 1
             else:
                 res[mismatches] += 1
-    print res
-    print sum(res[c] for c in res.keys())
+    print(res)
+    print(sum(res[c] for c in res.keys()))
 
 # It happens often that expression and TSS data come from different subspecies with different gene IDs
 # and slight structural differences. In that case, you can use the following function, that test whether
@@ -583,7 +583,7 @@ def load_fc_from_common_genome(genTSS,genFC,*arg,**kwargs):
                     genTSS.genes_valid[cond].append(idref)
         except:
             pass
-    print d
+    print(d)
 
 
 def barplot_annotate_brackets(num1, num2, text, center, height, yerr=None, dh=.05, barh=.05, fs=12, maxasterix=None, dt=0, bold = False, lw=1):
@@ -647,10 +647,10 @@ def process_bam_paired_end(bam_file, gen): # /!\ paired-end only /!\ -> return f
         os.system("samtools index -b %s"%bam_file)
     
     bamfile = pysam.AlignmentFile(basedir+"data/"+gen+'/rnaseq_reads/'+bam_file, "rb") # BAM opening, alignment file object
-    print 'Header :',bamfile.header
-    print 'Reads mapped :',bamfile.mapped
-    print 'Reads without coordinate :',bamfile.nocoordinate
-    print 'Reads not mapped :',bamfile.unmapped
+    print('Header :',bamfile.header)
+    print('Reads mapped :',bamfile.mapped)
+    print('Reads without coordinate :',bamfile.nocoordinate)
+    print('Reads not mapped :',bamfile.unmapped)
     # /!\ 0-based coordinate system /!\
     # fastest way to build a numpy matrix -> store every coordinate of interest into lists, then merge into numpy array
     # lists storing coordinates of paired-end fragments for +/- strands
@@ -749,7 +749,7 @@ def paf_to_npz(gen):
     # delete rows where one coordinate is missing
     # Rpos = Rpos[np.isfinite(Rpos).all(axis=1)] 
     # Rneg = Rneg[np.isfinite(Rneg).all(axis=1)]
-    print np.shape(Rpos),np.shape(Rneg)
+    print(np.shape(Rpos),np.shape(Rneg))
 
     # if reads.info not exist
     if not os.path.exists(basedir+"data/"+gen.name+'/rnaseq_reads/reads.info'):
@@ -781,7 +781,7 @@ def cov_start_stop_from_reads(gen):
         header = next(f)
         for line in f: # for each condition
             line=line.strip().split('\t')
-            print 'Loading condition',line[0]    
+            print('Loading condition',line[0])   
             # load npz file corresponding to condition
             npzfile = np.load(basedir+"data/"+gen.name+'/rnaseq_reads/'+line[1])
             Rpos = npzfile["Rpos"]
