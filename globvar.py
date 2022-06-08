@@ -4,7 +4,7 @@ import sys
 try:  
     basedir = os.environ['TOPO_DATABASE_PATH']
 except KeyError: 
-    print "Please set the environment variable TOPO_DATABASE_PATH"
+    print("Please set the environment variable TOPO_DATABASE_PATH")
     sys.exit()
 
 resdir = '/home/raphael/Documents/topo/results/'

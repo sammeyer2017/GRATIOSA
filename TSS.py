@@ -80,4 +80,4 @@ class TSS:
                     pass
 
         except Exception as e:
-            print 'Error for TSS',self.pos,':',e
+            print('Error for TSS',self.pos,':',e)

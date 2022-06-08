@@ -287,7 +287,7 @@ def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, stra
                     TSS_dict[pos].add_score(int(float(line[scorecol])))
 
             except Exception as e:
-                print 'Error in line, wrong information type :',e
+                print('Error in line, wrong information type :',e)
 
     return TSS_dict
 
@@ -319,7 +319,7 @@ def load_TTS_cond(filename, separator, start_line, leftcol, rightcol, strandcol,
                 TTS_dict[newTTS.start] = newTTS
 
             except Exception as e:
-                print 'Error in line, wrong information type :',e
+                print('Error in line, wrong information type :',e)
 
     return TTS_dict
 
@@ -519,7 +519,7 @@ class Genome:
                     self.genes = annotations_gbk(basedir+"data/"+self.name+'/annotation/sequence.gbk')
 
                 except Exception as e:
-                    print e
+                    print(e)
                     print('No GFF file nor annotation.info, unable to load annotation')
 
 
@@ -556,7 +556,7 @@ class Genome:
                                 self.TSSs['all_TSS'][entry].append(line[0])
 
                     except Exception as e:
-                        print "Error loading",line[0],e
+                        print("Error loading",line[0],e)
 
 
         else:
@@ -609,7 +609,7 @@ class Genome:
         self.reads_pos = {} # reads on + strand
         self.reads_neg = {} # reads on - strand
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
-            print 'Unable to locate reads.info in /rnaseq_reads/'
+            print('Unable to locate reads.info in /rnaseq_reads/')
         else:
             # open info file
             with open(basedir+"data/"+self.name+'/rnaseq_reads/reads.info',"r") as f:
@@ -618,10 +618,10 @@ class Genome:
                 for line in f:
                     line=line.strip()
                     line=line.split('\t')
-                    print 'Loading condition',line[0]
+                    print('Loading condition',line[0])
                     self.reads_pos[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rpos"]
                     self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
-            print 'Done'
+            print('Done')
 
     def load_cov(self):
         '''
@@ -638,14 +638,14 @@ class Genome:
                 header = next(f)
                 for line in f: # for each condition
                     line=line.strip().split('\t')
-                    print 'Loading condition',line[0]
+                    print('Loading condition',line[0])
                     # load attributes
                     self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
                     self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
 
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
-            print 'Unable to locate cov.info in /rnaseq_cov/'
-            print 'Working with .txt file (cov_txt.info)'
+            print('Unable to locate cov.info in /rnaseq_cov/')
+            print('Working with .txt file (cov_txt.info)')
             file = open(basedir+"data/"+self.name+'/rnaseq_cov/cov.info','w')
             file.write('Condition\tCov file\tDate\tReads file')
             file.close()
@@ -653,7 +653,7 @@ class Genome:
                 header = next(f)
                 for line in f:
                     line = line.strip('\n').split('\t')
-                    print 'Loading condition:',line[0]
+                    print('Loading condition:',line[0])
                     # create .npy from .txt
                     cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1], usecols=[int(line[4])], skiprows= int(line[3])-1)
                     cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[2], usecols=[int(line[4])], skiprows= int(line[3])-1)
@@ -668,8 +668,8 @@ class Genome:
                     file.close()
         f.close()
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
-            print 'cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder'
-        print 'Done'
+            print('cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder')
+        print('Done')
 
     def load_cov_start_end(self):
         '''
@@ -687,7 +687,7 @@ class Genome:
                 header = next(f)
                 for line in f: # for each condition
                     line=line.strip().split('\t')
-                    print 'Loading condition',line[0]
+                    print('Loading condition',line[0])
                     # load attributes
                     self.cov_start[line[0]] = {}
                     self.cov_end[line[0]] = {}
@@ -700,12 +700,12 @@ class Genome:
             f.close()
 
         else:
-            print 'cov_start_stop.info not available please check /rnaseq_cov/ folder'
+            print('cov_start_stop.info not available please check /rnaseq_cov/ folder')
 
         self.cov_start_all = {0:np.sum([self.cov_start[x][0] for x in self.cov_start.keys()],axis=0), 1:np.sum([self.cov_start[x][1] for x in self.cov_start.keys()],axis=0)} # 
         self.cov_end_all = {0:np.sum([self.cov_end[x][0] for x in self.cov_end.keys()],axis=0), 1:np.sum([self.cov_end[x][1] for x in self.cov_end.keys()],axis=0)} #
 
-        print 'Done'
+        print('Done')
 
 
     def compute_rpkm_from_cov(self, before=100):
@@ -791,7 +791,7 @@ class Genome:
                     for TSS in self.TSSs[cond_TSS].keys():
                         self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift,prom=prom_region)
             except:
-                print 'Unable to compute magic prom :',cond_TSS
+                print('Unable to compute magic prom :',cond_TSS)
 
 
     def add_fake_expression(self,cond_fc):
@@ -990,7 +990,7 @@ class Genome:
                     try:                
                         self.TTSs[header[0]]=load_TTS_cond(basedir+"data/"+self.name+"/TTS/"+header[1],header[6], int(header[5]), leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol)
                     except Exception as e:
-                        print e
+                        print(e)
                         print("Error loading cond",header[0])
             f.close()
             self.TTSs["all"] = {}
@@ -1046,7 +1046,7 @@ class Genome:
                                     self.genes[line[tagcol]].GO = {}
                                     self.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
                             except Exception as e:
-                                # print e
+                                # print(e)
                                 pass   
                     f2.close()
                     for gene in self.genes.keys():
@@ -1057,7 +1057,7 @@ class Genome:
                                     self.GO[cond][term] = []
                                 self.GO[cond][term].append(gene)
                         except Exception as e:
-                            # print e
+                            # print(e)
                             pass
 
             f1.close()
@@ -1106,6 +1106,6 @@ class Genome:
                 f.write(nameOut+'\t'+nameOut+'.csv'+'\t'+"2"+'\t'+"0"+'\t'+"2"+'\t'+"\\t"+'\t'+"1"+'\t'+"3"+'\t'+"4"+'\n')
                 f.close()
         else:
-            print "TSS info not found"
-        print "Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list."
+            print("TSS info not found")
+        print("Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list.")
 
