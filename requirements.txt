@@ -5,7 +5,7 @@ backcall==0.2.0
 backports-abc==0.5
 bcbio-gff==0.6.9
 biopython==1.79
-bleach==3.1.0
+bleach==3.3.0
 cffi==1.14.6
 cycler==0.10.0
 Cython==0.29.24
