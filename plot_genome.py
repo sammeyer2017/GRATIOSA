@@ -157,9 +157,9 @@ def plot_region(gen, cond, beg,end,exp, binsize = 10,name=None, plot_gene_names=
     elif exp in ["ChiPSeq","chipseq"] :
         subplot_coverage(ax,gen,cond,beg,end,binsize=binsize,ticks=None,stat="mean")
     
-    #subplot_exp(ax,gen,cond,beg,end, ticks=ticks)
     # model
-
+    #ax=plt.subplot(gs[2])
+    #subplot_model(ax,gen,cond,beg,end, ticks=ticks)
 
     #for ext in exts:
     #    print(name+ext)
