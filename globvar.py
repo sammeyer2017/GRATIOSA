@@ -7,7 +7,7 @@ except KeyError:
     print("Please set the environment variable TOPO_DATABASE_PATH")
     sys.exit()
 
-resdir = '/home/raphael/Documents/topo/results/'
+resdir = basedir+'/resdir/'
 # --------- rpkm
 # multiplicative constant btw rpkm values and coverage values: use same unit as rpkm for coverage
 multconst=1.
@@ -24,7 +24,6 @@ pval_treshold = 0.05
 fig_width = 3;fig_height = 3
 center_x = fig_width/2;center_y = fig_height/2
 radius = fig_width / 1.4 # radius circles
-
 
 # parameters for bTSS finder
 PROM_LENGTH = 200

@@ -623,7 +623,7 @@ class Genome:
                     self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
             print('Done')
 
-    def load_cov(self):
+    def load_cov_rnaseq(self):
         '''
         Load coverage either from .npz files which are described in cov.info
         or compute coverage itself from reads attribute
@@ -670,6 +670,125 @@ class Genome:
         if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
             print('cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder')
         print('Done')
+
+    def load_cov_rnaseq_bin(self,binsize,cond = "all",stat = "mean"):
+        '''
+        Load rnaseq coverage using the load_rnapseq function  
+        New attribute cov_pos_bin : cov_pos_bin, of shape {[condition_bin] : array}, e.g. self.cov_pos_bin[cond1_10]
+        '''
+        self.cov_pos_bin = {} # cov on + strand
+        self.cov_neg_bin = {} # cov on - strand
+
+        self.load_cov_rnaseq()
+  
+        if cond == "all" : 
+            cond = self.cov_pos.keys()
+
+        if type(cond) == str: 
+            cond = [cond]
+
+        for c in cond :
+            print('Condition : ',c)
+            #path to the file containing binned data
+            f_path = basedir+"data/"+self.name+'/rnaseq_cov/binned_data/'+c+str(binsize)+"b_"+stat+".npz"
+            
+            #test is the binning of this condition already exists
+            if os.path.exists(f_path) :
+                print("loading existing file")
+                self.cov_pos_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)['pos']
+                self.cov_neg_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)['neg']
+
+            else : 
+                print("performing the binning")
+                # bin the data 
+                binned_pos = binning(self.cov_pos[c],binsize = binsize,stat = stat).statistic
+                binned_neg = binning(self.cov_neg[c],binsize = binsize,stat = stat).statistic
+                # load the new attribute to the gen object
+                self.cov_pos_bin[c+"_"+str(binsize)+"b_"+stat] = binned_pos
+                self.cov_neg_bin[c+"_"+str(binsize)+"b_"+stat] = binned_neg
+                # save the data as a .npy file
+                np.savez(f_path,pos = binned_pos,neg=binned_neg)
+
+    def load_cov_chipseq(self, cond = "all"):
+        '''
+        Load chipseq coverage .bedgraph files which are described in cov.info
+        New attribute cov_chipeq : cov_chipseq, of shape {[condition] : array}, e.g. self.cov_chipseq[cond1]
+        If conditions are specified in selected_cond, only the selected conditions will be loaded
+        '''
+
+        if not hasattr(self,"cov_chipseq") :
+            self.cov_chipseq = {} 
+
+        if type(cond) == str: 
+            cond = [cond]
+
+        # tries to open cov.info
+        print("selected conditions : ")
+        print(cond)
+        if os.path.exists(basedir+"data/"+self.name+'/chipseq_cov/cov_chipseq.info'): # cov.info available, cov.info opening instead of cov_txt.info
+            with open(basedir+"data/"+self.name+"/chipseq_cov/cov_chipseq.info","r") as f:
+                header = next(f)
+                for line in f: # for each condition
+                    line=line.strip().split('\t')
+                    
+                    # load attributes
+                    if cond == ["all"] or line[0] in cond :
+                        print('Loading condition',line[0])
+                        data = pd.read_csv(basedir+"data/"+self.name+'/chipseq_cov/'+line[1],sep="\t")
+                        #compute binsize of each bin in the file
+                        bs = data.iloc[:,int(line[3])] - data.iloc[:,int(line[2])]
+                        cover = data.iloc[:,int(line[4])]
+                        #load coverage per base on the object gen
+                        self.cov_chipseq[line[0]] = np.array(np.repeat(cover,bs))
+
+            f.close()
+        else :
+            print('Unable to locate cov.info')  
+        
+
+    def load_cov_chipseq_bin(self,binsize,cond = "all", stat = "mean"):
+        '''
+        Load chipseq coverage using the load_cov_chipseq function and .bedgraph files which are described in cov_chipseq.info 
+        New attribute cov_chipeq_bin : cov_chipseq_bin, of shape {[condition_bin] : array}, e.g. self.cov_chipseq_bin[cond1_10]
+        If conditions are specified in selected_cond, only the selected conditions will be loaded
+        '''
+        if not hasattr(self,"cov_chipseq_bin") :
+            self.cov_chipseq_bin = {} 
+        
+        #get the list of all existing conditions
+        if cond == "all" : 
+            with open(basedir+"data/"+self.name+"/chipseq_cov/cov_chipseq.info","r") as fi:
+                header = next(fi)
+                cond = []
+                for line in fi: # for each condition
+                    line=line.strip().split('\t')
+                    cond.append(line[0])
+            fi.close()
+
+        if type(cond) == str: 
+            cond = [cond]
+
+        for c in cond :
+            print('Condition : ',c)
+            #path to the file containing binned data
+            f_path = basedir+"data/"+self.name+'/chipseq_cov/binned_data/'+c+"_"+str(binsize)+"b_"+stat+".npy"
+
+            #test is the binning of this condition already exists
+            if os.path.exists(f_path):
+                print("loading existing file")
+                self.cov_chipseq_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)
+
+            else : 
+                print("performing the binning")
+                # load data
+                self.load_cov_chipseq(cond = c)
+                # bin the data 
+                binned_data = binning(self.cov_chipseq[c],binsize = binsize,stat = stat).statistic
+                # load the new attribute to the gen object
+                self.cov_chipseq_bin[c+"_"+str(binsize)+"b_"+stat] = binned_data
+                # save the data as a .npy file
+                np.save(f_path,binned_data)
+
 
     def load_cov_start_end(self):
         '''

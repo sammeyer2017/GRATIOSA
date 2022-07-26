@@ -13,7 +13,6 @@ from Bio.Seq import Seq
 from Bio import motifs
 from TSS import TSS
 from matplotlib_venn import venn2
-
 from scipy import stats
 from statsmodels.stats import weightstats
 from operator import itemgetter
@@ -860,3 +859,20 @@ def hierarchical_clustering(genes, corr, thresh):
             stop = True
 
     return clusters
+
+
+def binning(data, binsize,stat = "mean"):
+    """ 
+   data binning at a chosen binsize
+   input has to be an array 
+   stat can be : mean, std, median, count, sum, min, max, user-defined function (see binned_statistic documentation)
+    """
+    #determine the bin coordinates
+    l_data = len(data)
+    bins = np.arange(0,l_data,binsize)
+    bins = np.append(bins,l_data)
+
+    #perform the binning 
+    binned_data = scipy.stats.binned_statistic(np.arange(l_data),data,bins=bins,statistic=stat)
+    
+    return binned_data
