@@ -35,7 +35,7 @@ def subplot_genes(ax, gen, beg, end,buf=1000, ticks=None, plot_gene_names=False)
     gene_list=[gene_list[i] for i in gene_start]
      
     for i,g in enumerate(gene_list):
-        print(g.name, g.start, g.end)
+        #print(g.name, g.start, g.end)
         if g.orientation == 1 :
             #when arrow is too little, a rectangle is drawn instead
             if g.end-g.start < length/30 :
@@ -73,23 +73,23 @@ def subplot_genes(ax, gen, beg, end,buf=1000, ticks=None, plot_gene_names=False)
         ax.set_ylim(-2.5,2.5)
 
 
-def subplot_2sided_coverage(ax,gen,cond,beg,end,binsize,stat="mean",ticks=None):
+def subplot_rnaseq_coverage(ax,gen,cond,beg,end,binsize,ticks=None):
     """ 
     plots experimental information for region
     gen= genome with loaded coverage
-    stat corresponds to the statistic chosen for the binning
+    ##INTEGRER LES DONNEES SANS TRAITEMENET ET SMOOTH
     """
-    f_name = cond + "_" + str(binsize) + "b_"+stat
+    f_name = cond + "_" + str(binsize) + "b"
 
-    if not hasattr(gen,"cov_pos_bin") : 
-        gen.load_cov_rnaseq_bin(binsize,cond,stat)
+    if not hasattr(gen,"cov_rnaseq_pos_bin") : 
+        gen.load_cov_rnaseq_bin(binsize,cond)
 
-    elif f_name not in gen.cov_pos_bin.keys() :
-        gen.load_cov_rnaseq_bin(binsize,cond,stat)
+    elif f_name not in gen.cov_rnaseq_pos_bin.keys() :
+        gen.load_cov_rnaseq_bin(binsize,cond)
 
     x=np.arange(beg,end,binsize)
-    ax.fill_between(x,gen.cov_pos_bin[f_name][int(beg/binsize):int(end/binsize)],color="blue")
-    ax.fill_between(x,-gen.cov_neg_bin[f_name][int(beg/binsize):int(end/binsize)],color="red")
+    ax.fill_between(x,gen.cov_rnaseq_pos_bin[f_name][int(beg/binsize):int(end/binsize)],color="blue")
+    ax.fill_between(x,-gen.cov_rnaseq_neg_bin[f_name][int(beg/binsize):int(end/binsize)],color="red")
     ax.axhline(y=0,color="black",lw=1)
   
     if ticks is not None:
@@ -98,64 +98,156 @@ def subplot_2sided_coverage(ax,gen,cond,beg,end,binsize,stat="mean",ticks=None):
     ax.set_xlim(beg,end)
     ax.set_ylabel("coverage (exp)")
 
-def subplot_coverage(ax,gen,cond,beg,end,binsize,stat="mean",ticks=None):
+def subplot_chipseq_coverage(ax,gen,cond,beg,end,data_treatment,replicates = True,ticks=None,*args, **kwargs):
     """ 
     plots experimental information for region
     gen= genome with loaded coverage
-    stat corresponds to the statistic chosen for the binning
     """
-    f_name = cond+"_"+str(binsize)+"b_"+stat
+        
+    if data_treatment == "bin" :
+        size = kwargs.get('binsize')
+        c_name = cond+"_"+data_treatment+str(size)+"b"
+        if size == None :
+            sys.exit("please give a binsize")
 
-    if not hasattr(gen,"cov_chipseq_bin") :
-        gen.load_cov_chipseq_bin(binsize,cond,stat)
+    elif data_treatment == "smooth" :
+        size = kwargs.get('window')
+        c_name = cond+"_"+data_treatment+str(size)+"b"
+        if size == None : 
+            sys.exit("please give a window size")
 
-    elif f_name not in gen.cov_chipseq_bin.keys() :
-        gen.load_cov_chipseq_bin(binsize,cond,stat)
+    else :
+        print("no smoothing nor binning")
+        c_name = cond
+        size = 1
 
-    x=np.arange(beg,end,binsize)
-    y=gen.cov_chipseq_bin[f_name][int(beg/binsize):int(end/binsize)]
-    ax.fill_between(x,y,where = y>0, color = 'b')
-    ax.fill_between(x,y,where = y<0, color = 'r')
+    #to plot a single experimental coverage
+    if replicates == False :
+        if data_treatment == "bin" :
+            if not hasattr(gen,"cov_chipseq_bin") :
+                gen.load_cov_chipseq_bin(size,cond)
+            elif c_name not in gen.cov_chipseq_bin.keys() :
+                gen.load_cov_chipseq_bin(binsize,cond)
+            y=gen.cov_chipseq_bin[c_name][int(beg/size):int((end+size)/size)]
+            y=np.repeat(y,size)
+       
+        elif data_treatment == "smooth" :
+            if not hasattr(gen,"cov_chipseq_smooth") :
+                gen.load_cov_chipseq_smooth(size,cond)
+            elif c_name not in gen.cov_chipseq_smooth.keys() :
+                gen.load_cov_chipseq_smooth(size,cond)
+            y=gen.cov_chipseq_smooth[c_name][beg:end]
+        else :
+            if not hasattr(gen,"cov_chipseq") :
+                gen.load_cov_chipseq(cond)
+            elif c_name not in gen.cov_chipseq.keys() :
+                gen.load_cov_chipseq(cond)
+            y=gen.cov_chipseq[c_name][beg:end+1]
+
+    #to plot the mean coverage of replicates 
+    else : 
+        if not hasattr(gen,"cov_chipseq_average") :
+            gen.load_cov_chipseq_average(cond,data_treatment=data_treatment,binsize = size,window = size)
+        elif c_name not in gen.cov_chipseq_average.keys() :
+            gen.load_cov_chipseq_average(cond,data_treatment=data_treatment,binsize = size,window = size)
+
+        if data_treatment == "bin" :
+            y=np.repeat(gen.cov_chipseq_average[c_name][int(beg/size):int((end+size)/size)],size)
+        else : 
+            y=gen.cov_chipseq_average[c_name][beg:end]
+
+    x=np.arange(beg,len(y)+beg,1)
+
+    test_neg = [i<=0 for i in y] 
+    test_pos = [i> 0 for i in y] 
+    ax.fill_between(x,y,where = test_pos, color = 'b')
+    ax.fill_between(x,y,where = test_neg , color = 'r')
     ax.axhline(y=0,color="black",lw=1)
 
     if ticks is not None:
-        ax.set_xticks(ticks)
+        ax.set_xticks(ticks) 
     #ax.set_xticklabels([])
     ax.set_xlim(beg,end)
-    ax.set_ylabel("ratio coverage (exp)")
+    ax.set_ylabel("log2FC(pdown/mock)")
 
-def plot_region(gen, cond, beg,end,exp, binsize = 10,name=None, plot_gene_names=True,stat="mean"):
+
+def plot_region(gen, cond, beg,end,exp,data_treatment=None,replicates=False, name=None, plot_gene_names=True,*args, **kwargs):
     """ 
     plots experimental information and gene annotations for a region
     gen= genome with loaded coverage
-    stat corresponds to the statistic chosen for the binning
-    exp can be rnaseq (with cov_pos and cov_neg) or chipseq (only one cov)
+    exp can be "rnaseq" (with cov_rnaseq_pos and cov_rnaseq_neg) or "chipseq" (only one cov)
     """
 
-    if not hasattr(gen,"genes") :
+    if not hasattr(gen,"genes") :  ## A METTRE DANS SUBPLOT_GENES OU CHANGER SCHEMA
         print("loading annotation")
         gen.load_annotation()
-    if name is None:
-        name=basedir+"plots/%s_region_%d_%d_%s_%db"%(gen.name,beg,end,cond,binsize)
-    
+        
+  
     fig=plt.figure(figsize=(w,sum(h)+2*dh))
     
-    gs = gridspec.GridSpec(3, 1, height_ratios=[1,2,2], bottom=.15, top=.98, left= .15, right=.95, hspace=dh)
+    if type(cond) == str: 
+        cond = [cond]
+    l = len(cond)
+
+    if l < 4 :
+        hr = [1] + [2]*l
+    else : 
+        hr = [1]*(l+1)
+
+    gs = gridspec.GridSpec(l+1, 1, height_ratios=hr, bottom=.15, top=.98, left= .15, right=.95, hspace=dh)
 
     # ticks
+    dist = end - beg
     tickda=np.array(tickd)
     tickdist=tickda[np.argmin(np.abs(1-(ticknb+1)*tickda/(end-beg)))]
     ticks=np.arange((beg/tickdist)*tickdist,(end/tickdist+1)*tickdist,tickdist)
+    #if dist >= 5000 : 
+     #   ticks = [t/1000 for t in ticks]
+
     # annotation
     ax=plt.subplot(gs[0])
-    subplot_genes(ax, gen, beg, end, buf=2000, ticks=ticks, plot_gene_names=plot_gene_names)
-    
+    #subplot_genes(ax, gen, beg, end, buf=2000, ticks=ticks, plot_gene_names=plot_gene_names)
+    #coli_ori = 3925859
+    #ax.axvline(x=coli_ori,color="green",lw=1,ls="-")
+    #ax.annotate('OriC', xy=(coli_ori, 0),color="green",va='center')
+
+    if data_treatment == "bin" :
+        size = kwargs.get('binsize')
+        if size == None :
+            sys.exit("please give a binsize")
+
+    elif data_treatment == "smooth" :
+        size = kwargs.get('window')
+        if size == None : 
+            sys.exit("please give a window size")
+
+    else :
+        print("no smoothing nor binning")
+        c_name = cond
+        size = 1
+
+    if name is None:
+        list_cond = []
+        for co in cond :
+            if len(cond) > 1 :
+                list_cond = list_cond + ["_"] + [co]
+            else : 
+                list_cond = co
+        if data_treatment in ["smooth","bin"] : 
+            name=basedir+"plots/%s_region_%d_%d_%s_%s_%db"%(gen.name,beg,end,list_cond,data_treatment,size)
+        else : 
+            name=basedir+"plots/%s_region_%d_%d_%s"%(gen.name,beg,end,list_cond)
+      
     # exp
-    ax=plt.subplot(gs[1])
-    if exp in ["RNAseq","rnaseq"] : 
-        subplot_2sided_coverage(ax,gen,cond,beg,end,binsize=binsize,ticks=None,stat="mean")
-    elif exp in ["ChiPSeq","chipseq"] :
-        subplot_coverage(ax,gen,cond,beg,end,binsize=binsize,ticks=None,stat="mean")
+    if exp == "rnaseq" : 
+        for n,c in enumerate(cond):
+            ax=plt.subplot(gs[n+1])
+            subplot_rnaseq_coverage(ax,gen,c,beg,end,binsize=binsize,ticks=ticks)
+            
+    elif exp == "chipseq":
+        for n,c in enumerate(cond):
+            ax=plt.subplot(gs[n+1])
+            subplot_chipseq_coverage(ax,gen,c,beg,end,data_treatment = data_treatment,binsize=size,window=size,ticks=ticks,replicates=replicates)
     
     # model
     #ax=plt.subplot(gs[2])
@@ -291,7 +383,7 @@ def old_subplot_annotation(ax, gen, beg, end, buf=1000, ticks=None, plot_gene_na
     return 0 
 
 
-def old_subplot_coverage(ax,gen,cond,beg,end,coverage,ticks=None):
+def old_subplot_chipseq_coverage(ax,gen,cond,beg,end,coverage,ticks=None):
     """ 
     plots experimental information for region
     gen= genome with loaded data: 

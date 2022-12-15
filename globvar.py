@@ -7,7 +7,7 @@ except KeyError:
     print("Please set the environment variable TOPO_DATABASE_PATH")
     sys.exit()
 
-resdir = basedir+'/resdir/'
+resdir = basedir+'resdir/'
 # --------- rpkm
 # multiplicative constant btw rpkm values and coverage values: use same unit as rpkm for coverage
 multconst=1.
@@ -61,7 +61,7 @@ w=3.5
 h=[.5,1.5,1.5]
 dh=.05
 # tick distances
-tickd=[100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000]
+tickd=[100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000,100000,200000,500000,1000000]
 # approximate tick nb
 ticknb=4
 

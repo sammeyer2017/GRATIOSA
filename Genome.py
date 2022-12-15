@@ -4,1113 +4,772 @@ import sys
 import os
 import numpy as np
 import pandas as pd
-import inspect as inspect
-import math
-import matplotlib.pyplot as plt
 import operator
-from useful_functions import *
+from useful_functions_genome import *
 from itertools import groupby
 from globvar import *
 from Gene import Gene
-from TSS import TSS
-from TTS import TTS
-from TU import TU
+#from TSS import TSS
+#from TTS import TTS
+#from TU import TU
+from TSS_TTS_TU import TSS, TTS, TU
 from datetime import datetime
-from math import sqrt
-from btssfinder import *
+#from btssfinder import *
 from scipy import stats
+import Transcriptome
+import HiC
+import Chipseq
+from pathlib import Path
 
-from BCBio import GFF
-from Bio import SeqIO
-
-#==============================================================================#
-
-# -------------------
-##### functions called by genome methods #####
-
-def annotations_parser_general(annotations_filename,separator,tag_column,strand_column,left_column,right_column,start_line):
-    ''' Called by load annotation, allows genes to be loaded from info file although most of the time, annotation is loaded
-    from gff/gbk files
-    '''
-    genes_dict = {}
-    with open(annotations_filename, 'r') as f:
-        i=1
-        j=0
-        head=next(f)
-        headl=head.strip()
-        if separator == '\\t':
-            headl=headl.split('\t')
-        else:
-            headl=headl.split(separator)
-        i=2
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            try:
-                gene=[]
-                line=line.strip()
-                if separator == '\\t':
-                    line=line.split('\t')
-                else:
-                    line=line.split(separator)
-                gene.append(line[tag_column])
-                if line[strand_column]=="complement":
-                    gene.append('-')
-                elif line[strand_column]=="forward":
-                    gene.append('+')
-                elif line[strand_column]== "1":
-                    gene.append('+')
-                elif line[strand_column]== "-1":
-                    gene.append('-')
-                else:
-                    gene.append(line[strand_column])
-
-                gene.append(line[left_column])
-                gene.append(line[right_column])
-                gene.append(line)
-                if line[tag_column] in genes_dict:
-                    print("Warning! Overwriting value for gene ")
-                    print(line[tag_column])
-                
-                genes_dict[line[tag_column]]=Gene(annotations_general=gene, head=headl)
-
-            except:
-                pass
-
-    return genes_dict
-
-def annotations_parser_gff(annotations_filename):
-    ''' Called by load annotation, allows genes to be loaded from gff
-    '''
-    genes_dict = {}
-    under_dict={}
-    my_file = open(annotations_filename, "r")
-    for line in my_file.readlines():
-        if line[0]!= '#':
-            if line != '\n':
-                line=line.split('\t')
-                underline=line[8]
-                underline=underline.split(';')
-                for x in underline:
-                    x=x.strip()
-                    x=x.split('=')
-                    under_dict[x[0]]=x[1]
-                line[8]=under_dict
-                under_dict={}
-                try:
-                    if('locus_tag' in line[8]):
-                        if(line[8]['locus_tag'] in genes_dict):
-                            print("Warning! Overwriting value for gene ")
-                            print(line[8]['locus_tag'])
-                            if('gene_biotype' in line[8]):
-                                print(line[8]['gene_biotype'])
-                        genes_dict[line[8]['locus_tag']]= Gene(annotations_list_gff=line)
-
-                except (IndexError, ValueError):
-                    print("Annotations : could not read line ")
-                    
-    return genes_dict
-
-def annotations_gbk(file):
-    ''' Called by load annotation, allows genes to be loaded from gbk
-    '''
-    genes_dict = {}
-    gb_record = SeqIO.read(open(file,"r"), "genbank")
-    for f in gb_record.features:
-        try:
-            if f.type == 'gene':
-                left = f.location.start + 1
-                right = int(f.location.end)
-                strand = f.location.strand
-                locus = f.qualifiers['locus_tag'][0]
-                try:
-                    name = f.qualifiers['gene'][0]
-                except:
-                    name = f.qualifiers['locus_tag'][0]
-
-                genes_dict[locus]= Gene(annot_gbk=[locus,name,left,right,strand])
-
-        except (IndexError, ValueError):
-            print("Annotations : could not read line ")
-
-    return genes_dict
-
-
-def add_single_rpkm_to_genes(genes_dict, expression_filename, condition, TSS_column, start_line, separator,tag_column):
-    """ Adds rpkm data to Gene objects by parsing a file with two columns:
-    gene name and value
-    """
-    with open(expression_filename, 'r') as f:
-        i=1
-        while i != start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                genes_dict[line[tag_column]].add_single_rpkm(
-                    #log2(x+1)
-                    condition, float(line[TSS_column]))
-            except:
-                if line[tag_column] not in list(genes_dict.keys()):
-                    # the rpkm value corresponds to an un-annoted gene
-                    print("rpkm : gene " + line[tag_column] + " not in annotation")
-                else:
-                    # the rpkm value cannot be converted
-                    genes_dict[line[tag_column]].add_single_rpkm(condition, float("NaN"))
-    # look if some genes are not in rpkm file: add nan
-    for g in list(genes_dict.keys()):
-        if isinstance(genes_dict[g],Gene):
-            if not hasattr(genes_dict[g], 'rpkm'):
-                genes_dict[g].add_single_rpkm(condition, float("NaN"))
-    return genes_dict
-
-def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, *args, **kwargs):
-    ''' Called by load_fc_pval, allows expression data to be loaded by specifying files, and where each
-    information is (tag, fc, pval...). If no p-value column, assigns pval = 0 to each gene
-    '''
-    genes_valid = [] # list containing all genes having valid FC / pval
-    p_val_col= kwargs.get('p_value')
-    with open(filename, 'r') as f:
-        i=1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                if p_val_col:
-                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(line[p_val_col]))
-                else:
-                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(0))
-                genes_valid.append(line[tag_col])
-            except:
-                if line[tag_col] not in genes_dict.keys():
-                    if line[tag_col] != '':
-                        print(line[tag_col] + " not in annotation ")
-                    else:
-                        print("fc without locus")
-    f.close()
-    return genes_valid
-
-def load_expr_cond(genes_dict, filename, condition, tag_col, nb_replicates, expr_col, separator, start_line):
-    ''' Called by load_expr_cond, allows expression data to be loaded by specifying files, and where each
-    information is (tag, expr...).
-    '''
-    with open(filename, 'r') as f:
-        i=1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-
-            st = int(expr_col) ; nb = int(nb_replicates)
-            for i in range(st,st+nb):
-                try:
-                    genes_dict[line[tag_col]].add_expr_cond(float(line[i]),condition)
-                except:
-                    if line[tag_col] not in genes_dict.keys():
-                        if line[tag_col] != '':
-                            print(line[tag_col] + " not in annotation ")
-                        else:
-                            print("fc without locus")
-    f.close()
-
-def load_seq(filename):
-    ''' Called by load_seq, allows genomic sequence to be loaded from .fasta file
-    '''
-    seq=str()
-    my_file = open(filename, "r")
-    for i in my_file.readlines():
-        line=i.strip() #Removes \n
-        if line != '':#Inspect if empty line
-            if line[0]!=">":
-                seq+=line
-    my_file.close
-    return seq
-
-
-def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, scorecol,*args, **kwargs):
-    ''' Called by load_TSS, allows TSS data to be loaded from .info file
-    '''
-    TSS_dict = {} # dict of TSS objects
-    with open(filename, 'r') as f:
-        i = 1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                pos = int(line[TSS_column])
-                strand = True if line[strandcol] in ["True","plus","+","1"] else False
-                genes = line[genescol] if genescol != None else []
-                sig = line[sigcol] if sigcol != None else None
-                sites = line[sitescol] if sitescol != None else None
-                
-                # if TSS needs to be init
-                if pos not in TSS_dict.keys():
-                    # init object tss
-                    TSS_dict[pos] = TSS(pos = pos)
-                    TSS_dict[pos].add_strand(strand)
-                    if genes != []:
-                        TSS_dict[pos].add_genes(genes,genes_dict)
-                        for gene in TSS_dict[pos].genes: # add TSS to gene attributes
-                            genes_dict[gene].add_id_TSS(pos)
-
-                # Add sigma factor and binding sites to the promoter dict
-                if sig != None: # if sigma column
-                    if sites != None:
-                        TSS_dict[pos].add_promoter(sig, sites = sites)
-                    else:
-                        TSS_dict[pos].add_promoter(sig)
-
-                if scorecol != None:
-                    TSS_dict[pos].add_score(int(float(line[scorecol])))
-
-            except Exception as e:
-                print('Error in line, wrong information type :',e)
-
-    return TSS_dict
-
-def load_TTS_cond(filename, separator, start_line, leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol, *args, **kwargs):
-    ''' Called by load_TTS, allows TTS data to be loaded from .info file
-    '''
-    TTS_dict = {} # dict of TSS objects
-    with open(filename, 'r') as f:
-        i=1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                left = int(line[leftcol])
-                right = int(line[rightcol])
-                strand = True if line[strandcol] in ["True","plus","+"] else False
-                rho_dpdt = True if line[rhocol] in ["True","TRUE","1"] else False
-                seq = line[seqcol] if seqcol != None else ""
-                score = line[scorecol] if scorecol != None else None
-                genes = line[genescol] if genescol != None else []
-
-                newTTS = TTS(left = left, right = right, strand = strand, rho_dpdt = rho_dpdt, seq = seq, score =  score, genes = genes)
-                TTS_dict[newTTS.start] = newTTS
-
-            except Exception as e:
-                print('Error in line, wrong information type :',e)
-
-    return TTS_dict
-
-
-def add_neighbour(dict_genes,list):
-    for i in range(len(list)):
-        if i != 0:
-            dict_genes[list[i][1]].add_left_neighbour(list[i-1][1])
-        if i != len(list)-1:
-            dict_genes[list[i][1]].add_right_neighbour(list[i+1][1])
-    return dict_genes
-
-# ----------------------
-def add_expression_to_genes(genes_dict, filename, tag_col, first_expression_col, is_log, separator):
-    """ Adds expression data to Gene objects by parsing a file with as many
-    columns as there are different conditions in the experiment, plus one for
-    the gene names (first column).
-    """        
-    genes_valid = {} 
-    with open(filename, 'r') as f:
-        header=next(f)
-        header=header.strip()
-        if separator == '\\t':
-            header = header.split('\t')
-        else:
-            header=header.split(separator)        
-        header=header[first_expression_col:]
-        genes_valid["conditions"] = header
-        for line in f:
-            line=line.strip()
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line = line.split(separator)
-            try:
-                if is_log == 'no':
-                    genes_dict[line[tag_col]].add_expression_data(header,[math.log(float(i),2) for i in line[first_expression_col:]])
-                else:
-                    genes_dict[line[tag_col]].add_expression_data(header,[float(i) for i in line[first_expression_col:]])
-                genes_valid[line[tag_col]] = genes_dict[line[tag_col]]
-            except KeyError:
-                if line[tag_col] == 'none':
-                    print("expressions without locus tag")
-                else:
-                    print(line[tag_col] + " not in annotation")
-    return genes_valid
-
-def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separator, start_line, *args, **kwargs):
-    ''' Called by load_fc_pval, allows expression data to be loaded by specifying files, and where each
-    information is (tag, fc, pval...). If no p-value column, assigns pval = 0 to each gene
-    '''
-    genes_valid = [] # list containing all genes having valid FC / pval
-    p_val_col= kwargs.get('p_value')
-
-    with open(filename, 'r') as f:
-        i=1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                if p_val_col:
-                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(line[p_val_col]))
-                else:
-                    genes_dict[line[tag_col]].add_fc_pval_cond(float(line[fc_col]),condition, float(0))
-                genes_valid.append(line[tag_col])
-            except:
-                if line[tag_col] not in genes_dict.keys():
-                    if line[tag_col] != '':
-                        print(line[tag_col] + " not in annotation ")
-                    else:
-                        print("fc without locus")
-    f.close()
-    return genes_valid
-
-
-def set_mean_expression(genes_dict, expression_filename):
-    """ 
-    For each gene of genome object, set mean expression value based on loaded expression data in various conditions
-    """
-    with open(expression_filename, 'r') as f:
-        header = next(f)
-        header = header.strip('\n').split(',')
-        header = header[1:]
-        for line in f:
-            line = line.strip('\n')
-            line = line.split(',')
-            try:
-                genes_dict[line[0]].set_mean_expression(line[1])
-            except KeyError:
-                print("Expressions : Could not find gene " + line[0])
-    return genes_dict
-
-def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, separator, *args, **kwargs):
-    ''' Called by load_TU, allows TU data to be loaded by specifying files, and where each information is
-    '''
-    TUs= {}
-    with open(filename, 'r') as f:
-        i=1
-        while i < startline:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                TUs[int(float(line[startcol]))] = TU(start=int(float(line[startcol])), stop=int(float(line[stopcol])), orientation=line[strandcol], genes = line[genescol].split(","))   
-            except Exception as e:
-                pass
-    f.close()
-    return TUs
-
-def load_sites_cond(filename, condition, separator, start_line, left, right, strand, seq, score, *args, **kwargs):
-    ''' Called by load_sites, allows sites data to be loaded by specifying files, and where each information is
-    '''
-    gen_sites = {}
-    with open(filename, 'r') as f:
-        i=1
-        while i < start_line:
-            header=next(f)
-            i+=1
-        for line in f:
-            line = line.strip('\n')
-            if separator == '\\t':
-                line = line.split('\t')
-            else:
-                line=line.split(separator)
-            try:
-                gen_sites[(int(line[left]) + int(line[right]))/2] = {"left":int(line[left]),"right":int(line[right]),"score":float(line[score]), "strand":line[strand], "seq":line[seq]}
-            except:
-                pass
-    f.close()
-    return gen_sites
-
-
-#####  #####
+#=============================================================================#
 
 class Genome:
 
-    def __init__(self, *args, **kwargs):
-        """ Possible kwargs arguments: name, seq, length,
+    def __init__(self, name):
+        """ 
+        Called when a HiC instance is created,
+        initializes the attribute name.
+        Example:
+            >>> g = Genome.Genome("dickeya")
         """
-        self.name = kwargs.get('name')
-        self.length = kwargs.get('length')
-        #self.genes=kwargs.get('genes')
-
-    def load_seq(self):
-        self.seq=load_seq(basedir+"data/"+self.name+"/sequence.fasta").upper()
-        self.seqcompl=''
-        if(self.length):
-            if(self.length != len(self.seq)):
-                print("Warning not the same length, the new sequence will be removed")
-                self.seq=''
-        self.length=len(self.seq)
-        l=self.seq
-        l=l.replace('A','t')
-        l=l.replace('T','a')
-        l=l.replace('C','g')
-        l=l.replace('G','c')
-        l=l.replace('a','A')
-        l=l.replace('t','T')
-        l=l.replace('c','C')
-        l=l.replace('g','G')
-        self.seqcompl=l
+        self.name = name
 
 
-    def load_annotation(self):
-        """ Load annotation. Two options : if gff file in directory -> load annotation from gff
-        if no gff file in directory -> tries to load annotation.info (0 = file, 1 = separator ,2 =
-        Locus column,3 = Strand column, 4,5 Left Rigth column, 6 start line)
+    def load_seq(self, filename="sequence.fasta"):
         """
-        custom = False # set to True if the annotation should be loaded from a file in annotation.info rather than from other file
-        if custom:
-            with open(basedir+"data/"+self.name+"/annotation/annotation.info","r") as f:
+        Load_seq loads DNA sequence from a .fasta file present in the 
+        main directory of the organism using useful_functions_genome.load_seq 
+        function. Adds this sequence, its complement, and its length to a
+        Genome instance.
+
+        Args:
+            self (Genome instance)
+            filename (Optional [str.}): name of the file containing the DNA
+                                        sequence in FASTA format. 
+                                        Default: "sequence.fasta"
+
+        Outputs: creates 3 new attributes to the Genome instance
+            seq (str.): genomic sequence compose of A,T,G and C
+            seqcompl (str.): complement sequence to seq
+            length (int.): length of the genomic sequence
+
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_seq()
+            >>> g.seq[100:151]
+            'AATGTCGATCTTCAACATATCGCCGATCCGACGGGCACCCAGATCCTGCAG'
+            >>> g.seqcompl[100:151]
+            'TTACAGCTAGAAGTTGTATAGCGGCTAGGCTGCCCGTGGGTCTAGGACGTC'
+        """
+        seq_dir = f"{basedir}data/{self.name}/sequence.fasta"
+        self.seq = load_seq(seq_dir).upper()
+        self.seqcompl = ''
+        self.length = len(self.seq)
+        l = self.seq
+        l = l.replace('A','t').replace('T','a')
+        l = l.replace('C','g').replace('G','c')
+        l = l.replace('a','A').replace('t','T')
+        l = l.replace('c','C').replace('g','G')
+        self.seqcompl = l
+
+
+    def load_annotation(self, annot_file="sequence.gff3",*args, **kwargs):
+        """ 
+        load_annotation loads a gene annotation (coordinates, length, 
+        name...) from a file present in the /annotation/ directory. 
+        If the file is a .gff3, .gff or .gbk, information will be loaded using 
+        useful_functions_genome.load_gff, or load_gbk. 
+        Else, the information importation requires an annotation.info file, 
+        containing column indices of each information in the data file and some 
+        additional information, in the following order: 
+        [0] Filename [1] Separator [2] Locus_tag column [3] Name column  
+        [4] ID column [5] Strand column [6] Left coordinate column
+        [7] Right coordinate column [8] File start line
+
+        Args:
+            self (Genome instance)
+            filename (Optional [str.]): name of the file containing the genomic
+                                        annotation. Default: "sequence.gff3" 
+            gbk_feature_types (Optional [list]): selection of feature types to 
+                                        add to the annotation. Default: "CDS"
+                                       !!AFFECTS ONLY THE IMPORT FROM GBK FILE!!
+        Output: 
+            self.genes (dict.): new attribute of the Genome instance. 
+                                self.genes is a dictionary of shape 
+                                {locus_tags: Gene object}. Each Gene object is 
+                                initialized with the following attributes: 
+                                locus_tag, ID, name,strand, left, right, start,
+                                end, middle and length
+                                See __init__ in the Gene class for more details
+                                about each attribute.
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_annotation()
+            >>> g.genes["Dda3937_00005"].name
+            'guaA'
+        """
+        path2dir = f"{basedir}data/{self.name}/annotation/"
+        path2file = f"{path2dir}{annot_file}"
+        file_type = Path(path2file).suffix
+
+        print(f"Trying to load annotation from: {path2file}")
+        if file_type in [".gff", ".gff3"]:
+            self.genes = load_gff(path2file)
+            load = True
+        elif file_type == ".gbk":
+            feature_types = kwargs.get("feature_types","CDS")
+            self.genes = load_gbk(path2file,feature_types)
+            load = True
+        else:
+            load = False
+            with open(f"{path2dir}annotation.info", "r") as f:
+                skiphead = next(f)  
                 for line in f:
-                    line=line.strip()
-                    line=line.split('\t')
-                    self.genes=annotations_parser_general(basedir+"data/"+self.name+'/annotation/'+line[0],line[1],int(line[2]),int(line[3]),int(line[4]),int(line[5]),int(line[6]))
+                    line = line.strip().split('\t')
+                    if line[0] == annot_file:
+                        self.genes = load_annot_general(
+                                                    f"{path2dir}{line[0]}",
+                                                    line[1], int(line[2]), 
+                                                    int(line[3]), int(line[4]), 
+                                                    int(line[5]), int(line[6]),
+                                                    int(line[7]), int(line[8]))
+                        load = True
                 f.close()
-
-        else:     
-            if os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff3"):
-                self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff3")
-            elif os.path.exists(basedir+"data/"+self.name+"/annotation/sequence.gff"):
-                self.genes=annotations_parser_gff(basedir+"data/"+self.name+"/annotation/sequence.gff")
-
-            else:
-                try:
-                    self.genes = annotations_gbk(basedir+"data/"+self.name+'/annotation/sequence.gbk')
-
-                except Exception as e:
-                    print(e)
-                    print('No GFF file nor annotation.info, unable to load annotation')
+            if not load:
+                print(f"Unable to load annotation from: {path2file}."
+                      "Please add information in annotation.info or use gff3, gff or gbk format.")
+        if load == True :
+            print("Done")
 
 
+    def load_genes_per_pos(self, window=0):
+        """
+        load_genes_per_pos associates each position with a list of genes 
+        overlapping this and its surrounding positions delimited 
+        by the window size given as an argument. 
 
-    def load_TSS(self, *args, **kwargs):
-        """ Load a TSS file info where indice 0 = condition, 1 = filename,
-        2 = locus_tag, 3 = TSS_column, 4 = start_line, 5 = separator, 6 = strand column, 7 = Sig column
-        8 = Sites column if much other condition give it in the seconde line of file and change TSS column """
-        self.TSSs = {} # shape (dict of dict) : TSSs = {TSScond : {TSS:attr}}
-        self.TSSs['all_TSS'] = {} # dict containing all TSS and where they appear (shape all_TSS = {pos:[conditions]})
-        if not hasattr(self,"genes"):
+        Args: 
+            self (Genome instance)
+            window (Optional [int.]): window size in b. load_genes_per_pos finds 
+                                      genes between pos-window/2 and pos+window/2 
+                                      (inclusive).
+                                      Default: window = 0 
+
+        Output:
+            self.genes_per_pos (dict.): new attribute of the Genome instance. 
+                                        self.genes is a dictionary of shape 
+                                        {position: list of genes}. It contains,
+                                        for each position p, the list of 
+                                        genes overlapping any position between
+                                        p-window/2 and p+window/2 (inclusive)
+        
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_genes_per_pos method.
+        
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_annotation(annot_file="sequence.gff3")
+            >>> g.load_genes_per_pos(window=1000)
+            >>> g.genes_per_pos[120]
+            ['Dda3937_00155', 'Dda3937_00156', 'Dda3937_00154']
+        """
+        if not hasattr(self, "genes"):
+            self.load_annotation()
+        if not hasattr(self, "seq"):
+            self.load_seq()
+
+        self.genes_per_pos = {}
+
+        for locus in self.genes.keys():
+            gene = self.genes[locus]
+            for pos in np.arange(gene.left - int(window / 2),
+                                 gene.right + 1 + int(window / 2)):
+                if pos < 0 : pos += self.length 
+                if pos > self.length : pos -= self.length
+                if pos in self.genes_per_pos.keys():
+                    self.genes_per_pos[pos].append(locus)
+                else:
+                    self.genes_per_pos[pos] = [locus]
+
+        for pos in np.arange(self.length):
+            if pos not in self.genes_per_pos.keys():
+                self.genes_per_pos[pos] = [None]
+
+        
+    def load_neighbor_all(self):
+        """
+        For each gene and positions, load_neighbor_all finds nearest 
+        neighbors (left and right) on genome, whatever their strand.
+
+        Arg: 
+            self (Genome instance)
+
+        Output: 
+            2 new attributes of Gene instances related to the Genome 
+            instance given as argument:
+                self.genes[locus].left_neighbor: locus of the nearest 
+                                                 left-side neighbor gene
+                self.genes[locus].right_neighbor: locus of the nearest  
+                                                  right-side neighbor gene
+            4 new attributes of Genome instance : 
+                self.genomic_situation (dict.): dict of shape {position:
+                                                situation} with situation
+                                                either "intergenic" or 
+                                                "intragenic"
+                self.left_neighbor (dict.): dict of shape {position:
+                                            locus of the nearest 
+                                            left-side neighbor gene}
+                self.right_neighbor (dict.): dict of shape {position:
+                                             locus of the nearest 
+                                             right-side neighbor gene}
+                self.gene (dict.): dict of shape {position: gene} with
+                                   gene = "NA" if the position is 
+                                   intergenic.
+
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_neighbor_all method.
+
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_annotation(annot_file="sequence.gff3")
+            >>> g.load_neighbor_all()
+            >>> g.genes["Dda3937_00005"].left_neighbor
+            'Dda3937_00006'
+            >>> g.genes["Dda3937_00005"].right_neighbor
+            'Dda3937_00004'
+            >>> g.g.genomic_situation[569] 
+            'intragenic'
+            >>> g.gene[569]
+            'Dda3937_00156'
+            >>> g.left_neighbor[569]
+            'Dda3937_00155'
+            >>> g.right_neighbor[569]
+            'Dda3937_00157'
+        """
+        if not hasattr(self, "genes"):
+            self.load_annotation()
+        if not hasattr(self, "length"):
+            self.load_seq()
+
+        # Sorts genes according to their position.
+        list_start = []
+        for i in self.genes:
+            list_start.append(int(self.genes[i].start))
+        genes_order = [x for _, x in sorted(zip(list_start, self.genes.keys()))]
+
+        self.genomic_situation = ["intergenic"]*self.length
+        self.left_neighbor = {}
+        self.right_neighbor = {}
+        self.gene = ["NA"]*self.length
+
+        for i in np.arange(len(genes_order)):
+            # Adds right and left neighbors to each Gene object
+            if i != 0:
+                self.genes[genes_order[i]].add_left_neighbor(genes_order[i-1])
+            else : 
+                self.genes[genes_order[i]].add_left_neighbor(genes_order[-1])
+            if i != len(genes_order)-1:
+                self.genes[genes_order[i]].add_right_neighbor(genes_order[i+1])
+            else : 
+                self.genes[genes_order[i]].add_right_neighbor(genes_order[0])
+            
+            # Adds right and left neighbors to each genomic position
+            for p in np.arange(self.genes[genes_order[i]].left, self.genes[genes_order[i]].right) :
+                self.genomic_situation[p] = "intragenic"
+                self.gene[p] = genes_order[i]
+                if i != 0 :
+                    self.left_neighbor[p] = genes_order[i-1]
+                else : 
+                    self.left_neighbor[p] = genes_order[-1]
+                if i != len(genes_order)-1 :
+                    self.right_neighbor[p] = genes_order[i+1]
+                else : 
+                    self.right_neighbor[p] = genes_order[0]
+            if i != len(genes_order) - 1:
+                for p in np.arange(self.genes[genes_order[i]].right, self.genes[genes_order[i+1]].left) :
+                    self.left_neighbor[p] = genes_order[i]
+                    self.right_neighbor[p] = genes_order[i+1]
+            else : 
+                for p in np.arange(self.genes[genes_order[i]].right, self.length) :
+                    self.left_neighbor[p] = genes_order[i]
+                    self.right_neighbor[p] = genes_order[0]
+                for p in np.arange(0,self.genes[genes_order[0]].left) :
+                    self.left_neighbor[p] = genes_order[i]
+                    self.right_neighbor[p] = genes_order[0]
+
+
+    def load_gene_orientation(self, couple=3, max_dist=5000):
+        """
+        Compute gene orientation with the following criteria : 
+        If couple = 3, gene is considered :
+            divergent if left neighbor on - strand 
+                     and right neighbor on + strand,
+            convergent if left neighbor on + strand 
+                      and right neighbor on - strand, 
+            tandem if left and right neighbors on same strand 
+                   (whatever the strand of the given gene is)
+            isolated if the distance between neighbors is higher than the  
+                     maximal distance given as argument
+        If couple = 2, gene is considered 
+            tandem if predecessor (left neighbor for gene on + strand, 
+                   right neighbor for gene on - strand) is on same strand, 
+            divergent if the predecessor is on opposite strand.
+        
+        Arg: 
+            self (Genome instance)
+            couple (Optional [int.]): number of genes to consider in a "couple"
+                           if couple = 2 : computes the orientation of a 
+                                           gene relative to its predecessor
+                           if couple = 3 : computes the orientation of a 
+                                           gene relative to its two
+                                           neighbors
+                           Default: 3
+            max_dist (Optional [int.]): maximal distance between 2 genes start 
+                                  positions for seeking neighbor (Default: 5kb)
+
+        Outputs:
+            self.orientation (dict.): new attribute of the Genome instance.
+                                      self.orientation is a dictionary of 
+                                      shape {orientation: list of genes}. 
+                                      It contains the list of genes for each 
+                                      orientation (tandem, divergent, 
+                                      convergent, and isolated if couple=3,
+                                      tandem and divergent if couple=2)                          
+            self.genes[locus].orientation (str.): new attribute of Gene 
+                                                instances related to the Genome 
+                                                instance given as argument
+
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_gene_orientation method.
+
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_annotation(annot_file="sequence.gff3")
+            >>> g.load_gene_orientation()
+            >>> g.genes["Dda3937_00005"].orientation
+            'tandem'
+            >>> g.orientation["isolated"]
+            ['Dda3937_02360', 'Dda3937_01107', 'Dda3937_03898', 'Dda3937_04216',
+            'Dda3937_00244', 'Dda3937_04441', 'Dda3937_01704', 'Dda3937_01705',
+            ...
+            'Dda3937_02126', 'Dda3937_01530', 'Dda3937_04419', 'Dda3937_02081']
+        """
+        self.load_neighbor_all()
+        res = {"tandem": [], "divergent": [], "convergent": [], "isolated": []}
+        for gene in self.genes:
+            orient = ""
+            try:
+                g = self.genes[gene]
+                lg = self.genes[g.left_neighbor]
+                rg = self.genes[g.right_neighbor]
+
+                #circular DNA
+                if lg.start > g.start :
+                    rstart = rg.start + self.length
+                    gstart = g.start + self.length
+                elif g.start > rg.start :
+                    rstart = rg.start + self.length
+                    gstart = g.start
+                else : 
+                    rstart = rg.start
+                    gstart = g.start
+
+
+                if couple == 3:
+                    if ((gstart - lg.start) < max_dist 
+                        and (rstart - gstart) < max_dist):
+                        if not lg.strand and not rg.strand:
+                            orient = "tandem"
+                        elif lg.strand and rg.strand:
+                            orient = "tandem"
+                        elif lg.strand and not rg.strand:
+                            orient = "convergent"
+                        elif not lg.strand and rg.strand:
+                            orient = "divergent"
+                    else:
+                        orient = "isolated"
+
+                elif couple == 2:  
+                    if g.strand:
+                        if (gstart - lg.start) < max_dist:
+                            if lg.strand:
+                                orient = "tandem"
+                            elif not lg.strand:
+                                orient = "divergent"
+                    if not g.strand:
+                        if (rstart - gstart) < max_dist:
+                            if rg.strand:
+                                orient = "divergent"
+                            elif not rg.strand:
+                                orient = "tandem"  
+
+                self.genes[gene].add_orientation(orient)
+                res[orient].append(gene)                   
+            except BaseException as e:
+                print(f"Warning with locus {gene}: {e}")
+        self.orientation = res
+
+    def load_pos_orientation(self, max_dist=5000):
+        """
+        Compute gene orientation with the following criteria : 
+            divergent if left neighbor on - strand and 
+                         right neighbor on + strand,
+            convergent if left neighbor on + strand and 
+                          right neighbor on - strand, 
+            tandem if left and right neighbors on same strand 
+            isolated if the distance between neighbors is higher than the  
+                          maximal distance given as argument
+
+        Arg: 
+            self (Genome instance)
+            max_dist (Optional [int.]): maximal distance between 2 genes start 
+                                  positions for seeking neighbor (Default: 5kb)
+
+        Outputs:
+            self.pos_orientation (dict of dic): new attribute of the Genome instance.
+                                      self.pos_orientation is a dictionary of 
+                                      containing 2 subdictionaries. One dictionary 
+                                      for "intergenic" positions and one for 
+                                      "intragenic" positions. 
+                                      Each subdictionary contains the list of 
+                                      position for each orientation.  
+                                      {"intergenic":{orientation: list of positions}},
+                                       "intragenic":{orientation: list of positions}}
+                                       with orientation in ["divergent","convergent",
+                                       "tandem","isolated"]
+            self.orientation_per_pos (dict.): new attribute of the Genome instance.
+                                      self.orientation_per_pos is a dictionary of 
+                                      shape {position: orientation}.              
+
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_gene_orientation method.
+
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_annotation(annot_file="sequence.gff3")
+            >>> g.load_pos_orientation()
+            >>> g.orientation_per_pos[30]
+            'tandem'
+            >>> g.pos_orientation["intragenic"]["isolated"]
+            [11534,11535,11536,11537,11538,11539,11540,11541,11542,11543,...]
+        """
+        self.load_neighbor_all()
+        res_inter = {"tandem": [], "divergent": [], "convergent": [], "isolated": []}
+        res_intra = {"tandem": [], "divergent": [], "convergent": [], "isolated": []}
+        self.orientation_per_pos = {}
+        for pos in np.arange(self.length):
+            orient = ""
+            try:
+                lg = self.genes[self.left_neighbor[pos]]
+                rg = self.genes[self.right_neighbor[pos]]
+                
+                #circular DNA
+                if lg.start > pos :
+                    pstart = pos + self.length
+                    rstart = rg.start + self.length
+                elif pos > rg.start :
+                    pstart = pos
+                    rstart = rg.start + self.length
+                else : 
+                    pstart = pos
+                    rstart = rg.start
+   
+                if ((pstart - lg.start) < max_dist and (rstart - pstart) < max_dist):
+                    if not lg.strand and not rg.strand:
+                        orient = "tandem"
+                    elif lg.strand and rg.strand:
+                        orient = "tandem"
+                    elif lg.strand and not rg.strand:
+                        orient = "convergent"
+                    elif not lg.strand and rg.strand:
+                        orient = "divergent"
+                else:
+                    orient = "isolated"  
+
+                self.orientation_per_pos[pos] = orient
+                if self.genomic_situation[pos] == "intragenic":
+                    res_intra[orient].append(pos)
+                else : 
+                    res_inter[orient].append(pos)
+            except BaseException as e:
+                print(f"Warning with position {pos}: {e}")
+        self.pos_orientation = {"intragenic":res_intra,"intergenic":res_inter}
+
+    def load_TSS(self):
+        """ 
+        load_TSS loads a TSS annotation from a file present in the /TSS/ 
+        directory. The information importation requires a TSS.info file, 
+        containing column indices of each information in the data file and some 
+        additional information, in the following order: 
+        [0] Condition [1] Filename [2] Locus tag column [3] TSS_column
+        [4] File start line [5] Separator [6] Strand column
+        [7] Sigma column [8] Sites column
+        
+        Arg:
+            self (Genome instance)
+
+        Output: 
+            self.TSSs (dict. of dict.): new attribute of the Genome instance. 
+                                        self.TSSs is a dictionary of shape 
+                                        {Condition: {TSS position: TSS object}}. 
+                                        One subdictionary is created for each 
+                                        condition listed in TSS.info file.
+                                        Each TSS object is initialized with 
+                                        the following attributes: 
+                                        pos, genes, promoter, score, strand
+                                        The promoter attribute is a dictionary
+                                        containing, for each sigma factor (keys)
+                                        another dictionary (value). The first 
+                                        created key of this second dictionary is 
+                                        "sites" and the associated value is 
+                                        a tuple containing the positions of 
+                                        promoter elements.
+                                        See __init__ and add_promoter in the 
+                                        TSS class for more details about each 
+                                        attribute.
+            self.TSSs['all_TSSs'] (subdictionary of self.TSSs): 
+                                        additional subdictionary of self.TSSs, 
+                                        of shape : 
+                                        self.TSSs['all_TSSs']={TSSpos: [TSScond]}
+                                        with [TSScond] the list of TSS conditions 
+                                        where this TSS was found.
+        
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_genes_per_pos method.
+
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_TSS()
+            >>> g.TSSs["dickeya-btss"][4707030].promoter
+            {'sigma70': {'sites': (4707039, 4707044, 4707060, 4707065)},
+             'sigma32': {'sites': (4707037, 4707046, 4707062, 4707068)}}
+            >>> g.TSSs["dickeya-btss"][4707030].strand
+            False
+        """
+        self.TSSs = {} 
+        self.TSSs['all_TSS'] = {}     
+        if not hasattr(self, "genes"):
             self.load_annotation()
 
-        if os.path.exists(basedir+"data/"+self.name+"/TSS/TSS.info"):
-            with open(basedir+"data/"+self.name+"/TSS/TSS.info","r") as f:
-                skiphead = next(f) # skip head
+        path2dir = f"{basedir}data/{self.name}/TSS/"
+        if Path(f"{path2dir}TSS.info").exists():
+            with open(f"{path2dir}TSS.info", "r") as f:
+                skiphead = next(f)  
                 for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-
-                    filename = line[1] ; startline = int(line[4]) ; sep = line[5] ; strand = int(line[6]) ; TSScol = int(line[3])
+                    line = line.strip('\n').split('\t')
+                    filename = line[1]
+                    startline = int(line[4])
+                    sep = line[5]
+                    strand = int(line[6])
+                    TSScol = int(line[3])
                     genescol = int(line[2]) if line[2] != "" else None
                     sigcol = int(line[7]) if line[7] != "" else None
                     sitescol = int(line[8]) if line[8] != "" else None
                     scorecol = int(line[9]) if line[9] != "" else None
-                    try: # successively try to load :
-                        self.TSSs[line[0]] = load_TSS_cond(self.genes, basedir+"data/"+self.name+"/TSS/"+filename, TSScol, startline, sep,strand, genescol, sigcol, sitescol,scorecol)
-                        # append all entries to all TSS dict
-                        for entry in self.TSSs[line[0]].keys():
-                            try: # works if entry already in dict
-                                self.TSSs['all_TSS'][entry].append(line[0])
-                            except: # init list of conditions for entry
-                                self.TSSs['all_TSS'][entry] = []
-                                self.TSSs['all_TSS'][entry].append(line[0])
-
+                    try:  
+                        self.TSSs[line[0]] = load_TSS_cond(self.genes,
+                                                           path2dir+filename,
+                                                           TSScol, startline,
+                                                           sep, strand,
+                                                           genescol, sigcol,
+                                                           sitescol, scorecol)
+                        # appends all entries to the "all_TSS" subdictionary
+                        for TSSpos in self.TSSs[line[0]].keys():
+                            if TSSpos in self.TSSs['all_TSS'].keys():  
+                                self.TSSs['all_TSS'][TSSpos].append(line[0])
+                            else :
+                                self.TSSs['all_TSS'][TSSpos] = [line[0]]
                     except Exception as e:
-                        print("Error loading",line[0],e)
-
-
+                        print("Error loading", line[0], e)
         else:
             print("No TSS.info, unable to load TSS")
 
 
-    def load_rpkm(self):
-        """ Load a RPKM file information where indice 0 = Condition
-        1 = filename type, 2 = RPKM  column, 3 = Start line,
-        4 = type of separator, 5=locus_column """
-        if not (self.genes):
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/rpkm/rpkm.info"):
-            with open(basedir+"data/"+self.name+"/rpkm/rpkm.info","r") as f:
-                for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                    self.genes=add_single_rpkm_to_genes(self.genes, basedir+"data/"+self.name+"/rpkm/"+line[1],line[0],int(line[2]),int(line[3]),line[4],int(line[5]))
-        else:
-            print(" no rpkm file in this folder ")
-
-            
-
-    def load_SIST(self, start, end,*args, **kwargs):
-        if not hasattr(self, 'SIST_profile'):
-            self.SIST_profile={}
-            self.load_seq()
-        option = kwargs.get('option')
-        if option:
-            if option == 'A':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            elif option == 'Z':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            elif option == 'C':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            else:
-                print("This option doesn't exist")
-        else:
-            self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq)
-
-###################### RAPH GENOME METHODS #############################
-
-    def load_reads(self):
-        '''
-        Load paired end reads from .npz files that have been generated using process_bam_paired_end in useful_functions
-        and which are described in reads.info
-        New attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
-        '''
-        self.reads_pos = {} # reads on + strand
-        self.reads_neg = {} # reads on - strand
-        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
-            print('Unable to locate reads.info in /rnaseq_reads/')
-        else:
-            # open info file
-            with open(basedir+"data/"+self.name+'/rnaseq_reads/reads.info',"r") as f:
-                header = next(f) # first line = header
-                # one line / condition
-                for line in f:
-                    line=line.strip()
-                    line=line.split('\t')
-                    print('Loading condition',line[0])
-                    self.reads_pos[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rpos"]
-                    self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
-            print('Done')
-
-    def load_cov_rnaseq(self):
-        '''
-        Load coverage either from .npz files which are described in cov.info
-        or compute coverage itself from reads attribute
-        New attribute cov : cov_pos & cov_neg, of shape {[condition] : .npy}, e.g. self.cov_pos[cond1]
-        '''
-        self.cov_pos = {} # cov on + strand
-        self.cov_neg = {} # cov on - strand
-        # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
-        # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
-        if os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info'): # cov.info available, cov.info opening instead of cov_txt.info
-            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","r") as f:
-                header = next(f)
-                for line in f: # for each condition
-                    line=line.strip().split('\t')
-                    print('Loading condition',line[0])
-                    # load attributes
-                    self.cov_neg[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_neg"]
-                    self.cov_pos[line[0]]= np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_pos"]
-
-        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
-            print('Unable to locate cov.info in /rnaseq_cov/')
-            print('Working with .txt file (cov_txt.info)')
-            file = open(basedir+"data/"+self.name+'/rnaseq_cov/cov.info','w')
-            file.write('Condition\tCov file\tDate\tReads file')
-            file.close()
-            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_txt.info","r") as f: # load cov_txt.info
-                header = next(f)
-                for line in f:
-                    line = line.strip('\n').split('\t')
-                    print('Loading condition:',line[0])
-                    # create .npy from .txt
-                    cov_neg=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[1], usecols=[int(line[4])], skiprows= int(line[3])-1)
-                    cov_pos=np.loadtxt(basedir+"data/"+self.name+"/rnaseq_cov/"+line[2], usecols=[int(line[4])], skiprows= int(line[3])-1)
-                    # load attributes
-                    self.cov_neg[line[0]]= cov_neg
-                    self.cov_pos[line[0]]= cov_pos
-                    # save .npy into .npz
-                    np.savez(basedir+"data/"+self.name+"/rnaseq_cov/"+line[0]+'_cov.npz', cov_pos=cov_pos, cov_neg=cov_neg)
-                    # update cov.info
-                    file=open(basedir+"data/"+self.name+"/rnaseq_cov/cov.info","a")
-                    file.write('\n'+line[0]+'\t'+line[0]+'_cov.npz\t'+str(datetime.now())+'\tUnknown')
-                    file.close()
-        f.close()
-        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov.info') and not os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_txt.info'):
-            print('cov.info not available nor cov_txt.info, please check /rnaseq_cov/ folder')
-        print('Done')
-
-    def load_cov_rnaseq_bin(self,binsize,cond = "all",stat = "mean"):
-        '''
-        Load rnaseq coverage using the load_rnapseq function  
-        New attribute cov_pos_bin : cov_pos_bin, of shape {[condition_bin] : array}, e.g. self.cov_pos_bin[cond1_10]
-        '''
-        self.cov_pos_bin = {} # cov on + strand
-        self.cov_neg_bin = {} # cov on - strand
-
-        self.load_cov_rnaseq()
-  
-        if cond == "all" : 
-            cond = self.cov_pos.keys()
-
-        if type(cond) == str: 
-            cond = [cond]
-
-        for c in cond :
-            print('Condition : ',c)
-            #path to the file containing binned data
-            f_path = basedir+"data/"+self.name+'/rnaseq_cov/binned_data/'+c+str(binsize)+"b_"+stat+".npz"
-            
-            #test is the binning of this condition already exists
-            if os.path.exists(f_path) :
-                print("loading existing file")
-                self.cov_pos_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)['pos']
-                self.cov_neg_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)['neg']
-
-            else : 
-                print("performing the binning")
-                # bin the data 
-                binned_pos = binning(self.cov_pos[c],binsize = binsize,stat = stat).statistic
-                binned_neg = binning(self.cov_neg[c],binsize = binsize,stat = stat).statistic
-                # load the new attribute to the gen object
-                self.cov_pos_bin[c+"_"+str(binsize)+"b_"+stat] = binned_pos
-                self.cov_neg_bin[c+"_"+str(binsize)+"b_"+stat] = binned_neg
-                # save the data as a .npy file
-                np.savez(f_path,pos = binned_pos,neg=binned_neg)
-
-    def load_cov_chipseq(self, cond = "all"):
-        '''
-        Load chipseq coverage .bedgraph files which are described in cov.info
-        New attribute cov_chipeq : cov_chipseq, of shape {[condition] : array}, e.g. self.cov_chipseq[cond1]
-        If conditions are specified in selected_cond, only the selected conditions will be loaded
-        '''
-
-        if not hasattr(self,"cov_chipseq") :
-            self.cov_chipseq = {} 
-
-        if type(cond) == str: 
-            cond = [cond]
-
-        # tries to open cov.info
-        print("selected conditions : ")
-        print(cond)
-        if os.path.exists(basedir+"data/"+self.name+'/chipseq_cov/cov_chipseq.info'): # cov.info available, cov.info opening instead of cov_txt.info
-            with open(basedir+"data/"+self.name+"/chipseq_cov/cov_chipseq.info","r") as f:
-                header = next(f)
-                for line in f: # for each condition
-                    line=line.strip().split('\t')
-                    
-                    # load attributes
-                    if cond == ["all"] or line[0] in cond :
-                        print('Loading condition',line[0])
-                        data = pd.read_csv(basedir+"data/"+self.name+'/chipseq_cov/'+line[1],sep="\t")
-                        #compute binsize of each bin in the file
-                        bs = data.iloc[:,int(line[3])] - data.iloc[:,int(line[2])]
-                        cover = data.iloc[:,int(line[4])]
-                        #load coverage per base on the object gen
-                        self.cov_chipseq[line[0]] = np.array(np.repeat(cover,bs))
-
-            f.close()
-        else :
-            print('Unable to locate cov.info')  
+    def load_prom_elements(self,shift=0,prom_region=[0,0]):
+        """
+        load_prom_elements extracts sequences of the different promoter elements 
+        (spacer, -10, -35, discriminator, region around TSS) based on -35 and 
+        -10 coordinates loaded with load_TSS method, for all TSS conditions.
         
+        Args: 
+            self (Genome instance)
+            shift (Optional [int.]): number of nucleotides to include beyond each 
+                                     region on either side (Default: 0nt)
+            prom_region (Optional [int.,int.]): region upstream and downstream TSSs  
+                                                to extract. Argument with the shape: 
+                                                [length before TSS, length after TSS] 
+                                                Default: [0,0] ie no sequence will 
+                                                be extracted around TSS
 
-    def load_cov_chipseq_bin(self,binsize,cond = "all", stat = "mean"):
-        '''
-        Load chipseq coverage using the load_cov_chipseq function and .bedgraph files which are described in cov_chipseq.info 
-        New attribute cov_chipeq_bin : cov_chipseq_bin, of shape {[condition_bin] : array}, e.g. self.cov_chipseq_bin[cond1_10]
-        If conditions are specified in selected_cond, only the selected conditions will be loaded
-        '''
-        if not hasattr(self,"cov_chipseq_bin") :
-            self.cov_chipseq_bin = {} 
-        
-        #get the list of all existing conditions
-        if cond == "all" : 
-            with open(basedir+"data/"+self.name+"/chipseq_cov/cov_chipseq.info","r") as fi:
-                header = next(fi)
-                cond = []
-                for line in fi: # for each condition
-                    line=line.strip().split('\t')
-                    cond.append(line[0])
-            fi.close()
+        Outputs:
+            For each sigma factor associated to a TSS annotation, creates a 
+            subdictionary in self.TSSs[condTSS][TSS].promoter with the shape 
+            promoter[sigma] = {element: sequence} with element in 
+            ["spacer", "minus10", "minus35", "discriminator", "region"]
+            See load_TSS description to understand the structure of the 
+            subdictionary self.TSSs[condTSS][TSS].promoter
 
-        if type(cond) == str: 
-            cond = [cond]
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_genes_per_pos method.
 
-        for c in cond :
-            print('Condition : ',c)
-            #path to the file containing binned data
-            f_path = basedir+"data/"+self.name+'/chipseq_cov/binned_data/'+c+"_"+str(binsize)+"b_"+stat+".npy"
-
-            #test is the binning of this condition already exists
-            if os.path.exists(f_path):
-                print("loading existing file")
-                self.cov_chipseq_bin[c+"_"+str(binsize)+"b_"+stat] = np.load(f_path)
-
-            else : 
-                print("performing the binning")
-                # load data
-                self.load_cov_chipseq(cond = c)
-                # bin the data 
-                binned_data = binning(self.cov_chipseq[c],binsize = binsize,stat = stat).statistic
-                # load the new attribute to the gen object
-                self.cov_chipseq_bin[c+"_"+str(binsize)+"b_"+stat] = binned_data
-                # save the data as a .npy file
-                np.save(f_path,binned_data)
-
-
-    def load_cov_start_end(self):
-        '''
-        Load density of RNA fragment start / end from .npz files which are described in cov_start_stop.info
-        New attribute cov : cov_start & cov_end for both + and - strands
-        Corresponds to the density of RNA fragments start and ends (to locate TSS / TTS)
-         & shape {[condition]:{pos:.npy, neg:.npy}}
-        '''
-        self.cov_start = {} # 
-        self.cov_end = {} #
-        # function tries first to deal with cov_info and .npy files directly, if cov_info not available then
-        # tries to open cov_txt.info, convert .txt files into .npy, create cov.info and load them
-        if os.path.exists(basedir+"data/"+self.name+'/rnaseq_cov/cov_start_stop.info'): # cov.info available, cov.info opening instead of cov_txt.info
-            with open(basedir+"data/"+self.name+"/rnaseq_cov/cov_start_stop.info","r") as f:
-                header = next(f)
-                for line in f: # for each condition
-                    line=line.strip().split('\t')
-                    print('Loading condition',line[0])
-                    # load attributes
-                    self.cov_start[line[0]] = {}
-                    self.cov_end[line[0]] = {}
-
-                    self.cov_start[line[0]][0] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_start_neg"]
-                    self.cov_start[line[0]][1] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_start_pos"]
-                    self.cov_end[line[0]][0] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_end_neg"]
-                    self.cov_end[line[0]][1] = np.load(basedir+"data/"+self.name+'/rnaseq_cov/'+line[1])["cov_end_pos"]
-
-            f.close()
-
-        else:
-            print('cov_start_stop.info not available please check /rnaseq_cov/ folder')
-
-        self.cov_start_all = {0:np.sum([self.cov_start[x][0] for x in self.cov_start.keys()],axis=0), 1:np.sum([self.cov_start[x][1] for x in self.cov_start.keys()],axis=0)} # 
-        self.cov_end_all = {0:np.sum([self.cov_end[x][0] for x in self.cov_end.keys()],axis=0), 1:np.sum([self.cov_end[x][1] for x in self.cov_end.keys()],axis=0)} #
-
-        print('Done')
-
-
-    def compute_rpkm_from_cov(self, before=100):
-        '''
-        Adds rpkm values from coverage: along whole genes Before= number of bps to add before = to take into account
-        DNA region upstream of the coding sequence of the gene
-        '''
-        self.load_annotation()
-        if not hasattr(self,"cov_pos"):
-            self.load_cov()
-
-        for g in self.genes.keys(): # for each gene
-            try:
-                if self.genes[g].strand:
-        # gene in + strand
-                    for cond in self.cov_pos.keys(): # for each condition of cov
-                        self.genes[g].add_single_rpkm(cond, np.mean(self.cov_pos[cond][(self.genes[g].left-before):self.genes[g].right]), np.sum(self.cov_pos[cond])+np.sum(self.cov_neg[cond]))
-                elif not self.genes[g].strand:
-        # gene in - strand
-                    for cond in self.cov_neg.keys():
-                        self.genes[g].add_single_rpkm(cond, np.mean(self.cov_neg[cond][self.genes[g].left:(self.genes[g].right+before)]), np.sum(self.cov_pos[cond])+np.sum(self.cov_neg[cond]))
-            except Exception as e:
-                print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
-                pass
-
-
-    def load_fc_pval(self,*args, **kwargs):
-        ''' Load fc and pval specified in fc.info. Fc info file columns (tab-separated) : condition, filename, tag column
-        , fc column, file separator, startline, pvalcolumn (if not available leave empty)
-        '''
-        self.genes_valid = {} # for each condition, list of genes having a FC /pval value
-        if not hasattr(self,'genes'):
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/fold_changes/fc.info"):
-            with open(basedir+"data/"+self.name+"/fold_changes/fc.info","r") as f:
-                skiphead = next(f) # skip head
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    try: # if p-value column specified works
-                        self.genes_valid[header[0]]=load_fc_pval_cond(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]), p_value=int(header[6]))
-                    except: # otherwise, set pvalue = 0
-                        self.genes_valid[header[0]]=load_fc_pval_cond(self.genes,basedir+"data/"+self.name+"/fold_changes/"+header[1],header[0],int(header[2]),int(header[3]),header[4],int(header[5]))
-            f.close()
-        else:
-            print("No fc.info file, please create one")
-
-    def load_expression(self,*args, **kwargs):
-        ''' Load expression data specified in expression.info. Expression info file columns (tab-separated) : condition, filename, tag column
-        , fc column, file separator, startline, pvalcolumn (if not available leave empty)
-        '''
-        if not hasattr(self,'genes_valid_expr'):
-            self.genes_valid_expr = {}
-        if not hasattr(self, "genes"): # if no genes loaded
-            # try to load them
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/expression/expression.info"):
-            with open(basedir+"data/"+self.name+"/expression/expression.info","r") as f:
-                skiphead = next(f) # skip head
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    self.genes_valid_expr[header[0]]=add_expression_to_genes(self.genes,basedir+"data/"+self.name+"/expression/"+header[0], int(header[1]), int(header[2]), header[3], header[4])
-            f.close()
-        else:
-            print("No expression.info file, please create one")
-
-    def compute_magic_prom(self,*arg,**kwargs):
-        '''
-        Extract sequences of the different promoter elements based on -35 and -10 coordinates, for all TSS conditions.
-        '''
-        if not hasattr(self, 'TSSs'): # if no TSS loaded
+        Example:
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_prom_elements()
+            >>> g.TSSs["dickeya-btss"][4707030].promoter
+            {'sigma70': {'sites': (4707039, 4707044, 4707060, 4707065),
+                         'spacer': 'TCGCCCACCCTCAAT',
+                         'minus10': 'CATCAT',
+                         'minus35': 'TACCCC',
+                         'discriminator': 'GAATAACC'},
+             'sigma32': {'sites': (4707037, 4707046, 4707062, 4707068),
+                         'spacer': 'CCTCGCCCACCCTCA',
+                         'minus10': 'ATCATCATGA',
+                         'minus35': 'CCGTACC',
+                         'discriminator': 'ATAACC'}}
+        """
+        if not hasattr(self, 'TSSs'): 
             self.load_TSS()
-        if not hasattr(self, 'seq'): # if no seq loaded
+        if not hasattr(self, 'seq'): 
             self.load_seq()
-        shift = kwargs.get('shift',0) # number of nt to include beyond each region on either side, e.g. to compute angle
-        prom_region = kwargs.get('prom',False)
         for cond_TSS in self.TSSs.keys():
             try:
                 if cond_TSS != 'all_TSS':
                     for TSS in self.TSSs[cond_TSS].keys():
-                        self.TSSs[cond_TSS][TSS].compute_magic_prom(self.seq,self.seqcompl,shift=shift,prom=prom_region)
-            except:
-                print('Unable to compute magic prom :',cond_TSS)
+                        self.TSSs[cond_TSS][TSS].add_prom_elements(
+                            self.seq, self.seqcompl, shift=shift, prom=prom_region)
+            
+            except BaseException:
+                print('Unable to load prom elements for:', cond_TSS)
 
 
-    def add_fake_expression(self,cond_fc):
-        '''
-        For a given FC condition cond_fc, add FC = 0 and p-value = 1 to all genes which are not in the condition 
-        file but only in the annotation file e.g. Blot et al. transcriptomic dataset analysis
-        '''
-        self.load_fc_pval()
-        for gene in self.genes.keys():               
-            try: # if the gene has already an expression value for the condition, pass
-                test = self.genes[gene].fc_pval[cond_fc]
-            except:
-                try: # if the gene has an expression value for another condition, only add key to dict and fake values
-                    self.genes[gene].fc_pval[cond_fc] = (0,1)
-                except: # otherwise init dict before adding fake values
-                    self.genes[gene].fc_pval = {}
-                    self.genes[gene].fc_pval[cond_fc] = (0,1)
-
-
-
-    def compute_fc_from_expr(self, ctrls, conds, condname):
-        ''' 
-        Compute FC and p-values of a condition condname starting from a list of expression conditions : 
-        control conditions ctrls, test conditions conds
-        '''
-        if not hasattr(self, 'genes_valid'):
-            self.genes_valid = {}
-        self.load_expression() # load expression values
-
-        genes_val = [] # list containing all genes having valid expr
-        for genename in self.genes.keys():
-            gene = self.genes[genename]
-            ctrlvals = [] # list of control values for that gene
-            testvals = [] # list of test values for that gene
-            try:
-                for ctrl in ctrls:
-                    ctrlvals.append(gene.expression[ctrl])
-                for cond in conds:
-                    testvals.append(gene.expression[cond])
-                # add FC (meantest - meanctrl) and p-values (Student test)
-                gene.add_fc_pval_cond(np.mean(testvals)-np.mean(ctrlvals),condname,stats.ttest_ind(ctrlvals,testvals,equal_var=False)[1])
-                genes_val.append(genename)
-            except:
-                pass
-
-        self.genes_valid[condname] = genes_val
+    def load_TU(self):
+        """ 
+        load_TU loads a TU annotation from a file present in the /TU/ 
+        directory. The information importation requires a TU.info file, 
+        containing column indices of each information in the data file and some 
+        additional information, in the following order: 
+        [0] Condition [1] Filename [2] Start column [3] Stop column
+        [4] Strand column [5] Gene column [6] File start line [7] Separator 
         
-    def load_neighbour_all(self):
-        '''
-        For each gene, find nearest neighbours (left and right) on genome, whatever their strand.
-        '''
-        if not hasattr(self,"genes"):
-            self.load_annotation()
-        res={}
-        # create dic with genes and position (res[position] = gene)
-        for i in self.genes:
-            res[int(self.genes[i].start)]=i
-        # sort dic per position of genes
-        l_res=sorted(list(res.items()), key=operator.itemgetter(0))
-        # add neighbours to genes
-        self.genes=add_neighbour(self.genes,l_res)
+        Arg:
+            self (Genome instance)
 
+        Output: 
+            self.TUs (dict. of dict.): new attribute of the Genome instance. 
+                                       self.TUs is a dictionary of shape 
+                                       {Condition: {TU start pos: TU object}} 
+                                       One subdictionary is created for each 
+                                       condition listed in TU.info file.
+                                       Each TU object is initialized with 
+                                       the following attributes: 
+                                       start, stop, orientation, genes,
+                                       left,right.                                   
+                                       See __init__ in the TU class for more 
+                                       details about each attribute.
 
-    def load_gene_orientation(self,*args,**kwargs):
-        '''
-        Compute gene orientation. If couple = 3, gene is considered divergent if left neighbour on - strand and right neighbour on + strand,
-        convergent if left neighbour on + strand and right neighbour on - strand, tandem if left and right neighbours on same strand
-        (whatever the strand of the given gene is). If couple = 2, gene is considered tandem if predecessor (left neighbour for gene on + strand,
-        right neighbour for gene on - strand) is on same strand, divergent if the predecessor is on opposite strand.
-        '''
-        self.load_neighbour_all()
-        bound = kwargs.get('bound',5000) # maximal distance for seeking neighbour, either left or right
-        couple = kwargs.get('couple',3)
-        res = {"tandem":0,"divergent":0,"convergent":0,"isolated":0}
-        for gene in self.genes:
-            try:               
-                g = self.genes[gene]
-                lg = self.genes[g.left_neighbour]
-                rg = self.genes[g.right_neighbour]
-                if couple == 3:
-                    if (g.start - lg.start) < bound and (rg.start - g.start) < bound:
-                        if not lg.strand and not rg.strand:
-                            self.genes[gene].add_orientation('tandem')
-                            res["tandem"] += 1
-                        elif lg.strand and rg.strand:
-                            self.genes[gene].add_orientation('tandem')
-                            res["tandem"] += 1
-                        elif lg.strand and not rg.strand:
-                            self.genes[gene].add_orientation('convergent')
-                            res["convergent"] += 1
-                        elif not lg.strand and rg.strand:
-                            self.genes[gene].add_orientation('divergent')
-                            res["divergent"] += 1
-                    else:
-                        self.genes[gene].add_orientation('isolated')
-                        res["isolated"] += 1
-                
-                elif couple == 2:
-                    if g.strand:
-                        if (g.start - lg.start) < bound:
-                            if lg.strand:
-                                self.genes[gene].add_orientation('tandem')
-                                res["tandem"] += 1
-                            elif not lg.strand:
-                                self.genes[gene].add_orientation('divergent')
-                                res["divergent"] += 1
-                    if not g.strand:
-                        if (rg.start - g.start) < bound:
-                            if rg.strand:
-                                self.genes[gene].add_orientation('divergent')
-                                res["divergent"] += 1
-                            elif not rg.strand:
-                                self.genes[gene].add_orientation('tandem')
-                                res["tandem"] += 1
-                    if g.strand:
-                        if (rg.start - g.start) < bound:
-                            if not rg.strand:
-                                res["convergent"] += 1
-                    if not g.strand:
-                        if (g.start - lg.start) < bound:
-                            if rg.strand:
-                                res["convergent"] +=1
-                                
-            except:
-                pass
-                
-        self.orientation = res
-
-    def compute_state_from_fc(self,*args,**kwargs):
-        '''
-        Compute gene state from FC data. For each condition, below a given pvalue threshold, the gene is considered 
-        significantly activated if its FC is above a given FC treshold, repressed below, and non affected either if its 
-        pvalue is above the threshold, or if its FC is between + and - thesholds
-        '''
-
-        if not hasattr(self, 'genes_valid'):
-            self.load_fc_pval() 
-        thresh_pval = kwargs.get('thresh_pval', 0.05) # below, gene considered valid, above, gene considered non regulated
-        thresh_fc = kwargs.get('thresh_fc', 0) # 0 +- thresh_fc : below, gene considered repressed, above, gene considered activated, between, gene considered non regulated
-        for gene in self.genes.keys():
-            g = self.genes[gene]
-            for cond_fc in self.genes_valid.keys():
-                try:               
-                    if g.fc_pval[cond_fc][1] <= thresh_pval:
-                        if g.fc_pval[cond_fc][0] <  0 - thresh_fc:
-                            g.add_state_cond(cond_fc,'rep')
-                        elif g.fc_pval[cond_fc][0] >  0 + thresh_fc:
-                            g.add_state_cond(cond_fc,'act')
-                        else:
-                            g.add_state_cond(cond_fc,'non')
-                    else:
-                        g.add_state_cond(cond_fc,'non')
-                except:
-                    g.add_state_cond(cond_fc,'null')
-
-    def load_TU(self,*args, **kwargs):
-        ''' Load TUs specified in TU.info
-        '''
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_TU()
+            >>> g.TUs["TU_Forquet"][2336702].right
+            2339864
+            >>> g.TUs["TU_Forquet"][2336702].strand
+            True
+        """
         self.TUs = {}
-        if not hasattr(self,"genes"): # if no genes loaded
-            # try to load them
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/TU/TU.info"):
-            with open(basedir+"data/"+self.name+"/TU/TU.info","r") as f:
-                skiphead = next(f) # skip head
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    try:                
-                        self.TUs[header[0]]=load_TU_cond(basedir+"data/"+self.name+"/TU/"+header[1],int(header[2]),int(header[3]),int(header[4]),int(header[5]),int(header[6]), header[7])
-                    except:
-                        print("Error loading cond",header[0])
+        path2dir = f"{basedir}data/{self.name}/TU/"
+        if Path(f"{path2dir}TU.info").exists():
+            with open(f"{path2dir}TU.info", "r") as f:
+                skiphead = next(f) 
+                for line in f:
+                    line = line.strip().split('\t')
+                    try:
+                        self.TUs[line[0]] = load_TU_cond(path2dir+line[1],
+                                                int(line[2]), int(line[3]), 
+                                                int(line[4]), int(line[5]), 
+                                                int(line[6]), line[7])
+                    except BaseException:
+                        print("Error loading cond", line[0])
             f.close()
         else:
             print("No TU.info file, please create one")
 
-    def load_TTS(self,*args, **kwargs):
-        ''' Load TTS specified in TTS.info
-        '''
-        self.TTSs = {}
-        if not hasattr(self,"genes"): # if no genes loaded
-            # try to load them
-            self.load_annotation()
 
-        if os.path.exists(basedir+"data/"+self.name+"/TTS/TTS.info"):
-            with open(basedir+"data/"+self.name+"/TTS/TTS.info","r") as f:
-                skiphead = next(f) # skip head
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    leftcol = int(header[2]) ; rightcol = int(header[3]) ; strandcol = int(header[4]) ; rhocol = int(header[10])
-                    seqcol = int(header[7]) if header[7] != "" else None
-                    scorecol = int(header[8]) if header[8] != "" else None
-                    genescol = int(header[9]) if header[9] != "" else None
-                    try:                
-                        self.TTSs[header[0]]=load_TTS_cond(basedir+"data/"+self.name+"/TTS/"+header[1],header[6], int(header[5]), leftcol, rightcol, strandcol, rhocol, seqcol, scorecol, genescol)
+    def load_TTS(self):
+        """ 
+        load_TTS loads a TTS annotation from a file present in the /TTS/ 
+        directory. The information importation requires a TTS.info file, 
+        containing column indices of each information in the data file and  
+        some additional information, in the following order: 
+        [0] Condition [1] Filename [2] Left coordinate column
+        [3] Right coordinate column [4] Strand column [5] Startline  
+        [6] Separator [7] Sequence column 
+        and optionally :
+        [8] Score column [9] Genes column [10] Rho dependency column
+
+        Arg:
+            self (Genome instance)
+
+        Output: 
+            self.TTSs (dict. of dict.): new attribute of the Genome instance. 
+                                        self.TTSs is a dictionary of shape 
+                                        {Condition: {TTS position: TTS object}}. 
+                                        One subdictionary is created for each 
+                                        condition listed in TTS.info file.
+                                        Each TTS object is initialized with 
+                                        the following attributes: 
+                                        left, right,  start, end, strand, 
+                                        rho_dpdt, genes, seq, score. 
+                                        If the data do not contain information 
+                                        about associated genes, sequence, or rho 
+                                        dependency, the corresponding attributes
+                                        will be initialized as "None".
+                                        See __init__ in the 
+                                        TTS class for more details about each 
+                                        attribute.
+            self.TTSs['all_TTSs'] (subdictionary of self.TTSs): 
+                                        additional subdictionary of self.TTSs, 
+                                        of shape : 
+                                        self.TTSs['all_TTSs']={TTSpos: [TTScond]}
+                                        with [TTScond] the list of TTS conditions 
+                                        where this TTS was found.
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_TTS()
+            >>> g.TTSs["RhoTerm"][2791688].left
+            2791688
+        """
+        self.TTSs = {}
+
+        path2dir = f"{basedir}data/{self.name}/TTS/"
+        if Path(f"{path2dir}TTS.info").exists():
+            with open(f"{path2dir}TTS.info", "r") as f:
+                skiphead = next(f) 
+                for line in f:
+                    line = line.strip().split('\t')
+                    seqcol = int(line[7]) if line[7] != "" else None
+                    scorecol = int(line[8]) if line[8] != "" else None
+                    genescol = int(line[9]) if line[9] != "" else None
+                    try:
+                        self.TTSs[line[0]] = load_TTS_cond(
+                                                path2dir + line[1],
+                                                line[6], int(line[5]), 
+                                                int(line[2]), int(line[3]), 
+                                                int(line[4]), int(line[10]), 
+                                                seqcol, scorecol, genescol)
                     except Exception as e:
-                        print(e)
-                        print("Error loading cond",header[0])
+                        print("Error loading cond", line[0])
             f.close()
             self.TTSs["all"] = {}
             for x in self.TTSs.keys():
@@ -1118,74 +777,521 @@ class Genome:
         else:
             print("No TTS.info file, please create one")
 
-    def load_sites(self,*args,**kwargs):
-        '''
-        Load sites from sites.info: left and right binding coordinates on genome, sequence of site, score, strand
-        '''
-        self.sites = {}
-        if os.path.exists(basedir+"data/"+self.name+"/sites/sites.info"):
-            with open(basedir+"data/"+self.name+"/sites/sites.info","r") as f:
-                skiphead = next(f) # skip head
-                for header in f:
-                    header=header.strip()
-                    header=header.split('\t')
-                    self.sites[header[0]] = load_sites_cond(basedir+"data/"+self.name+"/sites/"+header[1], header[0], header[2], int(header[3]), int(header[4]), int(header[5]), int(header[6]), int(header[7]), int(header[8]))
-            f.close()
 
-    def load_GO(self,*args,**kwargs):
-        '''
-        Loads file specified in GO.info to assign GO terms to genes
-        One condition corresponds to one annotation system, e.g. GO, COG, but also domain assignment for domain enrichment
-        '''
-        if not hasattr(self, "genes"): # if no genes loaded
-            # try to load them
+    def load_GO(self):
+        """
+        load_GO loads file specified in GO.info to assign GO terms to genes.
+        Other annotation systems such as COG, or domain assignment can also 
+        be used. 
+        The information importation requires a GO.info file, 
+        containing column indices of each information in the data file and  
+        some additional information, in the following order: 
+        [0] Annotation system [1] Filename [2] Locus tag column 
+        [3] GOterm column [4] Separator
+
+        Arg:
+            self (Genome instance)
+
+        Output: 
+            self.GO (dict. of dict.): new attribute of the Genome instance. 
+                                      self.GO is a dictionary of shape 
+                                      {annot_syst: {GOterm: list of genes}} 
+                                      i.e. one subdictionary is created for 
+                                      each annotation system (such as GOc,
+                                      COG or domain) listed in GO.info file.
+            self.genes[locus].GO (list): new attribute of Gene instances 
+                                         related to the Genome instance given 
+                                         as argument. List of terms (such as 
+                                         GO terms) associated to the gene.
+        
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using the load_genes_per_pos method.
+
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_GO()
+            >>> g.GO["GOc"]["GO:0033177"]
+            ['Dda3937_00149', 'Dda3937_00150', 'Dda3937_00151']
+            >>>  g.genes["Dda3937_00151"].GO["GOc"]
+            ['GO:0016469', 'GO:0032991', 'GO:0045263', 'GO:0110165', 
+             'GO:0005886', 'GO:0005887', 'GO:0016020', 'GO:0005575',
+             'GO:0098796', 'GO:0033177']
+        """
+        if not hasattr(self, "genes"): 
             self.load_annotation()
-
+        
+        warn_locus = [] 
         self.GO = {}
-        if os.path.exists(basedir+"data/"+self.name+"/GO_analysis/GO.info"):
-            with open(basedir+"data/"+self.name+"/GO_analysis/GO.info","r") as f1:
-                skiphead = next(f1) # skip head
-                for header in f1:
-                    header=header.strip()
-                    header=header.split('\t')
-                    cond = header[0] # condition name
-                    file = header[1] # file containing assignment gene / functions
-                    tagcol = int(header[2])
-                    GOcol = int(header[3])
-                    self.GO[cond] = {}
-
-                    with open(basedir+"data/"+self.name+"/GO_analysis/"+file, 'r') as f2:
-                        header=next(f2)
-                        for line in f2: 
-                            line = line.strip('\n').split('\t')
+        path2dir = f"{basedir}data/{self.name}/GO_analysis/"
+        
+        # Opens .info file to obtain the information required to correctly 
+        # load the data for each annotation system. 
+        if Path(f"{path2dir}GO.info").exists():
+            with open(f"{path2dir}GO.info", "r") as info_file:
+                skiphead = next(info_file) 
+                for info_line in info_file:
+                    info_line = info_line.strip().split('\t')
+                    annot = info_line[0]  # annotation system
+                    filename = info_line[1]
+                    tagcol = int(info_line[2])
+                    GOcol = int(info_line[3])
+                    separator = info_line[4]
+                    
+                    # Loads the data: associates GO terms to each gene
+                    print(f"Loading {annot}...")
+                    with open(path2dir + filename, 'r') as GO_file:
+                        header = next(GO_file)
+                        for line in GO_file:
+                            line = line.strip('\n')
+                            if separator == '\\t':
+                                line = line.split('\t')
+                            else:
+                                line = line.split(separator)
                             try:
-                                try:
-                                    self.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
-                                except:
-                                    self.genes[line[tagcol]].GO = {}
-                                    self.genes[line[tagcol]].GO[cond] = line[GOcol].split(',')
+                                locus = line[tagcol].replace('\"', '')
+                                if locus != "nan":
+                                    l = line[GOcol].replace(' ', '').split(',')
+                                    self.genes[locus].add_GO(annot, l)
                             except Exception as e:
-                                # print(e)
-                                pass   
-                    f2.close()
+                                warn_locus.append(locus)
+                    GO_file.close()
+                    # Locuses associated with no GO term are listed in warn_locus and are
+                    # printed as a warning for each annotation system
+                    if len(warn_locus) > 20:
+                        print(f"\t{len(warn_locus)} locus are associated with no GO term")
+                    else:
+                        print(f"\t{warn_locus} are associated with no GO term")
+
+                    # Loads the data: associates genes to each GO term
+                    self.GO[annot] = {}
                     for gene in self.genes.keys():
                         try:
                             g = self.genes[gene]
-                            for term in g.GO[cond]:
-                                if term not in self.GO[cond].keys():
-                                    self.GO[cond][term] = []
-                                self.GO[cond][term].append(gene)
-                        except Exception as e:
-                            # print(e)
+                            for term in g.GO[annot]:
+                                if term not in self.GO[annot].keys():
+                                    self.GO[annot][term] = []
+                                self.GO[annot][term].append(gene)
+                        except BaseException:
                             pass
-
-            f1.close()
+            info_file.close()
         else:
             print("No GO.info file, please create one")
 
-###################### ANTOINE #############################
 
-    def run_btssfinder(self,list_TSS,*args,**kwargs): #running bTSSfinder
+    def load_genomic_RNASeq_cov(self, cond="all"):
+        """
+        Load RNASeq coverage to a Genome instance. The importation requires 
+        a cov.info or cov_txt.info file. See load_cov_rnaseq method 
+        (Transcriptome class) for the details.
+
+        Args: 
+            cond (Optional [list of str.]): selection of one or several conditions 
+                                    (1 condition corresponds to 1 data file).
+                                    By default : cond ='all' ie all available 
+                                    coverages are loaded.
+        Outputs:
+            self.cov_rnaseq_pos: dictionary of shape {condition: cov+}
+                                 with cov+ a list containing one signal data 
+                                 per genomic position for the + strand
+            self.cov_rnaseq_neg: idem for the - strand
+        """
+        tr = Transcriptome.Transcriptome(self.name)
+        tr.load_cov_rnaseq(cond)
+        self.cov_rnaseq_pos = tr.cov_rnaseq_pos
+        self.cov_rnaseq_neg = tr.cov_rnaseq_neg
+
+
+    def load_genomic_signal(self, cond='all',data_treatment=None,
+                            replicates=False,signal_per_genes=False,
+                            *args, **kwargs):
+        """ 
+        Load_genomic_signals loads a 1D distribution along the chromosome 
+        (typically a CHIPSeq distribution) from a data file (such as a 
+        .bedGraph file obtained with bamCompare) containing bin starting and 
+        ending positions and signal in each bin. See Chipseq class for more
+        details.
+
+        Args: 
+            cond (Optional [list of str.]): selection of one or several 
+                                            conditions (1 condition corresponds
+                                            to 1 data file).
+                                            By default cond ='all' ie all 
+                                            available signals are loaded.
+            data_treatment (Optional [str.]): "binning", "smoothing" or None 
+                                               Default: None
+            replicates (Optional [Bool.]): if True, the average between the 
+                                           conditions will be computed.
+                                           Default: False
+            signal_per_genes(Optional [Bool.]): if True, compute the mean
+                                                signal for each Gene
+
+        Keyword Args:
+            average_name (str.)
+            window ([int.] only required if data_treatment == "smoothing"): 
+                window size to compute the moving average             
+            binsize ([int.] only required if data_treatment == "binning"):
+                binsize to compute the binning
+        
+        Outputs: 
+            1 dictionary of shape {condition : array containing one value 
+                per genomic position}. Depending on the data_treatment,
+                the output is either: 
+                - self.signals with the selected condition(s) as key(s)
+                - self.signals_average with the average_name given in input
+                    as key
+                - self.binned_signal with the condition(s) merged with 
+                  the binsize as key(s) (example: WT_bin200b)
+                - self.smoothed_signal with the condition(s) merged with 
+                  the smoothing window as key(s) (example: WT_smooth200b)
+            self.genes[locus].signal (float.): new attribute of Gene instances 
+                                               related to the Genome instance 
+                                               given as argument.Contains the 
+                                               Gene mean signal. 
+            self.signals_gene (dict. of dict.): Dictionary containing one 
+                                                subdictionary per condition 
+                                                given in input. Each subdictionary
+                                                contains the signal (value) for 
+                                                each gene (locus_tag as key).
+            Example:
+                >>> g = Genome.Genome(name="ecoli")
+                >>> g.load_genomic_signal(cond = ["Bates_WT_R1","Bates_WT_R2","Bates_WT_R3"],
+                                          average_name = "Bates_WT_2kb",data_treatment ="binning"
+                                          replicates = True, signal_per_genes = True,
+                                          binsize = 2000)
+                {'Bates_WT_2kb': 0.03255951846079419}
+                >>> g.signals_average['Bates_WT_2kb_test']
+                array([-0.06270156, -0.06270156, -0.06270156, ...,  0.25471515,
+                0.25471515,  0.25471515])
+            """
+
+        Chip = Chipseq.Chipseq(self.name)
+
+        if signal_per_genes:
+            if not hasattr(self, "signals_gene"):
+                self.signals_gene = {}
+            if not hasattr(self, "genes"):
+                self.load_annotation()
+
+        if replicates == True:
+            if cond == "all":
+                sys.exit("Please select conditions")
+            binsize = kwargs.get('binsize', 1)
+            window = kwargs.get('window', 1)
+            average_name = kwargs.get('average_name', str(
+                datetime.now())[:-10].replace(" ", "_"))
+            Chip.load_signals_average(
+                list_cond=cond,
+                average_name=average_name,
+                data_treatment=data_treatment,
+                binsize=binsize,
+                window=window)
+            if not hasattr(self, "signals_average"):
+                self.signals_average = {}
+            self.signals_average[average_name] = Chip.signals_average[average_name]
+            if hasattr(self,"length"):
+                if self.length != len(self.signals_average[average_name]) :
+                    print(f"WARNING : {average_name} signal length isn't equal to genomic sequence length")
+            if signal_per_genes == True:
+                if not hasattr(self, "signals_gene"):
+                    self.signals_gene = {average_name: {}}
+                else:
+                    self.signals_gene[average_name] = {}
+                for locus in self.genes.keys():
+                    g = self.genes[locus]
+                    s = np.mean(
+                       self.signals_average[average_name][g.left:g.right + 1])
+                    self.genes[locus].add_signal(average_name, s)
+                    self.signals_gene[average_name][locus] = s
+
+        elif data_treatment == "binning":
+            binsize = kwargs.get('binsize')
+            Chip.load_binned_signal(binsize, cond)
+            if not hasattr(self, "binned_signal"):
+                self.binned_signal = {}
+            for cbin in Chip.binned_signal.keys():
+                self.binned_signal[cbin] = Chip.binned_signal[cbin]
+                if hasattr(self,"length"):
+                    if self.length != len(self.binned_signal[cbin]) :
+                        print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
+                if signal_per_genes == True:
+                    if not hasattr(self, "signals_gene"):
+                        self.signals_gene = {cbin: {}}
+                    else:
+                        self.signals_gene[cbin] = {}
+                    for locus in self.genes.keys():
+                        g = self.genes[locus]
+                        s = np.mean(
+                            self.binned_signal[cbin][g.left:g.right + 1])
+                        self.genes[locus].add_signal(c_bin, s)
+                        self.signals_gene[cbin][locus] = s
+
+        elif data_treatment == "smoothing":
+            window = kwargs.get('window')
+            Chip.load_smoothed_signal(window, cond)
+            if not hasattr(self, "smoothed_signal"):
+                self.smoothed_signal = {}
+            for csmoo in Chip.smoothed_signal.keys():
+                self.smoothed_signal[csmoo] = Chip.smoothed_signal[csmoo]
+                if hasattr(self,"length"):
+                    if self.length != len(self.smoothed_signal[csmoo]) :
+                        print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
+                if signal_per_genes == True:
+                    if not hasattr(self, "signals_gene"):
+                        self.signals_gene = {csmoo: {}}
+                    else:
+                        self.signals_gene[csmoo] = {}
+                    for locus in self.genes.keys():
+                        g = self.genes[locus]
+                        s = np.mean(
+                            self.smoothed_signal[csmoo][g.left:g.right + 1])
+                        self.genes[locus].add_signal(csmoo, s)
+                        self.signals_gene[csmoo][locus] = s
+
+        else:
+            print("No data treatment selected")
+            Chip.load_signal(cond)
+            if not hasattr(self, "signal"):
+                self.signal = {}
+            for c in Chip.signal.keys():
+                self.signal[c] = Chip.signal[c]
+                if hasattr(self,"length"):
+                    if self.length != len(self.signal[c]) :
+                        print(f"WARNING : {c} signal length isn't equal to genomic sequence length")
+                if signal_per_genes == True:
+                    if not hasattr(self, "signals_gene"):
+                        self.signals_gene = {c: {}}
+                    else:
+                        self.signals_gene[c] = {}
+                    for locus in self.genes.keys():
+                        g = self.genes[locus]
+                        s = np.mean(self.signal[c][g.left:g.right + 1])
+                        self.genes[locus].add_signal(c, s)
+                        self.signals_gene[c][locus] = s
+
+    def load_state_from_FC(self, *args, **kwargs):
+        """
+        Load gene state computed from FC data. For each condition, below a given pvalue threshold, the gene is considered
+        significantly activated if its FC is above a given FC treshold, repressed below, and non affected either if its
+        pvalue is above the threshold, or if its FC is between + and - thesholds
+        """
+        tr = Transcriptome.Transcriptome(self.name)
+        if not hasattr(self, 'genes'):
+            self.load_annotation()
+
+        thresh_pval = kwargs.get('thresh_pval', 0.05)
+        thresh_fc = kwargs.get('thresh_fc', 0)
+
+        tr.compute_state_from_fc(thresh_pval=thresh_pval, thresh_fc=thresh_fc)
+        for g in self.genes.keys():
+            self.genes[g].state = tr.genes[g].state
+
+        self.statesFC = tr.statesFC
+
+    def load_genomic_expression(self, *args, **kwargs):
+        """
+        Load expression data specified in expression.info.
+        """
+        tr = Transcriptome.Transcriptome(self.name)
+
+        tr.load_expression()
+
+        for g in self.genes.keys():
+            try:
+                self.genes[g].expression = tr.genes[g].expression
+            except BaseException:
+                print(f"{g} has no attribute \"expression\"")
+
+    def load_loops(self, cond='all', per_genes=True, window=0):
+        """
+        Load loops genomic positions determined with HiC
+
+        """
+        if not hasattr(self, "seq"):
+            self.load_seq()
+
+        if per_genes:
+            if not hasattr(self, "genes"):
+                self.load_annotation()
+            if not hasattr(self, "loops_genes"):
+                self.loops_genes = {}
+
+        if not hasattr(self, "loops_pos"):
+            self.loops_pos = {}
+
+        HC = HiC.HiC(self.name)
+        HC.load_hic_loops()
+
+        if isinstance(cond, str):
+            if cond == 'all':
+                cond = list(HC.loops.keys())
+            else:
+                cond = [cond]
+
+        for c in cond:
+            print(f"Loading loops in: {c}")
+
+            self.loops_pos[c] = {"loops": [], "no_loops": []}
+            loops_list = list(HC.loops[c].keys())
+            binsize = HC.loops[c][loops_list[0]]["binsize"]
+
+            is_loop = [False] * self.length
+
+            for loop in loops_list:
+                for pos in list(np.arange(
+                        loop[0], loop[0] + binsize + 1)) + list(np.arange(loop[1], loop[1] + binsize + 1)):
+                    is_loop[pos] = True
+
+            for x in np.arange(self.length):
+                if is_loop[x]:
+                    self.loops_pos[c]["loops"].append(x)
+                else:
+                    self.loops_pos[c]["no_loops"].append(x)
+
+            if per_genes:
+                self.loops_genes[f"{c}_w{window}b"] = {
+                    "loops": [], "no_loops": []}
+                for locus in self.genes.keys():
+                    self.genes[locus].add_is_loop(c, False)
+                    gene = self.genes[locus]
+                    for pos in np.arange(gene.left - window,
+                                         gene.right + 1 + window):
+                        if gene.right + 1 + window >= self.length:
+                            pos = pos - self.length
+                        if is_loop[pos]:
+                            self.genes[locus].add_is_loop(c, True)
+                    if self.genes[locus].is_loop[c]:
+                        self.loops_genes[f"{c}_w{window}b"]["loops"].append(
+                            locus)
+                    else:
+                        self.loops_genes[f"{c}_w{window}b"]["no_loops"].append(
+                            locus)
+
+    def load_borders(self, cond="all", per_genes=True, window=0):
+        """
+        Load borders genomic positions determined with HiC
+        """
+
+        if not hasattr(self, "seq"):
+            self.load_seq()
+
+        if per_genes:
+            if not hasattr(self, "genes"):
+                self.load_annotation()
+            if not hasattr(self, "borders_genes"):
+                self.borders_genes = {}
+
+        if not hasattr(self, "borders_pos"):
+            self.borders_pos = {}
+
+        HC = HiC.HiC(self.name)
+        HC.load_hic_borders()
+
+        if isinstance(cond, str):
+            if cond == 'all':
+                cond = list(HC.borders.keys())
+            else:
+                cond = [cond]
+
+        for c in cond:
+            print(f"Loading borders in: {c}")         
+            borders_list = list(HC.borders[c].keys())
+            binsize = HC.borders[c][borders_list[0]]["binsize"]
+            pos_borders = []
+            is_border = [False] * self.length
+            for border in borders_list:
+                ps = np.arange(border, border + binsize + 1)
+                pos_borders.extend(ps)
+                for p in ps:
+                    is_border[p] = True
+            pos_no_borders = set(np.arange(self.length)) - set(pos_borders)
+            self.borders_pos[c] = {"borders":pos_borders, "no_borders": pos_no_borders}
+
+            if per_genes:
+                self.borders_genes[f"{c}_w{window}b"] = {
+                    "borders": [], "no_borders": []}
+                for locus in self.genes.keys():
+                    self.genes[locus].add_is_border(c, False)
+                    gene = self.genes[locus]
+                    for pos in np.arange(gene.left - window,
+                                         gene.right + 1 + window):
+                        if gene.right + 1 + window >= self.length:
+                            pos = pos - self.length
+                        if is_border[pos]:
+                            self.genes[locus].add_is_border(c, True)
+                    if self.genes[locus].is_border[c]:
+                        self.borders_genes[f"{c}_w{window}b"]["borders"].append(
+                            locus)
+                    else:
+                        self.borders_genes[f"{c}_w{window}b"]["no_borders"].append(
+                            locus)
+
+
+    def load_peaks_genome(self, cond="all", per_genes=True, window=0):
+        """
+        
+        """
+        if not hasattr(self, "seq"):
+            self.load_seq()
+
+        if per_genes:
+            if not hasattr(self, "genes"):
+                self.load_annotation()
+            if not hasattr(self, "peaks_genes"):
+                self.peaks_genes = {}
+
+        if not hasattr(self, "peaks_pos"):
+            self.peaks_pos = {}
+
+        Chip = Chipseq.Chipseq(self.name)
+        Chip.load_peaks()
+
+        if isinstance(cond, str):
+            if cond == 'all':
+                cond = list(Chip.peaks.keys())
+            else:
+                cond = [cond]
+
+        for c in cond:
+            print(f"Loading peaks in: {c}")
+            pos_peaks = []
+            is_peak = [False]*self.length
+            for start,end in Chip.peaks[c]:
+                pos_peaks.extend(np.arange(start,end+1))
+                for p in np.arange(start,end+1) :
+                    is_peak[p] = True
+            pos_no_peaks = set(np.arange(self.length)) - set(pos_peaks)
+            self.peaks_pos[c] = {"peaks":pos_peaks, "no_peaks": pos_no_peaks}
+
+            if per_genes:
+                self.peaks_genes[c] = {"peaks": [], "no_peaks": []}
+                for locus in self.genes.keys():
+                    self.genes[locus].add_is_peak(c, False)
+                    gene = self.genes[locus]
+                    for pos in np.arange(gene.left - window,
+                                         gene.right + 1 + window):
+                        if gene.right + 1 + window >= self.length:
+                            pos = pos - self.length
+                        if is_peak[pos]:
+                            self.genes[locus].add_is_peak(c, True)
+                    if self.genes[locus].is_peak[c]:
+                        self.peaks_genes[c]["peaks"].append(locus)
+                    else:
+                        self.peaks_genes[c]["no_peaks"].append(locus)
+
+
+
+
+
+
+
+
+
+###################### A ENLVER POUR PUBLI #######################
+
+    """
+    def predict_promoter_from_TSS(self,list_TSS,*args,**kwargs): #running bTSSfinder
         freedom = kwargs.get('free',0)
         nameOut = kwargs.get('out',list_TSS+'-btss-'+str(freedom))
         '''
@@ -1212,7 +1318,7 @@ class Genome:
 
         gff2csv(self,list_TSS,nameOut,freedom)
         TSSinfo = basedir+"data/"+self.name+"/TSS/TSS.info"
-        if os.path.exists(TSSinfo):
+        if Path(TSSinfo).exists():
             exist = False
             f = open(TSSinfo,"r")
             for i in f.readlines():
@@ -1227,4 +1333,80 @@ class Genome:
         else:
             print("TSS info not found")
         print("Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list.")
+            
 
+    def load_SIST(self, start, end,*args, **kwargs):
+        if not hasattr(self, 'SIST_profile'):
+            self.SIST_profile={}
+            self.load_seq()
+        option = kwargs.get('option')
+        if option:
+            if option == 'A':
+                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
+            elif option == 'Z':
+                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
+            elif option == 'C':
+                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
+            else:
+                print("This option doesn't exist")
+        else:
+            self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq)
+
+
+
+    def load_sites(self, *args, **kwargs):
+        '''
+        #Load sites from sites.info: left and right binding coordinates on genome, sequence of site, score, strand
+        '''
+        self.sites = {}
+        path2dir = f"{basedir}data/{self.name}/sites/"
+        if Path(f"{path2dir}sites.info").exists():
+            with open(f"{path2dir}sites.info", "r") as f:
+                skiphead = next(f)  # skip head
+                for header in f:
+                    header = header.strip().split('\t')
+                    self.sites[header[0]] = load_sites_cond(path2dir+ header[1], header[0], header[2], int(
+                        header[3]), int(header[4]), int(header[5]), int(header[6]), int(header[7]), int(header[8]))
+            f.close()
+
+    def load_rpkm(self):
+        Load a RPKM file information where indice 0 = Condition
+        1 = filename type, 2 = RPKM  column, 3 = Start line,
+        4 = type of separator, 5=locus_column 
+        if not (self.genes):
+            self.load_annotation()
+
+        if os.path.exists(basedir+"data/"+self.name+"/rpkm/rpkm.info"):
+            with open(basedir+"data/"+self.name+"/rpkm/rpkm.info","r") as f:
+                for line in f:
+                    line = line.strip('\n')
+                    line = line.split('\t')
+                    self.genes=add_single_rpkm_to_genes(self.genes, basedir+"data/"+self.name+"/rpkm/"+line[1],line[0],int(line[2]),int(line[3]),line[4],int(line[5]))
+        else:
+            print(" no rpkm file in this folder ")
+
+
+    def load_reads(self):
+        '''
+        Load paired end reads from .npz files that have been generated using process_bam_paired_end in useful_functions
+        and which are described in reads.info
+        New attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
+        '''
+        self.reads_pos = {} # reads on + strand
+        self.reads_neg = {} # reads on - strand
+        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
+            print('Unable to locate reads.info in /rnaseq_reads/')
+        else:
+            # open info file
+            with open(basedir+"data/"+self.name+'/rnaseq_reads/reads.info',"r") as f:
+                header = next(f) # first line = header
+                # one line / condition
+                for line in f:
+                    line=line.strip()
+                    line=line.split('\t')
+                    print('Loading condition',line[0])
+                    self.reads_pos[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rpos"]
+                    self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
+            print('Done')
+
+    """

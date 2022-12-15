@@ -6,15 +6,19 @@ from globvar import *
 import scipy.stats as stats
 from statsmodels.stats.multitest import *
 import Genome
+from Genome import *
 
 
 def GO_enrichment(gen,*args,**kwargs):
 	'''
 	Computes GO enrichment analysis from lists of genes
 	'''
+	if not hasattr(gen,'genes'):
+		gen.load_annotation()
 	if not hasattr(gen,'GO'):
-		load_GO(gen)
-	cond = kwargs.get("cond","GO")
+		gen.load_GO()
+
+	cond = kwargs.get("cond","GOall")
 
 	files = os.listdir(basedir+"data/"+gen.name+"/GO_analysis/lists/")
 	#files.remove("old_lists")
@@ -69,12 +73,12 @@ def GO_enrichment(gen,*args,**kwargs):
 		df = df[['GO','Description','Genes','Count','Genome','%','P-value adj (FDR)','P-value']]
 		df.to_csv(basedir+"data/"+gen.name+"/GO_analysis/res/"+filename[0:-4]+'_results.csv',sep='\t',index=False)
 
-def GO_dict(gen,cond):
+def GO_dict(gen,GO_type):
 	'''
 	Associates each GO term to its description
 	'''
 	d = {}
-	name = "GOall.csv" if cond == "GO" else "domains_descr.csv"
+	name = "GOall.csv" if GO_type == "GO" else "domains_descr.csv"
 	with open(basedir+"data/"+gen.name+"/GO_analysis/"+name) as f:
 		skiphead = next(f)
 		for line in f:

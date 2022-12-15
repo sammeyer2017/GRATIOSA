@@ -1,133 +1,32 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Vincent CABELI
-"""
 
 import sys
 import os
 import numpy as np
-from TSS import TSS
-# -------------------
-# useful function
-
-
 
 #==============================================================================#
 
 class Gene:
 
-    def __init__(self, *args, **kwargs):
-        """ Possible kwargs arguments: name, left, right, orientation,
-        annotations_list
+    def __init__(self, locus_tag,name,ID,left,right,strand):
         """
-        self.name = kwargs.get('name')
-        self.left = kwargs.get('left')
-        self.right = kwargs.get('right')
-        self.strand = kwargs.get('orientation')
+        DECRIRE CHAQUE ATTRIBUT !!
+        """
+        self.locus_tag = locus_tag
+        self.ID = ID 
+        self.name = name
+        self.left = int(left)
+        self.right = int(right)
+        self.strand = strand
+        self.middle = float(left+right)/2
+        self.length = int(right)-int(left)+1
         if self.strand:
-            self.start = self.left
-            self.end = self.right
-            self.orientation= 1
+            self.start = int(left)
+            self.end = int(right)
         else:
-            self.start = self.right
-            self.end = self.left
-            self.orientation= -1
-
-            annotations_general = kwargs.get('annotations_general')
-            head=kwargs.get('head')
-            if annotations_general:
-                self.name = self.orientation= annotations_general[0]
-                self.left = int(annotations_general[2])
-                self.right = int(annotations_general[3])
-                self.middle = (self.left+self.right)/2
-                self.length = int(self.right-self.left)+1
-                self.strand=annotations_general[1]
-                if annotations_general[1]=='+':
-                    self.strand= True
-                    self.orientation= 1
-                    self.start = self.left
-                    self.end = self.right
-                else:
-                    self.strand=False
-                    self.orientation = -1
-                    self.start = self.right
-                    self.end = self.left
-                self.opt=dict(zip(head, annotations_general[4]))
-        """
-        # old version
-        annotations_list = kwargs.get('annotations_list')
-        if annotations_list:
-            self.number = float(annotations_list[0])
-            self.name = annotations_list[1]
-            self.left = int(annotations_list[3])
-            self.right = int(annotations_list[4])
-            self.middle = (self.left+self.right)/2
-            self.strand = annotations_list[2]
-            self.length = int(annotations_list[5])
-            self.orientation = annotations_list[6] == "1"
-            self.leading = annotations_list[7]
-            self.replichore = annotations_list[8]
-            self.operon = annotations_list[11]
-            self.symbol = annotations_list[12]
-            self.gene_id = annotations_list[9]
-            self.cog_id = annotations_list[13]
-        """
-
-        annotations_list_gff = kwargs.get('annotations_list_gff')
-        if annotations_list_gff:
-            self.left = int(annotations_list_gff[3])
-            self.right = int(annotations_list_gff[4])
-            self.middle = (self.left+self.right)/2
-            self.length = int(self.right-self.left)+1
-            self.source=annotations_list_gff[1]
-            if annotations_list_gff[6]=='+':
-                self.strand= True
-                self.orientation= 1
-            else:
-                self.strand= False
-                self.orientation =-1
-            for k in annotations_list_gff[8]:
-                if k == 'locus_tag':
-                    self.gene_id = annotations_list_gff[8][k]
-                if k == 'ID':
-                    self.id = annotations_list_gff[8][k]
-                if k == 'gene':
-                    self.symbol = annotations_list_gff[8][k]
-                    self.name = annotations_list_gff[8][k]
-                if k == 'Parent':
-                    self.replichore = annotations_list_gff[8][k]
-                if k == 'Name':
-                    self.name = annotations_list_gff[8][k]
-        if self.strand:
-            self.start = self.left
-            self.end = self.right
-        else:
-            self.start = self.right
-            self.end = self.left
-
-        annot_gbk = kwargs.get('annot_gbk')
-        if annot_gbk:
-            self.id = annot_gbk[0]
-            self.name = annot_gbk[1]
-            self.left = annot_gbk [2]
-            self.right = annot_gbk[3]
-            self.strand = annot_gbk[4]
-
-            if self.strand == 1:
-                self.strand = True
-            else:
-                self.strand = False
-
-            if self.strand:
-                self.start = self.left
-                self.end = self.right
-            else:
-                self.start = self.right
-                self.end = self.left
-        if not self.name:
-            self.name = self.gene_id
-
+            self.start = int(right)
+            self.end = int(left)
 
     def add_single_rpkm(self, condition, expression_value, factor):
         if not hasattr(self, 'rpkm'):
@@ -166,11 +65,11 @@ class Gene:
             self.state={}
         self.state[cond]=state
 
-    def add_left_neighbour(self, neighbour):
-        self.left_neighbour = neighbour
+    def add_left_neighbor(self, neighbor):
+        self.left_neighbor = neighbor
 
-    def add_right_neighbour(self, neighbour):
-        self.right_neighbour = neighbour
+    def add_right_neighbor(self, neighbor):
+        self.right_neighbor = neighbor
 
     def add_orientation(self,orient):
         self.orientation = orient
@@ -180,8 +79,6 @@ class Gene:
             self.id_operon=[]
         if not(operon in self.id_operon):
             self.id_operon.append(operon)
-
-
 
     def add_expression_data(self, conditions, expression_values):
         """ Adds expression in the form of a dictionnary where the keys
@@ -193,7 +90,7 @@ class Gene:
         
         self.expression.update(dict(zip(conditions, expression_values)))
 
-        self.mean_expression = np.mean(self.expression.values())
+        #self.mean_expression = np.mean(self.expression.values())
 
 
     def add_single_expression(self, condition, expression_value):
@@ -212,3 +109,29 @@ class Gene:
         if hasattr(self,'expression'):
             for i in self.expression:
                 self.list_expression.append(self.expression[i])
+
+    def add_signal(self,cond,signal) :
+        if not hasattr(self, "signal"):
+            self.signal = {}
+        self.signal[cond] = signal
+
+    def add_is_loop(self,cond,is_loop) :
+        if not hasattr(self, "is_loop"):
+            self.is_loop = {}
+        self.is_loop[cond] = is_loop
+
+    def add_is_border(self,cond,is_border) :
+        if not hasattr(self, "is_border"):
+            self.is_border= {}
+        self.is_border[cond] = is_border
+    
+    def add_is_peak(self,cond,is_peak) :
+        if not hasattr(self, "is_peak"):
+            self.is_peak= {}
+        self.is_peak[cond] = is_peak
+
+
+    def add_GO(self,annot,GO) :
+        if not hasattr(self, "GO"):
+            self.GO= {}
+        self.GO[annot] = GO
