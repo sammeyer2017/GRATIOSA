@@ -49,12 +49,12 @@ def load_HiC_site_cond(site_type,path2file,startline,sep,bin1_col,binsize, *args
                     if qval_col :
                         Loops[pos_tuple]['qval'] = line[int(qval_col)] 
             except Exception as e:
-                print("es")
                 print(e)
     f.close()
 
     if site_type == "borders" :
         return Borders 
+        
         
     elif site_type == "loops" :
         return Loops 

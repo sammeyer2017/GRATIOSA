@@ -82,7 +82,7 @@ def load_fc_pval_cond(genes_dict, filename, condition, tag_col, fc_col, separato
     except_locus = []
     except_fc = 0 
     with open(filename, 'r') as f:
-        i=1
+        i=0
         while i < start_line:
             header=next(f)
             i+=1

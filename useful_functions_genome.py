@@ -23,9 +23,9 @@ def load_seq(filename):
     seq_file.close
     return seq
 
-def load_annot_general(annotations_filename,separator,tag_column,name_column,ID_column,strand_column,left_column,right_column,start_line):
+def load_annot_general(annotations_filename,separator,tag_column,name_column,ID_column,strand_column,left_column,right_column,ASAP_column,start_line):
     ''' Called by load annotation, allows genes to be loaded from info file although most of the time, annotation is loaded
-    from gff/gbk files
+    from gff files
     '''
     genes_dict = {}
     with open(annotations_filename, 'r') as f:
@@ -44,6 +44,7 @@ def load_annot_general(annotations_filename,separator,tag_column,name_column,ID_
                 locus = line[tag_column]
                 name = line[name_column]
                 ID = line[ID_column]
+                ASAP = line[ASAP_column]
                 if line[strand_column] in ["complement","-1","-",False]:
                     strand = False
                 elif line[strand_column] in ["forward","1","+",True]:
@@ -62,10 +63,14 @@ def load_annot_general(annotations_filename,separator,tag_column,name_column,ID_
 
 def load_gff(annotations_filename):
     ''' Called by load annotation, allows genes to be loaded from gff
+        ASAP name will work only if ASAP name is in the "name" line 
+        or the line next to it
     '''
     genes_dict = {}
     annot_file = open(annotations_filename, "r")
+    count_ASAP = 0 
     for line in annot_file.readlines():
+        ASAP_name=''
         if line[0]!= '#':
             if line != '\n':
                 line=line.split('\t')
@@ -83,36 +88,46 @@ def load_gff(annotations_filename):
                         name = gene_info["gene"] 
                     else :
                         name = locus
+                
+                    if "Dbxref" in gene_info.keys() : 
+                        db_ref = "Dbxref"
+                    elif "db_xref" in gene_info.keys() :
+                        db_ref = "db_xref"
+                    else : 
+                        db_ref = None
+                    if db_ref is not None : 
+                        dbxref = gene_info[db_ref].split(",")
+                        for db in dbxref :
+                            if "ASAP" in db :
+                                ASAP_name = db.split(":")[1]
+                                count_ASAP += 1
                     left, right = map(int,line[3:5])
                     strand = True if line[6] == "+" else False
-                    genes_dict[locus]= Gene(locus,name,ID,left,right,strand)
+                    genes_dict[locus]= Gene(locus,name,ID,left,right,strand,ASAP_name)
+                
+                elif line[2] == "CDS" and ASAP_name =='':
+                    tleft, tright = map(int,line[3:5])
+                    if tleft == left and tright == right : 
+                        if "Dbxref" in gene_info.keys() : 
+                            db_ref = "Dbxref"
+                        elif "db_xref" in gene_info.keys() :
+                            db_ref = "db_xref"
+                        else : 
+                            db_ref = None
+                        if db_ref is not None : 
+                            dbxref = gene_info[db_ref].split(",")
+                            for db in dbxref :
+                                if "ASAP" in db :
+                                    ASAP_name = db.split(":")[1]
+                                    count_ASAP += 1
+                        genes_dict[locus]= Gene(locus,name,ID,left,right,strand,ASAP_name)
+    if count_ASAP < 100 :
+        print(f"Only {count_ASAP} genes have a ASAP annotation. If your annotation file should"
+              " have more ASAP annotations, please verify that ASAP annotations are either"
+              " on the same line than the locus_tags or on a \CDS\" line right after it")
+    else : 
+        print(count_ASAP)
     return genes_dict              
-
-
-def load_gbk(file,feature_types):
-    ''' Called by load annotation, allows genes to be loaded from gbk
-    '''
-    genes_dict = {}
-    gb_record = SeqIO.read(open(file,"r"), "genbank")
-    if isinstance(feature_types, str):
-        feature_types = [feature_types]
-
-    for f in gb_record.features:
-        try:
-            if f.type in feature_types:
-                left = f.location.start + 1
-                right = int(f.location.end)
-                strand = True if f.location.strand else False 
-                locus = f.qualifiers['locus_tag'][0]
-                for ft in feature_types :
-                    if ft in f.qualifiers.keys() :
-                        name = f.qualifiers[ft][0] 
-                    else :
-                        name = locus
-                genes_dict[locus]= Gene(locus,name,locus,left,right,strand)
-        except Exception as e :
-            print(f"WARNING: Error with {f}")
-    return genes_dict
 
 
 def load_TSS_cond(genes_dict, filename, TSS_column, start_line , separator, strandcol, genescol, sigcol, sitescol, scorecol,*args, **kwargs):

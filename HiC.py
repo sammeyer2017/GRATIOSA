@@ -64,10 +64,7 @@ class HiC:
                     bin_col = line[4]
 
                     # loads binsize
-                    if len(line) > 7 :
-                        binsize = int(line[5]) 
-                    else : 
-                        binsize = None
+                    binsize = int(line[5]) 
 
                     # loads column indices of each optional information             
                     score_col = line[6] if len(line) > 6 else None
@@ -134,10 +131,7 @@ class HiC:
                     bin1_col, bin2_col = line[4], line[5]
 
                     # loads binsize
-                    if len(line) > 7 :
-                        binsize = int(line[6]) 
-                    else : 
-                        binsize = None
+                    binsize = int(line[6]) 
 
                     # loads column indices of each optional information             
                     score_col = line[7] if len(line) > 7 else None

@@ -244,7 +244,7 @@ def plot_enrichment_test(dict_cats,
         targ_cats (list): list of categories. The enrichment test is performed 
                       for each catergory. (default: all keys of dict_cats)
         all_cats (list): list of categories used to compute the global 
-                             average and the expected count. 
+                             proportion and the expected number in the selection. 
                              All_cats includes targ_cats.
                              (default: all keys of dict_cats)
         min_nb_elements: Number of elements used as thresholds for the feature
@@ -295,7 +295,7 @@ def plot_enrichment_test(dict_cats,
                                            min_nb_elements = min_nb_elements,
                                            output_dir = output_dir,
                                            output_file = output_file)
-    print(df_res[["Category","Count_selection","Expected_count","Adj p-value (FDR)"]])
+    print(df_res[["Category","Selected_gene_nb","Expected_selected_number","Adj p-value (FDR)"]])
     print(df_res)
     targ_cats = df_res["Category"]
     prop = df_res["Proportion"]
@@ -337,9 +337,9 @@ def plot_enrichment_test(dict_cats,
     xticks_rotation = kwargs.get("xticks_rotation",0)
     plt.xticks(rotation=xticks_rotation)
 
-    # plots an horizontal line corresponing to the global average
-    plt.axhline(df_res["Global average"][0],c="blue",ls='--',
-                label="Global average")
+    # plots an horizontal line corresponing to the Global_proportion
+    plt.axhline(df_res["Global_proportion"][0],c="blue",ls='--',
+                label="Global_proportion")
     plt.legend(loc = legend_loc)
     plt.title(title)
     plt.tight_layout()

@@ -76,7 +76,7 @@ class Chipseq:
                         # computes binsize of each bin in the file
                         bs = data.iloc[:, int(line[4])] - \
                             data.iloc[:, int(line[3])]
-                        bs.iloc[-1] = bs.iloc[-1]+1
+                        bs.iloc[-1] += 1
 
                         # creates a new attribute to the Chipseq instance : 
                         # signal[cond]= signal per pos
@@ -85,7 +85,7 @@ class Chipseq:
                         self.signal[line[0]] = np.array(np.repeat(signal, bs))
 
                         # creates another attribute : signal_binsize[cond] = 
-                        #minimal binsize in the data file
+                        #minimapdownl binsize in the data file
                         if not hasattr(self, "signal_binsize"):
                             self.signal_binsize = {}  
                         self.signal_binsize[line[0]] = min(bs)

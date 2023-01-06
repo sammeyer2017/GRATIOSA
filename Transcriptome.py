@@ -18,8 +18,8 @@ import Genome
 
 class Transcriptome:
 
-    def __init__(self,name, *args, **kwargs):
-        """ Possible kwargs arguments: name, seq, length,
+    def __init__(self,name):
+        """ 
         """
         self.name = name
 
@@ -184,7 +184,7 @@ class Transcriptome:
             self.genes_valid_expr = {}
         if not hasattr(self, "genes"): # if no genes loaded
             # try to load them
-            gen = Genome(self.name)
+            gen = Genome.Genome(self.name)
             gen.load_annotation()
             self.genes = gen.genes
 

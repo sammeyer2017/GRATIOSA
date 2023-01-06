@@ -320,7 +320,8 @@ def enrichment_test(dict_cats,
         targ_cats (list): list of categories. The enrichment test is performed
                       for each category. (default: all keys of dict_cats)
         all_cats (list): list of categories used to compute the global
-                             average and the expected count, including targ_cats.
+                             proportion and the expected number in the selection, 
+                             including targ_cats.
                              (default: all keys of dict_cats)
         min_nb_elements: Number of elements used as thresholds for the feature
                          selection. If there is strictly less than min_nb_elements
@@ -333,20 +334,20 @@ def enrichment_test(dict_cats,
 
     Returns:
         dataframe containing the following columns:
-            0. 'Feature'(str.): feature name
-            1. 'Count_selection'(int.): Nb of elements corresponding to this
+            0. 'Category'(str.): category
+            1. 'Selected_gene_nb'(int.): Nb of elements corresponding to this
                                       feature in the selection
-            2. 'Expected_count' (int.): Expected nb of elements corresponding
+            2. 'Expected_selected_number' (int.): Expected nb of elements corresponding
                                         to this feature in the selection
-            3. 'Count_data'(int.): Nb of elements corresponding to this
+            3. 'Total_gene_nb'(int.): Nb of elements corresponding to this
                                    feature in the dict_features
-            4. 'Proportion'(float): ratio between Count_selection and Count_data
+            4. 'Proportion'(float): ratio between Selected_gene_nb and Total_gene_nb
             5. 'Prop_conf_int' (np.array): 95% confidence interval with equal
                                             areas around the proportion.
             6. 'p-value' (float): p-value obtained with the enrichment test
             7. 'Adj p-value (FDR)' (float): p-value corrected for false
                                             discovery rate
-            8. 'Genomic average' (float): ratio between nb of elements in the
+            8. 'Global_proportion' (float): ratio between nb of elements in the
                                           selection and nb of elements in
                                           dict_features
             N.B.:
@@ -368,17 +369,17 @@ def enrichment_test(dict_cats,
                                           all_features=["act","None","rep","NA"],
                                           targ_cats=["GOterm1","GOterm2","GOterm3"],
                                           min_nb_elements=3,output_file="test")
-          Category  Count_selection  Count_data  Proportion  Prop_conf_int  p-value  \
+          Category  Selected_gene_nb  Total_gene_nb  Proportion  Prop_conf_int  p-value  \
         0  GOterm1                9          11    0.818182  [0.4545, 1.0]  0.27206
         1  GOterm3                6          10    0.600000     [0.2, 1.0]  0.97059
 
-          Adj p-value (FDR)  Global average  Expected_count
+          Adj p-value (FDR)  Global_proportion  Expected_selected_number
         0           0.54412        0.722222        7.944444
         1           0.97059        0.722222         7.22222
-          Category  Count_selection  Count_data  Proportion     Prop_conf_int  \
+          Category  Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int  \
         0  GOterm1                9          11    0.818182  [0.6818, 0.9545]
         1  GOterm3                6          10    0.600000        [0.4, 0.8]
-          p-value  Adj p-value (FDR)  Global average  Expected_count
+          p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_number
         0 0.16563            0.33126        0.684211        7.526316
         1 0.90867            0.90867        0.684211        6.84210
         # GOterm2 was ignored because its nb of elements is less than 3.
@@ -441,44 +442,45 @@ def enrichment_test(dict_cats,
 
         # x: Nb of valid elements associated to the category in the selection
         x = len(set(dict_cats[cat]) & selection)
-        prop = x / N
+        if N != 0:
+            prop = x / N
 
-        # exp_nb: expected number of elements associated to the category
-        # in the selection
-        exp_nb = global_average * N
+            # exp_nb: expected number of elements associated to the category
+            # in the selection
+            exp_nb = global_average * N
 
-        # Hypergeometric test (See scipy.stats.hypergeom documentation)
-        pval = stats.hypergeom.sf(x - 1, M, n, N)
+            # Hypergeometric test (See scipy.stats.hypergeom documentation)
+            pval = stats.hypergeom.sf(x - 1, M, n, N)
 
-        # ci0 and ci1 are the 95% confidence interval with equal areas
-        # around the proportion.
-        ci = stats.hypergeom.interval(0.95, M, n, N, loc=0)
-        diff_ci = (ci[1] - ci[0]) / float(N)
-        ci0, ci1 = max(prop - diff_ci / 2, 0), min(prop + diff_ci / 2, 1)
+            # ci0 and ci1 are the 95% confidence interval with equal areas
+            # around the proportion.
+            ci = stats.hypergeom.interval(0.95, M, n, N, loc=0)
+            diff_ci = (ci[1] - ci[0]) / float(N)
+            ci0, ci1 = max(prop - diff_ci / 2, 0), min(prop + diff_ci / 2, 1)
 
-        # Keeps relevant results i.e. categorys with more than
-        # "min_nb_elements" elements
-        if N >= min_nb_elements:
-            file.append([cat, pval, x, N, prop,
-                         np.round((ci0, ci1), 4), global_average, exp_nb])
+            # Keeps relevant results i.e. categorys with more than
+            # "min_nb_elements" elements
+            if N >= min_nb_elements:
+                file.append([cat, pval, x, N, prop,
+                             np.round((ci0, ci1), 4), global_average, exp_nb])
 
-    df = pd.DataFrame(data=file, columns=['Category', 'p-value', 'Count_selection',
-                                          'Count_data', 'Proportion',
-                                          'Prop_conf_int', 'Global average',
-                                          'Expected_count'])
+    df = pd.DataFrame(data=file, columns=['Category', 'p-value', 'Selected_gene_nb',
+                                          'Total_gene_nb', 'Proportion',
+                                          'Prop_conf_int', 'Global_proportion',
+                                          'Expected_selected_number'])
 
     # pvalue correction for false discovery rate
     # (See statsmodels.stats.multitest.fdrcorrection documentation)
     df['Adj p-value (FDR)'] = multitest.fdrcorrection(df['p-value'])[1]
 
     # Returns and saves the results as a dataframe
-    df = df[['Category', 'Count_selection', 'Count_data', 'Proportion', 'Prop_conf_int',
-             'p-value', 'Adj p-value (FDR)', 'Global average', 'Expected_count']]
+    df = df[['Category', 'Selected_gene_nb', 'Total_gene_nb', 'Proportion', 'Prop_conf_int',
+             'p-value', 'Adj p-value (FDR)', 'Global_proportion', 'Expected_selected_number']]
     # Sorts the results according to the adjusted pvalues
-    df2csv = df.sort_values(by=['Adj p-value (FDR)'], ascending=True)
+    df= df.sort_values(by=['Adj p-value (FDR)'], ascending=True)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    df2csv = df2csv.round({'Proportion': 4, 'Global average': 4})
+    df2csv = df.round({'Proportion': 4, 'Global_proportion': 4})
     df2csv.to_csv(f"{output_dir}{output_file}.csv", sep='\t', index=False)
     print(f"Results saved in {output_dir}{output_file}")
 

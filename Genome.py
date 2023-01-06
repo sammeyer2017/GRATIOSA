@@ -77,8 +77,8 @@ class Genome:
         """ 
         load_annotation loads a gene annotation (coordinates, length, 
         name...) from a file present in the /annotation/ directory. 
-        If the file is a .gff3, .gff or .gbk, information will be loaded using 
-        useful_functions_genome.load_gff, or load_gbk. 
+        If the file is a .gff3 or .gff information will be loaded using 
+        useful_functions_genome.load_gff. 
         Else, the information importation requires an annotation.info file, 
         containing column indices of each information in the data file and some 
         additional information, in the following order: 
@@ -90,9 +90,6 @@ class Genome:
             self (Genome instance)
             filename (Optional [str.]): name of the file containing the genomic
                                         annotation. Default: "sequence.gff3" 
-            gbk_feature_types (Optional [list]): selection of feature types to 
-                                        add to the annotation. Default: "CDS"
-                                       !!AFFECTS ONLY THE IMPORT FROM GBK FILE!!
         Output: 
             self.genes (dict.): new attribute of the Genome instance. 
                                 self.genes is a dictionary of shape 
@@ -116,10 +113,6 @@ class Genome:
         if file_type in [".gff", ".gff3"]:
             self.genes = load_gff(path2file)
             load = True
-        elif file_type == ".gbk":
-            feature_types = kwargs.get("feature_types","CDS")
-            self.genes = load_gbk(path2file,feature_types)
-            load = True
         else:
             load = False
             with open(f"{path2dir}annotation.info", "r") as f:
@@ -137,9 +130,9 @@ class Genome:
                 f.close()
             if not load:
                 print(f"Unable to load annotation from: {path2file}."
-                      "Please add information in annotation.info or use gff3, gff or gbk format.")
+                      "Please add information in annotation.info or use gff3 or gff format.")
         if load == True :
-            print("Done")
+            print("Annotation loaded")
 
 
     def load_genes_per_pos(self, window=0):
@@ -346,7 +339,7 @@ class Genome:
         N.B.: This method needs a genomic annotation. If no annotation is 
         loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
-        annotation before using the load_gene_orientation method.
+        annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -450,7 +443,7 @@ class Genome:
         N.B.: This method needs a genomic annotation. If no annotation is 
         loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
-        annotation before using the load_gene_orientation method.
+        annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -545,7 +538,7 @@ class Genome:
         N.B.: This method needs a genomic annotation. If no annotation is 
         loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
-        annotation before using the load_genes_per_pos method.
+        annotation before using this method.
 
         Example: 
             >>> g = Genome.Genome("dickeya")
@@ -622,7 +615,7 @@ class Genome:
         N.B.: This method needs a genomic annotation. If no annotation is 
         loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
-        annotation before using the load_genes_per_pos method.
+        annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -807,17 +800,18 @@ class Genome:
         N.B.: This method needs a genomic annotation. If no annotation is 
         loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
-        annotation before using the load_genes_per_pos method.
+        annotation before using this method.
 
         Example: 
             >>> g = Genome.Genome("dickeya")
             >>> g.load_GO()
-            >>> g.GO["GOc"]["GO:0033177"]
-            ['Dda3937_00149', 'Dda3937_00150', 'Dda3937_00151']
-            >>>  g.genes["Dda3937_00151"].GO["GOc"]
-            ['GO:0016469', 'GO:0032991', 'GO:0045263', 'GO:0110165', 
-             'GO:0005886', 'GO:0005887', 'GO:0016020', 'GO:0005575',
-             'GO:0098796', 'GO:0033177']
+            >>> g.GO['GO']['GO:0000100']
+            ['Dda3937_01944', 'Dda3937_03618']
+            >>> g.genes["Dda3937_00004"].GO
+            {'GO': ['GO:0005829','GO:0055114','GO:0046872','GO:0042802',
+                    'GO:0000166','GO:0006177','GO:0003938','GO:0005829',
+                    'GO:0055114','GO:0046872','GO:0042802','GO:0000166',
+                    'GO:0006177','GO:0003938']}
         """
         if not hasattr(self, "genes"): 
             self.load_annotation()
@@ -833,48 +827,66 @@ class Genome:
                 skiphead = next(info_file) 
                 for info_line in info_file:
                     info_line = info_line.strip().split('\t')
-                    annot = info_line[0]  # annotation system
+                    system = info_line[0]  
                     filename = info_line[1]
-                    tagcol = int(info_line[2])
-                    GOcol = int(info_line[3])
-                    separator = info_line[4]
+                    tagtype = info_line[2]
+                    tagcol = int(info_line[3])
+                    GOcol = int(info_line[4])
+                    separator = info_line[5]
+                    startline = int(info_line[6])
                     
-                    # Loads the data: associates GO terms to each gene
-                    print(f"Loading {annot}...")
+                    # Loads the data: associates GO terms to each gene 
+                    print(f"Loading {system}...")
+                    GOterms = []
                     with open(path2dir + filename, 'r') as GO_file:
-                        header = next(GO_file)
+                        dict_GO = {}
+                        i=0
+                        while i < startline:
+                            header = next(GO_file)
+                            i+=1
                         for line in GO_file:
                             line = line.strip('\n')
                             if separator == '\\t':
                                 line = line.split('\t')
                             else:
                                 line = line.split(separator)
-                            try:
-                                locus = line[tagcol].replace('\"', '')
-                                if locus != "nan":
-                                    l = line[GOcol].replace(' ', '').split(',')
-                                    self.genes[locus].add_GO(annot, l)
-                            except Exception as e:
-                                warn_locus.append(locus)
+                            GOterms.append(line[GOcol])
+                            if line[tagcol] in dict_GO.keys() : 
+                                dict_GO[line[tagcol]].append(line[GOcol])
+                            else :
+                                dict_GO[line[tagcol]] = [line[GOcol]]
+
+                    self.GO[system] = {}
+                    GOterms = list(set(GOterms))
+                    for t in GOterms:
+                        self.GO[system][t] = []
+
+                    for locus in self.genes.keys():
+                        g = self.genes[locus]
+                        try :
+                            if tagtype == "ASAP" :
+                                name = g.ASAP
+                            elif tagtype == "locus_tag" :  
+                                name = locus
+                            else:
+                                sys.exit("Unknown \"tagtype\" in GO.info file:"
+                                         "accepted tagtypes are ASAP and locus_tag")
+                            self.genes[locus].add_GO(system,dict_GO[name])
+                            for t in dict_GO[name]:
+                                if locus not in self.GO[system][t] :
+                                    self.GO[system][t].append(locus)
+                        except Exception :
+                            warn_locus.append(locus)
+                                
                     GO_file.close()
                     # Locuses associated with no GO term are listed in warn_locus and are
                     # printed as a warning for each annotation system
+                    success = len(self.genes.keys())-len(warn_locus)
+                    print(f"\t{success} genes were successfully associated with some GO terms")
                     if len(warn_locus) > 20:
-                        print(f"\t{len(warn_locus)} locus are associated with no GO term")
+                        print(f"\t{len(warn_locus)} genes were not associated with any GO term")
                     else:
                         print(f"\t{warn_locus} are associated with no GO term")
-
-                    # Loads the data: associates genes to each GO term
-                    self.GO[annot] = {}
-                    for gene in self.genes.keys():
-                        try:
-                            g = self.genes[gene]
-                            for term in g.GO[annot]:
-                                if term not in self.GO[annot].keys():
-                                    self.GO[annot][term] = []
-                                self.GO[annot][term].append(gene)
-                        except BaseException:
-                            pass
             info_file.close()
         else:
             print("No GO.info file, please create one")
@@ -887,15 +899,24 @@ class Genome:
         (Transcriptome class) for the details.
 
         Args: 
+            self (Genome instance)
             cond (Optional [list of str.]): selection of one or several conditions 
                                     (1 condition corresponds to 1 data file).
                                     By default : cond ='all' ie all available 
                                     coverages are loaded.
         Outputs:
             self.cov_rnaseq_pos: dictionary of shape {condition: cov+}
-                                 with cov+ a list containing one signal data 
+                                 with cov+ an array containing one signal data 
                                  per genomic position for the + strand
             self.cov_rnaseq_neg: idem for the - strand
+
+        Example: 
+            >>> g = Genome.Genome("ecoli)
+            >>> g.load_genomic_RNASeq_cov()
+            >>> g.GO["GOc"]["GO:0033177"]
+            ['Dda3937_00149', 'Dda3937_00150', 'Dda3937_00151']
+            >>>  g.cov_rnaseq_neg["WT"]
+            array([0., 0., 0., ..., 0., 0., 0.])
         """
         tr = Transcriptome.Transcriptome(self.name)
         tr.load_cov_rnaseq(cond)
@@ -914,6 +935,7 @@ class Genome:
         details.
 
         Args: 
+            self (Genome instance)
             cond (Optional [list of str.]): selection of one or several 
                                             conditions (1 condition corresponds
                                             to 1 data file).
@@ -935,8 +957,10 @@ class Genome:
                 binsize to compute the binning
         
         Outputs: 
-            1 dictionary of shape {condition : array containing one value 
-                per genomic position}. Depending on the data_treatment,
+            self.all_signals (dict.): dictionary of shape {condition : 
+                array containing one value per genomic position}.
+            A second dictionary of shape {condition : array containing one 
+                value per genomic position}. Depending on the data_treatment,
                 the output is either: 
                 - self.signals with the selected condition(s) as key(s)
                 - self.signals_average with the average_name given in input
@@ -954,16 +978,16 @@ class Genome:
                                                 given in input. Each subdictionary
                                                 contains the signal (value) for 
                                                 each gene (locus_tag as key).
-            Example:
-                >>> g = Genome.Genome(name="ecoli")
-                >>> g.load_genomic_signal(cond = ["Bates_WT_R1","Bates_WT_R2","Bates_WT_R3"],
-                                          average_name = "Bates_WT_2kb",data_treatment ="binning"
-                                          replicates = True, signal_per_genes = True,
-                                          binsize = 2000)
-                {'Bates_WT_2kb': 0.03255951846079419}
-                >>> g.signals_average['Bates_WT_2kb_test']
-                array([-0.06270156, -0.06270156, -0.06270156, ...,  0.25471515,
-                0.25471515,  0.25471515])
+        Example:
+            >>> g = Genome.Genome(name="ecoli")
+            >>> g.load_genomic_signal(cond = ["Bates_WT_R1","Bates_WT_R2","Bates_WT_R3"],
+                                      average_name = "Bates_WT_2kb",data_treatment ="binning"
+                                      replicates = True, signal_per_genes = True,
+                                      binsize = 2000)
+            {'Bates_WT_2kb': 0.03255951846079419}
+            >>> g.signals_average['Bates_WT_2kb_test']
+            array([-0.06270156, -0.06270156, -0.06270156, ...,  0.25471515,
+            0.25471515,  0.25471515])
             """
 
         Chip = Chipseq.Chipseq(self.name)
@@ -973,6 +997,9 @@ class Genome:
                 self.signals_gene = {}
             if not hasattr(self, "genes"):
                 self.load_annotation()
+
+        if not hasattr(self, "all_signals"):
+                self.all_signals = {}
 
         if replicates == True:
             if cond == "all":
@@ -990,6 +1017,7 @@ class Genome:
             if not hasattr(self, "signals_average"):
                 self.signals_average = {}
             self.signals_average[average_name] = Chip.signals_average[average_name]
+            self.all_signals[average_name] = self.signals_average[average_name]
             if hasattr(self,"length"):
                 if self.length != len(self.signals_average[average_name]) :
                     print(f"WARNING : {average_name} signal length isn't equal to genomic sequence length")
@@ -1012,6 +1040,7 @@ class Genome:
                 self.binned_signal = {}
             for cbin in Chip.binned_signal.keys():
                 self.binned_signal[cbin] = Chip.binned_signal[cbin]
+                self.all_signals[cbin] = self.binned_signal[cbin] 
                 if hasattr(self,"length"):
                     if self.length != len(self.binned_signal[cbin]) :
                         print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
@@ -1034,6 +1063,7 @@ class Genome:
                 self.smoothed_signal = {}
             for csmoo in Chip.smoothed_signal.keys():
                 self.smoothed_signal[csmoo] = Chip.smoothed_signal[csmoo]
+                self.all_signals[csmoo] = self.smoothed_signal[csmoo]
                 if hasattr(self,"length"):
                     if self.length != len(self.smoothed_signal[csmoo]) :
                         print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
@@ -1056,6 +1086,7 @@ class Genome:
                 self.signal = {}
             for c in Chip.signal.keys():
                 self.signal[c] = Chip.signal[c]
+                self.all_signals[c] = self.signal[c]
                 if hasattr(self,"length"):
                     if self.length != len(self.signal[c]) :
                         print(f"WARNING : {c} signal length isn't equal to genomic sequence length")
@@ -1070,28 +1101,108 @@ class Genome:
                         self.genes[locus].add_signal(c, s)
                         self.signals_gene[c][locus] = s
 
-    def load_state_from_FC(self, *args, **kwargs):
+    def load_state_from_FC(self, thresh_pval=0.05,thresh_fc=0):
         """
-        Load gene state computed from FC data. For each condition, below a given pvalue threshold, the gene is considered
-        significantly activated if its FC is above a given FC treshold, repressed below, and non affected either if its
-        pvalue is above the threshold, or if its FC is between + and - thesholds
+        Loads Fold-changes and p-values data and computes genes state from these data.
+        If no p-values is available in the data file, the default value of 0 is assigned 
+        to each gene pvalue. 
+        A gene is considered :
+        - activated if its FC is above the FC threshold given as argument 
+                   and its pvalue is below the pvalue threshold given as argument
+                   ie. FC > thresh_FC and pval < thresh_pval
+        - repressed if its FC is below the opposite of the FC threshold 
+                    and its pvalue is below the pvalue threshold 
+                    ie. FC < -thresh_FC and pval < thresh_pval
+        - not affected either if its pvalue is above the threshold, 
+                           or if its FC is between the - thresh_FC and + thresh_FC
+        The FC and pvalues data importation requires an FC.info file, in the fold_changes 
+        directory, containing column indices of each information in the data file, in 
+        the following order: 
+        [0] Condition [1] Filename [2] Locus_tag column [3] FC columns 
+        [4] Separator [5] File start line [6] P-value column
+
+        Args: 
+            self (Genome instance)
+            thresh_pval (Float): pvalue threshold used for the genes classification
+            thresh_fc (Float): fold-change threshold used for the genes classification
+
+        
+        Outputs:
+            self.genes[locus].state (dict.): new attribute of Gene instances 
+                                            related to the Genome instance given 
+                                            as argument. Dictionary of shape 
+                                            {condition: state} with state either
+                                            - 'act' if the gene is activated
+                                            - 'rep' if the gene is repressed
+                                            - 'non' if the gene is not affected
+                                            - 'null' if the gene is not present 
+                                                in the data
+            self.statesFC (dict. of dict.): new attribute of the Genome instance.
+                                            Dictionary containing one subdictionary 
+                                            per condition listed in fc.info. Each 
+                                            subdictionary contains the list of genes
+                                            corresponding to each state ('act', 'rep',
+                                             'non' or 'null').
+            self.genes[locus].fc_pval (dict.): new attribute of Gene instances 
+                                               related to the Genome instance given 
+                                               as argument. Dictionary of shape 
+                                               {condition: (FC,pvalue)}. 
+
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an 
+        annotation before using this method.
+
+        Example: 
+            >>> g = Genome.Genome("ecoli)
+            >>> g.load_state_from_FC()
+            >>> g.genes['b0001'].state
+            {'osmotic': 'rep', 'acidic_1mn': 'act'}
+            >>> g.genes['b0001'].fc_pval
+            {'osmotic': (-1.73717046009437, 0.0), 'acidic_1mn': (1.73, 0.0)}
+            >>> g.statesFC['osmotic']['rep']
+            ['b0001', 'b0002', 'b0003', 'b0004',...]
         """
         tr = Transcriptome.Transcriptome(self.name)
         if not hasattr(self, 'genes'):
             self.load_annotation()
 
-        thresh_pval = kwargs.get('thresh_pval', 0.05)
-        thresh_fc = kwargs.get('thresh_fc', 0)
-
         tr.compute_state_from_fc(thresh_pval=thresh_pval, thresh_fc=thresh_fc)
         for g in self.genes.keys():
             self.genes[g].state = tr.genes[g].state
+            try : 
+                self.genes[g].fc_pval = tr.genes[g].fc_pval
+            except :
+                pass
 
         self.statesFC = tr.statesFC
 
-    def load_genomic_expression(self, *args, **kwargs):
+    def load_genomic_expression(self):
         """
-        Load expression data specified in expression.info.
+        load_genomic_expression loads expression data from files present 
+        in the expression directory. The information importation requires an
+        expression.info file, containing column indices of each information in 
+        the data file and some additional information, in the following order: 
+        [0] Filename [1] Locus_tag column [2] Expression column
+        [3] is Log ? [4] Strand column    [5] Separator 
+
+        Arg:
+            self (Genome instance)
+
+        Output: 
+            self.genes[locus].expression (dict.): new attribute of Gene instances 
+                                                  related to the Genome instance 
+                                                  given as argument.Dictionary of 
+                                                  shape {condition : expression
+                                                  level (float.)}
+
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_genomic_expression()
+            >>> gg.genes["Dda3937_00004"].expression
+            {'WT_nov_stat(E10)_rpkm': 66.6413789332929,
+            'WT_stat(E3)': 6.980245227157392,
+            'WT_PGA_stat(E13)_rpkm': 13.9428053948966}
         """
         tr = Transcriptome.Transcriptome(self.name)
 
@@ -1101,7 +1212,7 @@ class Genome:
             try:
                 self.genes[g].expression = tr.genes[g].expression
             except BaseException:
-                print(f"{g} has no attribute \"expression\"")
+                print(f"{g} has no \"expression\" attribute ")
 
     def load_loops(self, cond='all', per_genes=True, window=0):
         """
@@ -1187,13 +1298,11 @@ class Genome:
 
         HC = HiC.HiC(self.name)
         HC.load_hic_borders()
-
         if isinstance(cond, str):
             if cond == 'all':
                 cond = list(HC.borders.keys())
             else:
                 cond = [cond]
-
         for c in cond:
             print(f"Loading borders in: {c}")         
             borders_list = list(HC.borders[c].keys())

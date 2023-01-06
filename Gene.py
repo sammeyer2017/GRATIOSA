@@ -9,7 +9,7 @@ import numpy as np
 
 class Gene:
 
-    def __init__(self, locus_tag,name,ID,left,right,strand):
+    def __init__(self, locus_tag,name,ID,left,right,strand,ASAP_name):
         """
         DECRIRE CHAQUE ATTRIBUT !!
         """
@@ -27,6 +27,7 @@ class Gene:
         else:
             self.start = int(right)
             self.end = int(left)
+        self.ASAP = ASAP_name
 
     def add_single_rpkm(self, condition, expression_value, factor):
         if not hasattr(self, 'rpkm'):
