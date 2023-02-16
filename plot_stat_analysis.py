@@ -148,6 +148,7 @@ def plot_proportion_test(
         figsize (float,float): width and height in inches (by default: (w,4)  
                                with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
+        xticks_labels (list.): x-ticks labels (by default: cats)
 
     Example: 
         >>> import numpy as np
@@ -191,10 +192,15 @@ def plot_proportion_test(
         barplot_annotate_brackets(cats,error_max,res["p-values"])
 
     plt.ylabel(ylabel)
+    if xlabel != "":
+        plt.xlabel(xlabel)
     ymin = kwargs.get('ymin',plt.ylim()[0])
     ymax = kwargs.get('ymax',plt.ylim()[1])
     xticks_rotation = kwargs.get("xticks_rotation", 0)
-    plt.xticks(rotation=xticks_rotation)
+    xticks_labels = kwargs.get("xticks_labels",cats)
+    plt.xticks(ticks=np.arange(len(cats)),
+               labels = xticks_labels,
+               rotation=xticks_rotation)
     plt.ylim(ymin,ymax)
     plt.title(title)
     plt.tight_layout()
@@ -271,6 +277,7 @@ def plot_enrichment_test(dict_cats,
         figsize (float,float): width and height in inches (by default: (w,4)  
                                with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
+        xticks_labels (list.): x-ticks labels (by default: targ_cats)
 
     Example: 
         >>>  dataX = {"GOterm1":["A","B","D","E","F"],
@@ -295,7 +302,7 @@ def plot_enrichment_test(dict_cats,
                                            min_nb_elements = min_nb_elements,
                                            output_dir = output_dir,
                                            output_file = output_file)
-    print(df_res[["Category","Selected_gene_nb","Expected_selected_number","Adj p-value (FDR)"]])
+    print(df_res[["Category","Selected_gene_nb","Expected_selected_nb","Adj p-value (FDR)"]])
     print(df_res)
     targ_cats = df_res["Category"]
     prop = df_res["Proportion"]
@@ -334,8 +341,13 @@ def plot_enrichment_test(dict_cats,
     ymax = kwargs.get('ymax',max_ci)
     plt.ylim(ymin,ymax)
     plt.ylabel(ylabel)
+    if xlabel != "":
+        plt.xlabel(xlabel)
     xticks_rotation = kwargs.get("xticks_rotation",0)
-    plt.xticks(rotation=xticks_rotation)
+    xticks_labels = kwargs.get("xticks_labels",cats)
+    plt.xticks(ticks=np.arange(len(cats)),
+               labels = xticks_labels,
+               rotation=xticks_rotation)
 
     # plots an horizontal line corresponing to the Global_proportion
     plt.axhline(df_res["Global_proportion"][0],c="blue",ls='--',
@@ -386,6 +398,7 @@ def plot_student_test(dict_data,cats="all",
         figsize (float,float): width and height in inches (by default: (w,4)  
                                with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
+        xticks_labels (list.): x-ticks labels (by default: cats)
 
     Example: 
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}
@@ -411,7 +424,7 @@ def plot_student_test(dict_data,cats="all",
     else : wb = 0.3
     figsize = kwargs.get("figsize",(len(cats)*wb,4))
     plt.figure(figsize=figsize)
-    plt.bar(cats,means,yerr=ci, 
+    plt.bar([str(c) for c in cats],means,yerr=ci, 
            color = 'white',edgecolor = 'black', ecolor = 'black',
            width = 0.6,linewidth = 2, capsize = 4)
     error_max = np.amax(res['confidence intervals'],axis=1)
@@ -420,9 +433,15 @@ def plot_student_test(dict_data,cats="all",
         barplot_annotate_brackets(cats,error_max,res["p-values"])
 
     plt.ylabel(ylabel)
+    if xlabel != "":
+        plt.xlabel(xlabel)
     ymin = kwargs.get('ymin',plt.ylim()[0])
     ymax = kwargs.get('ymax',plt.ylim()[1])
     xticks_rotation = kwargs.get("xticks_rotation", 0)
+    xticks_labels = kwargs.get("xticks_labels",cats)
+    plt.xticks(ticks=np.arange(len(cats)),
+               labels = xticks_labels,
+               rotation=xticks_rotation)
     plt.xticks(rotation=xticks_rotation)
     plt.ylim(ymin,ymax)
     plt.axhline(0,color="black")

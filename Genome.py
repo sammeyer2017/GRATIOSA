@@ -6,19 +6,11 @@ import numpy as np
 import pandas as pd
 import operator
 from useful_functions_genome import *
-from itertools import groupby
 from globvar import *
 from Gene import Gene
-#from TSS import TSS
-#from TTS import TTS
-#from TU import TU
 from TSS_TTS_TU import TSS, TTS, TU
 from datetime import datetime
-#from btssfinder import *
 from scipy import stats
-import Transcriptome
-import HiC
-import Chipseq
 from pathlib import Path
 
 #=============================================================================#
@@ -27,8 +19,8 @@ class Genome:
 
     def __init__(self, name):
         """ 
-        Called when a HiC instance is created,
-        initializes the attribute name.
+        Called when a Genome instance is created,
+        initializes the name attribute.
         Example:
             >>> g = Genome.Genome("dickeya")
         """
@@ -73,7 +65,7 @@ class Genome:
         self.seqcompl = l
 
 
-    def load_annotation(self, annot_file="sequence.gff3",*args, **kwargs):
+    def load_annotation(self, annot_file="sequence.gff3"):
         """ 
         load_annotation loads a gene annotation (coordinates, length, 
         name...) from a file present in the /annotation/ directory. 
@@ -199,7 +191,7 @@ class Genome:
         Arg: 
             self (Genome instance)
 
-        Output: 
+        Outputs: 
             2 new attributes of Gene instances related to the Genome 
             instance given as argument:
                 self.genes[locus].left_neighbor: locus of the nearest 
@@ -222,7 +214,7 @@ class Genome:
                                    intergenic.
 
         N.B.: This method needs a genomic annotation. If no annotation is 
-        loaded, the load_annotation method with the default "sequence.gff3" 
+datetime.now()        loaded, the load_annotation method with the default "sequence.gff3" 
         file is computed. To use another annotation, please load an 
         annotation before using the load_neighbor_all method.
 
@@ -312,7 +304,7 @@ class Genome:
                    right neighbor for gene on - strand) is on same strand, 
             divergent if the predecessor is on opposite strand.
         
-        Arg: 
+        Args: 
             self (Genome instance)
             couple (Optional [int.]): number of genes to consider in a "couple"
                            if couple = 2 : computes the orientation of a 
@@ -419,15 +411,15 @@ class Genome:
             isolated if the distance between neighbors is higher than the  
                           maximal distance given as argument
 
-        Arg: 
+        Args: 
             self (Genome instance)
             max_dist (Optional [int.]): maximal distance between 2 genes start 
                                   positions for seeking neighbor (Default: 5kb)
 
         Outputs:
             self.pos_orientation (dict of dic): new attribute of the Genome instance.
-                                      self.pos_orientation is a dictionary of 
-                                      containing 2 subdictionaries. One dictionary 
+                                      self.pos_orientation is a dictionary 
+                                      containing 2 subdictionaries. One subdictionary 
                                       for "intergenic" positions and one for 
                                       "intragenic" positions. 
                                       Each subdictionary contains the list of 
@@ -509,7 +501,7 @@ class Genome:
         Arg:
             self (Genome instance)
 
-        Output: 
+        Outputs: 
             self.TSSs (dict. of dict.): new attribute of the Genome instance. 
                                         self.TSSs is a dictionary of shape 
                                         {Condition: {TSS position: TSS object}}. 
@@ -714,7 +706,7 @@ class Genome:
         Arg:
             self (Genome instance)
 
-        Output: 
+        Outputs: 
             self.TTSs (dict. of dict.): new attribute of the Genome instance. 
                                         self.TTSs is a dictionary of shape 
                                         {Condition: {TTS position: TTS object}}. 
@@ -785,7 +777,7 @@ class Genome:
         Arg:
             self (Genome instance)
 
-        Output: 
+        Outputs: 
             self.GO (dict. of dict.): new attribute of the Genome instance. 
                                       self.GO is a dictionary of shape 
                                       {annot_syst: {GOterm: list of genes}} 
@@ -890,632 +882,3 @@ class Genome:
             info_file.close()
         else:
             print("No GO.info file, please create one")
-
-
-    def load_genomic_RNASeq_cov(self, cond="all"):
-        """
-        Load RNASeq coverage to a Genome instance. The importation requires 
-        a cov.info or cov_txt.info file. See load_cov_rnaseq method 
-        (Transcriptome class) for the details.
-
-        Args: 
-            self (Genome instance)
-            cond (Optional [list of str.]): selection of one or several conditions 
-                                    (1 condition corresponds to 1 data file).
-                                    By default : cond ='all' ie all available 
-                                    coverages are loaded.
-        Outputs:
-            self.cov_rnaseq_pos: dictionary of shape {condition: cov+}
-                                 with cov+ an array containing one signal data 
-                                 per genomic position for the + strand
-            self.cov_rnaseq_neg: idem for the - strand
-
-        Example: 
-            >>> g = Genome.Genome("ecoli)
-            >>> g.load_genomic_RNASeq_cov()
-            >>> g.GO["GOc"]["GO:0033177"]
-            ['Dda3937_00149', 'Dda3937_00150', 'Dda3937_00151']
-            >>>  g.cov_rnaseq_neg["WT"]
-            array([0., 0., 0., ..., 0., 0., 0.])
-        """
-        tr = Transcriptome.Transcriptome(self.name)
-        tr.load_cov_rnaseq(cond)
-        self.cov_rnaseq_pos = tr.cov_rnaseq_pos
-        self.cov_rnaseq_neg = tr.cov_rnaseq_neg
-
-
-    def load_genomic_signal(self, cond='all',data_treatment=None,
-                            replicates=False,signal_per_genes=False,
-                            *args, **kwargs):
-        """ 
-        Load_genomic_signals loads a 1D distribution along the chromosome 
-        (typically a CHIPSeq distribution) from a data file (such as a 
-        .bedGraph file obtained with bamCompare) containing bin starting and 
-        ending positions and signal in each bin. See Chipseq class for more
-        details.
-
-        Args: 
-            self (Genome instance)
-            cond (Optional [list of str.]): selection of one or several 
-                                            conditions (1 condition corresponds
-                                            to 1 data file).
-                                            By default cond ='all' ie all 
-                                            available signals are loaded.
-            data_treatment (Optional [str.]): "binning", "smoothing" or None 
-                                               Default: None
-            replicates (Optional [Bool.]): if True, the average between the 
-                                           conditions will be computed.
-                                           Default: False
-            signal_per_genes(Optional [Bool.]): if True, compute the mean
-                                                signal for each Gene
-
-        Keyword Args:
-            average_name (str.)
-            window ([int.] only required if data_treatment == "smoothing"): 
-                window size to compute the moving average             
-            binsize ([int.] only required if data_treatment == "binning"):
-                binsize to compute the binning
-        
-        Outputs: 
-            self.all_signals (dict.): dictionary of shape {condition : 
-                array containing one value per genomic position}.
-            A second dictionary of shape {condition : array containing one 
-                value per genomic position}. Depending on the data_treatment,
-                the output is either: 
-                - self.signals with the selected condition(s) as key(s)
-                - self.signals_average with the average_name given in input
-                    as key
-                - self.binned_signal with the condition(s) merged with 
-                  the binsize as key(s) (example: WT_bin200b)
-                - self.smoothed_signal with the condition(s) merged with 
-                  the smoothing window as key(s) (example: WT_smooth200b)
-            self.genes[locus].signal (float.): new attribute of Gene instances 
-                                               related to the Genome instance 
-                                               given as argument.Contains the 
-                                               Gene mean signal. 
-            self.signals_gene (dict. of dict.): Dictionary containing one 
-                                                subdictionary per condition 
-                                                given in input. Each subdictionary
-                                                contains the signal (value) for 
-                                                each gene (locus_tag as key).
-        Example:
-            >>> g = Genome.Genome(name="ecoli")
-            >>> g.load_genomic_signal(cond = ["Bates_WT_R1","Bates_WT_R2","Bates_WT_R3"],
-                                      average_name = "Bates_WT_2kb",data_treatment ="binning"
-                                      replicates = True, signal_per_genes = True,
-                                      binsize = 2000)
-            {'Bates_WT_2kb': 0.03255951846079419}
-            >>> g.signals_average['Bates_WT_2kb_test']
-            array([-0.06270156, -0.06270156, -0.06270156, ...,  0.25471515,
-            0.25471515,  0.25471515])
-            """
-
-        Chip = Chipseq.Chipseq(self.name)
-
-        if signal_per_genes:
-            if not hasattr(self, "signals_gene"):
-                self.signals_gene = {}
-            if not hasattr(self, "genes"):
-                self.load_annotation()
-
-        if not hasattr(self, "all_signals"):
-                self.all_signals = {}
-
-        if replicates == True:
-            if cond == "all":
-                sys.exit("Please select conditions")
-            binsize = kwargs.get('binsize', 1)
-            window = kwargs.get('window', 1)
-            average_name = kwargs.get('average_name', str(
-                datetime.now())[:-10].replace(" ", "_"))
-            Chip.load_signals_average(
-                list_cond=cond,
-                average_name=average_name,
-                data_treatment=data_treatment,
-                binsize=binsize,
-                window=window)
-            if not hasattr(self, "signals_average"):
-                self.signals_average = {}
-            self.signals_average[average_name] = Chip.signals_average[average_name]
-            self.all_signals[average_name] = self.signals_average[average_name]
-            if hasattr(self,"length"):
-                if self.length != len(self.signals_average[average_name]) :
-                    print(f"WARNING : {average_name} signal length isn't equal to genomic sequence length")
-            if signal_per_genes == True:
-                if not hasattr(self, "signals_gene"):
-                    self.signals_gene = {average_name: {}}
-                else:
-                    self.signals_gene[average_name] = {}
-                for locus in self.genes.keys():
-                    g = self.genes[locus]
-                    s = np.mean(
-                       self.signals_average[average_name][g.left:g.right + 1])
-                    self.genes[locus].add_signal(average_name, s)
-                    self.signals_gene[average_name][locus] = s
-
-        elif data_treatment == "binning":
-            binsize = kwargs.get('binsize')
-            Chip.load_binned_signal(binsize, cond)
-            if not hasattr(self, "binned_signal"):
-                self.binned_signal = {}
-            for cbin in Chip.binned_signal.keys():
-                self.binned_signal[cbin] = Chip.binned_signal[cbin]
-                self.all_signals[cbin] = self.binned_signal[cbin] 
-                if hasattr(self,"length"):
-                    if self.length != len(self.binned_signal[cbin]) :
-                        print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
-                if signal_per_genes == True:
-                    if not hasattr(self, "signals_gene"):
-                        self.signals_gene = {cbin: {}}
-                    else:
-                        self.signals_gene[cbin] = {}
-                    for locus in self.genes.keys():
-                        g = self.genes[locus]
-                        s = np.mean(
-                            self.binned_signal[cbin][g.left:g.right + 1])
-                        self.genes[locus].add_signal(c_bin, s)
-                        self.signals_gene[cbin][locus] = s
-
-        elif data_treatment == "smoothing":
-            window = kwargs.get('window')
-            Chip.load_smoothed_signal(window, cond)
-            if not hasattr(self, "smoothed_signal"):
-                self.smoothed_signal = {}
-            for csmoo in Chip.smoothed_signal.keys():
-                self.smoothed_signal[csmoo] = Chip.smoothed_signal[csmoo]
-                self.all_signals[csmoo] = self.smoothed_signal[csmoo]
-                if hasattr(self,"length"):
-                    if self.length != len(self.smoothed_signal[csmoo]) :
-                        print(f"WARNING : {csmoo} signal length isn't equal to genomic sequence length")
-                if signal_per_genes == True:
-                    if not hasattr(self, "signals_gene"):
-                        self.signals_gene = {csmoo: {}}
-                    else:
-                        self.signals_gene[csmoo] = {}
-                    for locus in self.genes.keys():
-                        g = self.genes[locus]
-                        s = np.mean(
-                            self.smoothed_signal[csmoo][g.left:g.right + 1])
-                        self.genes[locus].add_signal(csmoo, s)
-                        self.signals_gene[csmoo][locus] = s
-
-        else:
-            print("No data treatment selected")
-            Chip.load_signal(cond)
-            if not hasattr(self, "signal"):
-                self.signal = {}
-            for c in Chip.signal.keys():
-                self.signal[c] = Chip.signal[c]
-                self.all_signals[c] = self.signal[c]
-                if hasattr(self,"length"):
-                    if self.length != len(self.signal[c]) :
-                        print(f"WARNING : {c} signal length isn't equal to genomic sequence length")
-                if signal_per_genes == True:
-                    if not hasattr(self, "signals_gene"):
-                        self.signals_gene = {c: {}}
-                    else:
-                        self.signals_gene[c] = {}
-                    for locus in self.genes.keys():
-                        g = self.genes[locus]
-                        s = np.mean(self.signal[c][g.left:g.right + 1])
-                        self.genes[locus].add_signal(c, s)
-                        self.signals_gene[c][locus] = s
-
-    def load_state_from_FC(self, thresh_pval=0.05,thresh_fc=0):
-        """
-        Loads Fold-changes and p-values data and computes genes state from these data.
-        If no p-values is available in the data file, the default value of 0 is assigned 
-        to each gene pvalue. 
-        A gene is considered :
-        - activated if its FC is above the FC threshold given as argument 
-                   and its pvalue is below the pvalue threshold given as argument
-                   ie. FC > thresh_FC and pval < thresh_pval
-        - repressed if its FC is below the opposite of the FC threshold 
-                    and its pvalue is below the pvalue threshold 
-                    ie. FC < -thresh_FC and pval < thresh_pval
-        - not affected either if its pvalue is above the threshold, 
-                           or if its FC is between the - thresh_FC and + thresh_FC
-        The FC and pvalues data importation requires an FC.info file, in the fold_changes 
-        directory, containing column indices of each information in the data file, in 
-        the following order: 
-        [0] Condition [1] Filename [2] Locus_tag column [3] FC columns 
-        [4] Separator [5] File start line [6] P-value column
-
-        Args: 
-            self (Genome instance)
-            thresh_pval (Float): pvalue threshold used for the genes classification
-            thresh_fc (Float): fold-change threshold used for the genes classification
-
-        
-        Outputs:
-            self.genes[locus].state (dict.): new attribute of Gene instances 
-                                            related to the Genome instance given 
-                                            as argument. Dictionary of shape 
-                                            {condition: state} with state either
-                                            - 'act' if the gene is activated
-                                            - 'rep' if the gene is repressed
-                                            - 'non' if the gene is not affected
-                                            - 'null' if the gene is not present 
-                                                in the data
-            self.statesFC (dict. of dict.): new attribute of the Genome instance.
-                                            Dictionary containing one subdictionary 
-                                            per condition listed in fc.info. Each 
-                                            subdictionary contains the list of genes
-                                            corresponding to each state ('act', 'rep',
-                                             'non' or 'null').
-            self.genes[locus].fc_pval (dict.): new attribute of Gene instances 
-                                               related to the Genome instance given 
-                                               as argument. Dictionary of shape 
-                                               {condition: (FC,pvalue)}. 
-
-        N.B.: This method needs a genomic annotation. If no annotation is 
-        loaded, the load_annotation method with the default "sequence.gff3" 
-        file is computed. To use another annotation, please load an 
-        annotation before using this method.
-
-        Example: 
-            >>> g = Genome.Genome("ecoli)
-            >>> g.load_state_from_FC()
-            >>> g.genes['b0001'].state
-            {'osmotic': 'rep', 'acidic_1mn': 'act'}
-            >>> g.genes['b0001'].fc_pval
-            {'osmotic': (-1.73717046009437, 0.0), 'acidic_1mn': (1.73, 0.0)}
-            >>> g.statesFC['osmotic']['rep']
-            ['b0001', 'b0002', 'b0003', 'b0004',...]
-        """
-        tr = Transcriptome.Transcriptome(self.name)
-        if not hasattr(self, 'genes'):
-            self.load_annotation()
-
-        tr.compute_state_from_fc(thresh_pval=thresh_pval, thresh_fc=thresh_fc)
-        for g in self.genes.keys():
-            self.genes[g].state = tr.genes[g].state
-            try : 
-                self.genes[g].fc_pval = tr.genes[g].fc_pval
-            except :
-                pass
-
-        self.statesFC = tr.statesFC
-
-    def load_genomic_expression(self):
-        """
-        load_genomic_expression loads expression data from files present 
-        in the expression directory. The information importation requires an
-        expression.info file, containing column indices of each information in 
-        the data file and some additional information, in the following order: 
-        [0] Filename [1] Locus_tag column [2] Expression column
-        [3] is Log ? [4] Strand column    [5] Separator 
-
-        Arg:
-            self (Genome instance)
-
-        Output: 
-            self.genes[locus].expression (dict.): new attribute of Gene instances 
-                                                  related to the Genome instance 
-                                                  given as argument.Dictionary of 
-                                                  shape {condition : expression
-                                                  level (float.)}
-
-        Example: 
-            >>> g = Genome.Genome("dickeya")
-            >>> g.load_genomic_expression()
-            >>> gg.genes["Dda3937_00004"].expression
-            {'WT_nov_stat(E10)_rpkm': 66.6413789332929,
-            'WT_stat(E3)': 6.980245227157392,
-            'WT_PGA_stat(E13)_rpkm': 13.9428053948966}
-        """
-        tr = Transcriptome.Transcriptome(self.name)
-
-        tr.load_expression()
-
-        for g in self.genes.keys():
-            try:
-                self.genes[g].expression = tr.genes[g].expression
-            except BaseException:
-                print(f"{g} has no \"expression\" attribute ")
-
-    def load_loops(self, cond='all', per_genes=True, window=0):
-        """
-        Load loops genomic positions determined with HiC
-
-        """
-        if not hasattr(self, "seq"):
-            self.load_seq()
-
-        if per_genes:
-            if not hasattr(self, "genes"):
-                self.load_annotation()
-            if not hasattr(self, "loops_genes"):
-                self.loops_genes = {}
-
-        if not hasattr(self, "loops_pos"):
-            self.loops_pos = {}
-
-        HC = HiC.HiC(self.name)
-        HC.load_hic_loops()
-
-        if isinstance(cond, str):
-            if cond == 'all':
-                cond = list(HC.loops.keys())
-            else:
-                cond = [cond]
-
-        for c in cond:
-            print(f"Loading loops in: {c}")
-
-            self.loops_pos[c] = {"loops": [], "no_loops": []}
-            loops_list = list(HC.loops[c].keys())
-            binsize = HC.loops[c][loops_list[0]]["binsize"]
-
-            is_loop = [False] * self.length
-
-            for loop in loops_list:
-                for pos in list(np.arange(
-                        loop[0], loop[0] + binsize + 1)) + list(np.arange(loop[1], loop[1] + binsize + 1)):
-                    is_loop[pos] = True
-
-            for x in np.arange(self.length):
-                if is_loop[x]:
-                    self.loops_pos[c]["loops"].append(x)
-                else:
-                    self.loops_pos[c]["no_loops"].append(x)
-
-            if per_genes:
-                self.loops_genes[f"{c}_w{window}b"] = {
-                    "loops": [], "no_loops": []}
-                for locus in self.genes.keys():
-                    self.genes[locus].add_is_loop(c, False)
-                    gene = self.genes[locus]
-                    for pos in np.arange(gene.left - window,
-                                         gene.right + 1 + window):
-                        if gene.right + 1 + window >= self.length:
-                            pos = pos - self.length
-                        if is_loop[pos]:
-                            self.genes[locus].add_is_loop(c, True)
-                    if self.genes[locus].is_loop[c]:
-                        self.loops_genes[f"{c}_w{window}b"]["loops"].append(
-                            locus)
-                    else:
-                        self.loops_genes[f"{c}_w{window}b"]["no_loops"].append(
-                            locus)
-
-    def load_borders(self, cond="all", per_genes=True, window=0):
-        """
-        Load borders genomic positions determined with HiC
-        """
-
-        if not hasattr(self, "seq"):
-            self.load_seq()
-
-        if per_genes:
-            if not hasattr(self, "genes"):
-                self.load_annotation()
-            if not hasattr(self, "borders_genes"):
-                self.borders_genes = {}
-
-        if not hasattr(self, "borders_pos"):
-            self.borders_pos = {}
-
-        HC = HiC.HiC(self.name)
-        HC.load_hic_borders()
-        if isinstance(cond, str):
-            if cond == 'all':
-                cond = list(HC.borders.keys())
-            else:
-                cond = [cond]
-        for c in cond:
-            print(f"Loading borders in: {c}")         
-            borders_list = list(HC.borders[c].keys())
-            binsize = HC.borders[c][borders_list[0]]["binsize"]
-            pos_borders = []
-            is_border = [False] * self.length
-            for border in borders_list:
-                ps = np.arange(border, border + binsize + 1)
-                pos_borders.extend(ps)
-                for p in ps:
-                    is_border[p] = True
-            pos_no_borders = set(np.arange(self.length)) - set(pos_borders)
-            self.borders_pos[c] = {"borders":pos_borders, "no_borders": pos_no_borders}
-
-            if per_genes:
-                self.borders_genes[f"{c}_w{window}b"] = {
-                    "borders": [], "no_borders": []}
-                for locus in self.genes.keys():
-                    self.genes[locus].add_is_border(c, False)
-                    gene = self.genes[locus]
-                    for pos in np.arange(gene.left - window,
-                                         gene.right + 1 + window):
-                        if gene.right + 1 + window >= self.length:
-                            pos = pos - self.length
-                        if is_border[pos]:
-                            self.genes[locus].add_is_border(c, True)
-                    if self.genes[locus].is_border[c]:
-                        self.borders_genes[f"{c}_w{window}b"]["borders"].append(
-                            locus)
-                    else:
-                        self.borders_genes[f"{c}_w{window}b"]["no_borders"].append(
-                            locus)
-
-
-    def load_peaks_genome(self, cond="all", per_genes=True, window=0):
-        """
-        
-        """
-        if not hasattr(self, "seq"):
-            self.load_seq()
-
-        if per_genes:
-            if not hasattr(self, "genes"):
-                self.load_annotation()
-            if not hasattr(self, "peaks_genes"):
-                self.peaks_genes = {}
-
-        if not hasattr(self, "peaks_pos"):
-            self.peaks_pos = {}
-
-        Chip = Chipseq.Chipseq(self.name)
-        Chip.load_peaks()
-
-        if isinstance(cond, str):
-            if cond == 'all':
-                cond = list(Chip.peaks.keys())
-            else:
-                cond = [cond]
-
-        for c in cond:
-            print(f"Loading peaks in: {c}")
-            pos_peaks = []
-            is_peak = [False]*self.length
-            for start,end in Chip.peaks[c]:
-                pos_peaks.extend(np.arange(start,end+1))
-                for p in np.arange(start,end+1) :
-                    is_peak[p] = True
-            pos_no_peaks = set(np.arange(self.length)) - set(pos_peaks)
-            self.peaks_pos[c] = {"peaks":pos_peaks, "no_peaks": pos_no_peaks}
-
-            if per_genes:
-                self.peaks_genes[c] = {"peaks": [], "no_peaks": []}
-                for locus in self.genes.keys():
-                    self.genes[locus].add_is_peak(c, False)
-                    gene = self.genes[locus]
-                    for pos in np.arange(gene.left - window,
-                                         gene.right + 1 + window):
-                        if gene.right + 1 + window >= self.length:
-                            pos = pos - self.length
-                        if is_peak[pos]:
-                            self.genes[locus].add_is_peak(c, True)
-                    if self.genes[locus].is_peak[c]:
-                        self.peaks_genes[c]["peaks"].append(locus)
-                    else:
-                        self.peaks_genes[c]["no_peaks"].append(locus)
-
-
-
-
-
-
-
-
-
-###################### A ENLVER POUR PUBLI #######################
-
-    """
-    def predict_promoter_from_TSS(self,list_TSS,*args,**kwargs): #running bTSSfinder
-        freedom = kwargs.get('free',0)
-        nameOut = kwargs.get('out',list_TSS+'-btss-'+str(freedom))
-        '''
-        kwags possible : out & free
-        bTSSfinder need to be install on this computer
-        for more informations you can read btssfinder.py
-        obj is Genome object
-        list_TSS is the TSS list eg. biocyc
-        out is  the name of fasta file (whiout extension .fasta) or if don't exist will become file's name of all out
-        free is number of additionnal base at the TSS region
-        NEXT
-        convert out-bTSSfinder.gff on basedir/data/[nom_liste_TSS]
-        AND FINALY
-        write the localization of new csv in file TSS.info to the next load.TSS()
-        '''
-        try:
-            test = self.TSSs[list_TSS]
-            test = self.seq[0:4]
-        except:
-            self.load_TSS()
-            self.load_seq()
-
-        run_btssfinder(self,list_TSS,nameOut,freedom)
-
-        gff2csv(self,list_TSS,nameOut,freedom)
-        TSSinfo = basedir+"data/"+self.name+"/TSS/TSS.info"
-        if Path(TSSinfo).exists():
-            exist = False
-            f = open(TSSinfo,"r")
-            for i in f.readlines():
-                line = i.split('\t')
-                if line[0] == nameOut:
-                    exist = True
-            f.close()
-            if not exist:
-                f = open(TSSinfo,"a")
-                f.write(nameOut+'\t'+nameOut+'.csv'+'\t'+"2"+'\t'+"0"+'\t'+"2"+'\t'+"\\t"+'\t'+"1"+'\t'+"3"+'\t'+"4"+'\n')
-                f.close()
-        else:
-            print("TSS info not found")
-        print("Finished…"+'\n'+"Now, you can visualise file "+TSSinfo+" or you can just reload TSS list.")
-            
-
-    def load_SIST(self, start, end,*args, **kwargs):
-        if not hasattr(self, 'SIST_profile'):
-            self.SIST_profile={}
-            self.load_seq()
-        option = kwargs.get('option')
-        if option:
-            if option == 'A':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            elif option == 'Z':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            elif option == 'C':
-                self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq, option=option)
-            else:
-                print("This option doesn't exist")
-        else:
-            self.SIST_profile=load_profile(basedir+"data/"+self.name+"/sequence.fasta", start, end, self.seq)
-
-
-
-    def load_sites(self, *args, **kwargs):
-        '''
-        #Load sites from sites.info: left and right binding coordinates on genome, sequence of site, score, strand
-        '''
-        self.sites = {}
-        path2dir = f"{basedir}data/{self.name}/sites/"
-        if Path(f"{path2dir}sites.info").exists():
-            with open(f"{path2dir}sites.info", "r") as f:
-                skiphead = next(f)  # skip head
-                for header in f:
-                    header = header.strip().split('\t')
-                    self.sites[header[0]] = load_sites_cond(path2dir+ header[1], header[0], header[2], int(
-                        header[3]), int(header[4]), int(header[5]), int(header[6]), int(header[7]), int(header[8]))
-            f.close()
-
-    def load_rpkm(self):
-        Load a RPKM file information where indice 0 = Condition
-        1 = filename type, 2 = RPKM  column, 3 = Start line,
-        4 = type of separator, 5=locus_column 
-        if not (self.genes):
-            self.load_annotation()
-
-        if os.path.exists(basedir+"data/"+self.name+"/rpkm/rpkm.info"):
-            with open(basedir+"data/"+self.name+"/rpkm/rpkm.info","r") as f:
-                for line in f:
-                    line = line.strip('\n')
-                    line = line.split('\t')
-                    self.genes=add_single_rpkm_to_genes(self.genes, basedir+"data/"+self.name+"/rpkm/"+line[1],line[0],int(line[2]),int(line[3]),line[4],int(line[5]))
-        else:
-            print(" no rpkm file in this folder ")
-
-
-    def load_reads(self):
-        '''
-        Load paired end reads from .npz files that have been generated using process_bam_paired_end in useful_functions
-        and which are described in reads.info
-        New attribute reads : reads_pos & reads_neg, of shape {[condition] : .npy}, e.g. self.reads_pos[cond1]
-        '''
-        self.reads_pos = {} # reads on + strand
-        self.reads_neg = {} # reads on - strand
-        if not os.path.exists(basedir+"data/"+self.name+'/rnaseq_reads/reads.info'):
-            print('Unable to locate reads.info in /rnaseq_reads/')
-        else:
-            # open info file
-            with open(basedir+"data/"+self.name+'/rnaseq_reads/reads.info',"r") as f:
-                header = next(f) # first line = header
-                # one line / condition
-                for line in f:
-                    line=line.strip()
-                    line=line.split('\t')
-                    print('Loading condition',line[0])
-                    self.reads_pos[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rpos"]
-                    self.reads_neg[line[0]] = np.load(basedir+"data/"+self.name+'/rnaseq_reads/'+line[1])["Rneg"]
-            print('Done')
-
-    """

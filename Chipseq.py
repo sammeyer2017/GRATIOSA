@@ -6,16 +6,97 @@ import pandas as pd
 from useful_functions_Chipseq import *
 from pathlib import Path
 from globvar import *
+from Genome import Genome
+
 
 class Chipseq:
 
     def __init__(self, name, *args, **kwargs):
         """ 
-        Called when an Chipseq instance is created, 
-        e.g. Chip = Chipseq.Chipseq("ecoli")
-        Initialize the attribute name, e.g. self.name = "ecoli"
+        Called when an Chipseq instance is created,
+        initialize the attribute name.
+        Example:
+        >>> ch = Chipseq.Chipseq("ecoli")
+        >>> ch.name
+        ecoli
         """
         self.name = name
+
+    def load_signal_per_genes(self, cond='all',window=0):
+        """ 
+        Load_signal_per_genes computes the mean signal for each Gene (i.e. 
+        the mean signal between the gene start and gene end). Genomic signals
+        have to be loaded (using load_signal,load_binned_signal, load_smoothed_signal
+        or load_signals_average methods) before using load_signal_per_genes.
+
+        Args: 
+            self (Chipseq instance)
+            cond (Optional [list of str.]): selection of one or several 
+                                            conditions (1 condition corresponds
+                                            to 1 data file).
+                                            By default cond ='all' ie all 
+                                            available loaded signals are used.
+            window (Optional int.): to include the signal around the gene. The mean 
+                                    signal will be computed between gene start - window
+                                    and gene end + window.
+                                    By default, window = 0
+        
+        Outputs: 
+            self.genes[locus].signal (float.): new attribute of Gene instances 
+                                               related to the Chipseq instance 
+                                               given as argument.Contains the 
+                                               Gene mean signal. 
+            self.signals_gene (dict. of dict.): Dictionary containing one 
+                                                subdictionary per condition 
+                                                given in input. Each subdictionary
+                                                contains the signal (value) for 
+                                                each gene (locus_tag as key).
+        N.B.: This method needs a genomic annotation. If no annotation is 
+        loaded, the load_annotation method with the default "sequence.gff3" 
+        file is computed. To use another annotation, please load an annotation to 
+        your Transcriptome instance with the following commands before using 
+        this method:
+            >>> import Genome, Chipseq
+            >>> ch = Chipseq.Chipseq("ecoli")
+            >>> g = Genome.Genome(ch.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> ch.genes = g.genes    
+
+        Example:
+        >>> ch = Chipseq.Chipseq("ecoli")
+        >>> ch.load_singal()
+        >>> ch.load_signal_per_genes()
+        >>> ch.signals_gene["WT"]["b0984"]
+        0.40348639903919425
+        >>> ch.genes["b0984"].signal
+        {'WT': 0.40348639903919425,
+         'Signal_Test': 0.210505235030067}
+        """
+
+        if not hasattr(self, "signals_gene"):
+            self.signals_gene = {}
+        if not hasattr(self, "genes"): 
+            gen = Genome(self.name)
+            gen.load_annotation()
+            self.genes = gen.genes
+        
+        if not hasattr(self, "signals_gene"):
+            self.signals_gene = {cond_name: {}}
+
+        if cond == "all" :
+            cond =  list(self.all_signals.keys())
+        elif isinstance(cond, str):
+            cond = [cond]
+
+        for c in cond :
+            self.signals_gene[c] = {}
+            for locus in self.genes.keys():
+                g = self.genes[locus]
+                s = np.mean(self.all_signals[c][g.left-window:g.right+window])
+                self.genes[locus].add_signal(c, s)
+                self.signals_gene[c][locus] = s
+        print(f"Gene signals successfully computed for: {cond}")
+
 
     def load_signal(self, cond="all"):
         '''
@@ -39,9 +120,11 @@ class Chipseq:
         e.g. cond = ['cond1','cond2'] or cond = 'cond0', 
         by default : cond ='all' (all available signals are loaded).
 
-        Output : 2 new attributes
+        Output : 3 new attributes
         + self.signal = {cond:[signal per genomic position]}
         + signal_binsize[cond] = minimal binsize in the data file
+        + self.all_signals (dict.): dictionary of shape {condition : 
+                array containing one value per genomic position}.
         '''
         # gets the path to data and .info files
         path2dir = f"{basedir}data/{self.name}/chipseq/signals/"
@@ -76,7 +159,6 @@ class Chipseq:
                         # computes binsize of each bin in the file
                         bs = data.iloc[:, int(line[4])] - \
                             data.iloc[:, int(line[3])]
-                        bs.iloc[-1] += 1
 
                         # creates a new attribute to the Chipseq instance : 
                         # signal[cond]= signal per pos
@@ -89,12 +171,16 @@ class Chipseq:
                         if not hasattr(self, "signal_binsize"):
                             self.signal_binsize = {}  
                         self.signal_binsize[line[0]] = min(bs)
+
+                        if not hasattr(self, "all_signals"):
+                            self.all_signals = {} 
+                        self.all_signals[line[0]] = self.signal[line[0]] 
             f.close()
 
         else:
             print(f"Unable to locate signals.info in {path2dir}")
 
-        # warns that (one of) the selected condition(s) isn't described in the
+        # warns that some selected conditions aren't described in the
         # .info file
         for c in cond:
             if c not in list_cond_info and c != "all":
@@ -119,11 +205,20 @@ class Chipseq:
         1 data file) can be made using 'cond' argument
         e.g. cond = ['cond1','cond2'] or cond = 'cond0', 
         by default : cond ='all' (all available signals are loaded).
+        + self.all_signals (dict.): dictionary of shape {condition : 
+                array containing one value per genomic position}.
 
         Output : 
         a new attribute self.binned_signal = {cond_bin:[signal per genomic position]}   
-        with cond_bin the condition name merged with the binsize (example: WT_bin200b)     
+        with cond_bin the condition name merged with the binsize (example: WT_bin200b)  
+
+        #seq !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         '''
+        if not hasattr(self, "length"):
+            gen = Genome(self.name)
+            gen.load_seq() 
+            self.length = gen.length
+
         # gets the path to data and .info files
         path2files = f"{basedir}data/{self.name}/chipseq/signals/"
         f_path = f"{path2files}/binned_data/"
@@ -159,7 +254,7 @@ class Chipseq:
                 #adds the data to the binned_signal attribute
                 print(f"loading existing file : {cond_name}.npy")
                 binned_data = np.load(f"{f_path}{cond_name}.npy")
-                self.binned_signal[cond_name] =np.array(np.repeat(binned_data, binsize))
+                self.binned_signal[cond_name] =np.array(np.repeat(binned_data, binsize))[:self.length]
 
             # if no file contains data for this condition and binsize
             else:
@@ -171,12 +266,16 @@ class Chipseq:
                 binned_data = binning(self.signal[c],binsize=binsize,
                     stat="mean").statistic
                 # adds the data to the binned_signal attribute
-                self.binned_signal[cond_name] = np.array(np.repeat(binned_data, binsize))
+                self.binned_signal[cond_name] = np.array(np.repeat(binned_data, binsize))[:self.length]
 
                 # creates the "binned_data" directory if necessary
                 Path(f_path).mkdir(parents=True, exist_ok=True)
                 # saves the data as a .npy file
                 np.save(f"{f_path}{cond_name}.npy", binned_data)
+
+        if not hasattr(self, "all_signals"):
+            self.all_signals = {} 
+        self.all_signals[cond_name] = self.binned_signal[cond_name] 
 
     def load_smoothed_signal(self, window, cond="all", *args, **kwargs):
         '''
@@ -198,6 +297,8 @@ class Chipseq:
         1 data file) can be made using 'cond' argument
         e.g. cond = ['cond1','cond2'] or cond = 'cond0', 
         by default : cond ='all' (all available signals are loaded).
+        + self.all_signals (dict.): dictionary of shape {condition : 
+                array containing one value per genomic position}.
 
         Output : 
         a new attribute self.smoothed_signal = {cond_smoo:[signal per 
@@ -256,6 +357,10 @@ class Chipseq:
                 # saves the data as a .npy file
                 np.save(f"{f_path}{cond_name}.npy", smooth_data)
 
+        if not hasattr(self, "all_signals"):
+            self.all_signals = {} 
+        self.all_signals[cond_name] = self.smoothed_signal[cond_name]
+
     def load_signals_average(self, list_cond, average_name, *args, **kwargs):
         '''
         Load_signals_average loads the average of signals replicates
@@ -274,7 +379,8 @@ class Chipseq:
         specifying data_treatment="smoothing" and using an additional argument 
         "window"
         + data_treatment = "binning", "smoothing" or None (None by default) 
-
+        + self.all_signals (dict.): dictionary of shape {condition : 
+                array containing one value per genomic position}.
     
         Output : 
         a new attribute self.signal_average[average_name] = [average signal 
@@ -350,6 +456,12 @@ class Chipseq:
             file = open(f"{f_path}data.info",'a')
             file.write(f"\n{average_name}\t{list_cond}\t{data_treatment}\t{size}")
             file.close()
+
+        if not hasattr(self, "all_signals"):
+            self.all_signals = {} 
+        self.all_signals[average_name] = self.signals_average[average_name]
+
+
 
 #=============================================================================#        
     def load_peaks(self):  

@@ -124,9 +124,7 @@ def load_gff(annotations_filename):
     if count_ASAP < 100 :
         print(f"Only {count_ASAP} genes have a ASAP annotation. If your annotation file should"
               " have more ASAP annotations, please verify that ASAP annotations are either"
-              " on the same line than the locus_tags or on a \CDS\" line right after it")
-    else : 
-        print(count_ASAP)
+              " on the same line than the locus_tags or on a \"CDS\" line right after it")
     return genes_dict              
 
 
@@ -230,4 +228,3 @@ def load_TU_cond(filename, startcol, stopcol, strandcol, genescol, startline, se
                 print(e)
     f.close()
     return TUs
-

@@ -7,6 +7,7 @@ import pandas as pd
 from useful_functions_HiC import *
 from pathlib import Path
 from globvar import *
+import Genome
 
 #==============================================================================#
 
@@ -18,7 +19,8 @@ class HiC:
         """
         self.name = name
 
-    def load_hic_borders(self):  
+    def load_hic_borders(self,cond="all"):
+        #####################""" DESCRIPTION A REVOIR "  
         """ 
         load_hic_borders imports a list of borders from a data file (typically 
         a borders.tsv data file obtained with Chromosight) containing :
@@ -50,6 +52,9 @@ class HiC:
         # gets the path to data and .info files
         path2dir = f"{basedir}data/{self.name}/HiC/Borders/"
 
+        if isinstance(cond, str):
+            cond = [cond]
+
         # tries to open borders.info file
         if Path(f"{path2dir}borders.info").exists():
             with open(f"{path2dir}borders.info", "r") as f:
@@ -58,31 +63,52 @@ class HiC:
                 for line in f:
                     line = line.strip('\n').split('\t')
                     # loads data file information for this condition
-                    cond = line[0]
-                    path2file = f"{basedir}data/{self.name}/HiC/Borders/{line[1]}"
-                    startline, sep = int(line[2]), line[3]
-                    bin_col = line[4]
+                    if cond == ["all"] or line[0] in cond:
+                        path2file = f"{basedir}data/{self.name}/HiC/Borders/{line[1]}"
+                        startline, sep = int(line[2]), line[3]
+                        bin_col = line[4]
 
-                    # loads binsize
-                    binsize = int(line[5]) 
+                        # loads binsize
+                        binsize = int(line[5]) 
 
-                    # loads column indices of each optional information             
-                    score_col = line[6] if len(line) > 6 else None
-                    pval_col = line[7] if len(line) > 7 else None
-                    qval_col = line[8] if len(line) > 8 else None
+                        # loads column indices of each optional information             
+                        score_col = line[6] if len(line) > 6 else None
+                        pval_col = line[7] if len(line) > 7 else None
+                        qval_col = line[8] if len(line) > 8 else None
 
-                    # creates the new attribute using the load_HiC_site_cond function
-                    # from useful_functions_HiC 
-                    if not hasattr(self, "borders"):
-                        self.borders = {}  # creates the new attribute 
-                    self.borders[f"{cond}_bin{str(binsize)}b"] = load_HiC_site_cond(
-                        'borders', path2file, startline, sep, bin_col,binsize, 
-                        score_col=score_col, pval_col=pval_col, qval_col=qval_col)
+                        # creates the new attribute using the load_HiC_site_cond function
+                        # from useful_functions_HiC 
+                        if not hasattr(self, "borders"):
+                            self.borders = {}  # creates the new attribute 
+                        self.borders[f"{line[0]}_bin{str(binsize)}b"] = load_HiC_site_cond(
+                            'borders', path2file, startline, sep, bin_col,binsize, 
+                            score_col=score_col, pval_col=pval_col, qval_col=qval_col)
         else:
             print("No borders.info, unable to load borders")
 
+        if cond == ['all']:
+            cond = list(self.borders.keys())
 
-    def load_hic_loops(self):
+        if not hasattr(self, "borders_pos"):
+            self.borders_pos = {}
+
+        for c in cond:
+            print(f"Loading borders in: {c}")         
+            borders_list = list(self.borders[c].keys())
+            binsize = self.borders[c][borders_list[0]]["binsize"]
+            pos_borders = []
+            is_border = [False] * self.length
+            for border in borders_list:
+                ps = np.arange(border, border + binsize + 1)
+                pos_borders.extend(ps)
+                for p in ps:
+                    is_border[p] = True
+            pos_no_borders = set(np.arange(self.length)) - set(pos_borders)
+            self.borders_pos[c] = {"borders":pos_borders, "no_borders": pos_no_borders}
+
+
+    def load_hic_loops(self,cond="all"):
+        ######## A REVOIR !!! 
         """ 
         load_hic_loops imports a list of loops from a data file (typically 
         a loops.tsv data file obtained with Chromosight) containing :
@@ -90,6 +116,12 @@ class HiC:
         + (optional) loops score (pearson correlation coefficient between the 
         loop kernel and the detected pattern), loop pvalue and loop qvalue
         See Chromosight documentation for more details.
+        
+        Args:
+            cond (Optional [list of str.]): selection of one or several conditions 
+                    (1 condition corresponds to 1 data file and has to be in the 
+                    loops.info file). By default: cond ='all' ie all available 
+                    data are loaded.
 
         Requirements:
         + The data importation requires a loops.info file that contains the 
@@ -102,8 +134,14 @@ class HiC:
         + loops.info and data file have to be in the /HiC/Loops/ directory 
         
         Output: 
-        a new attribute borders, of shape self.borders = 
+        a new attribute loops, of shape self.loops = 
         {cond:{pos: {"score": score, "pval": pvalue, "qval": qvalue}}}
+
+        self.loops_pos (dict. of dict.): new attribute of the Genome instance. 
+                        Dictionary containing one dictionary per condition listed
+                        in loops.info. Each subdictionary has 2 keys: "loops" and 
+                        "no_loops" and contains the corresponding lists of genomic
+                        positions.
 
         N.B.: The position (pos) is the bin number. If data are binned at 2kb,
         the bin with number 10 corresponds to data between 20000 and 22000.
@@ -113,6 +151,10 @@ class HiC:
         """
         # gets the path to data and .info files
         path2dir = f"{basedir}data/{self.name}/HiC/Loops/"
+
+
+        if isinstance(cond, str):
+            cond = [cond]
 
         # tries to open loops.info file
         if Path(f"{path2dir}loops.info").exists():
@@ -124,29 +166,321 @@ class HiC:
                     line = line.strip('\n')
                     line = line.split('\t')
 
-                    # loads data file information for this condition
-                    cond = line[0]
-                    path2file = f"{path2dir}{line[1]}"
-                    startline, sep = int(line[2]), line[3]
-                    bin1_col, bin2_col = line[4], line[5]
+                    if cond == ["all"] or line[0] in cond:
 
-                    # loads binsize
-                    binsize = int(line[6]) 
+                        # loads data file information for this condition
+                        path2file = f"{path2dir}{line[1]}"
+                        startline, sep = int(line[2]), line[3]
+                        bin1_col, bin2_col = line[4], line[5]
 
-                    # loads column indices of each optional information             
-                    score_col = line[7] if len(line) > 7 else None
-                    pval_col = line[8] if len(line) > 8 else None
-                    qval_col = line[9] if len(line) > 9 else None
+                        # loads binsize
+                        binsize = int(line[6]) 
 
-                    # creates the new attribute using the load_HiC_site_cond function
-                    # from useful_functions_HiC 
+                        # loads column indices of each optional information             
+                        score_col = line[7] if len(line) > 7 else None
+                        pval_col = line[8] if len(line) > 8 else None
+                        qval_col = line[9] if len(line) > 9 else None
 
-                    if not hasattr(self, "loops"):
-                        self.loops = {}  # creates the new attribute 
-                    self.loops[f"{cond}_bin{str(binsize)}b"] = load_HiC_site_cond(
-                        "loops",path2file, startline, sep, bin1_col,binsize,
-                        bin2_col=bin2_col,score_col=score_col, 
-                        pval_col=pval_col, qval_col=qval_col)
+                        # creates the new attribute using the load_HiC_site_cond function
+                        # from useful_functions_HiC 
+
+                        if not hasattr(self, "loops"):
+                            self.loops = {}  # creates the new attribute 
+                        self.loops[f"{line[0]}_bin{str(binsize)}b"] = load_HiC_site_cond(
+                            "loops",path2file, startline, sep, bin1_col,binsize,
+                            bin2_col=bin2_col,score_col=score_col, 
+                            pval_col=pval_col, qval_col=qval_col)
                     
         else:
             print("No loops.info, unable to load loops")
+        if cond == ['all']:
+            cond = list(self.loops.keys())
+
+        if not hasattr(self, "loops_pos"):
+            self.loops_pos = {}
+
+        # register loops genomic positions in the loops_pos attribute
+        for c in cond:
+            print(f"Loading loops in: {c}")
+
+            self.loops_pos[c] = {"loops": [], "no_loops": []}
+            loops_list = list(self.loops[c].keys())
+            binsize = self.loops[c][loops_list[0]]["binsize"]
+
+            is_loop = [False] * self.length
+
+            for loop in loops_list:
+                for pos in list(np.arange(
+                        loop[0], loop[0] + binsize + 1)) + list(np.arange(loop[1], loop[1] + binsize + 1)):
+                    is_loop[pos] = True
+
+            for x in np.arange(self.length):
+                if is_loop[x]:
+                    self.loops_pos[c]["loops"].append(x)
+                else:
+                    self.loops_pos[c]["no_loops"].append(x)
+
+    def load_loops_genes(self, cond='all', window=0):
+        """
+        load_loops imports a list of loops determined with HiC from a data 
+        file (typically a loops.tsv data file obtained with Chromosight) 
+        containing at least the loops coordinates (2 bin numbers) and determines
+        the list of genes overlapping one of the loops positions.
+
+        Requirements:
+            - The data importation requires a loops.info file that contains the 
+        column indices of each information in the data file and some additional 
+        information, in the following 
+        order :
+        (required) [0] Condition, [1] Filename, [2] Startline, [3] Separator, 
+                   [4] Bin1, [5] Bin2, [6] Binsize (in b),
+        (optional) [7] Score, [8] Pvalue,[9] Qvalue
+            - loops.info and data file have to be in the /HiC/Loops/ directory 
+        
+        Args:
+            cond (Optional [list of str.]): selection of one or several conditions 
+                    (1 condition corresponds to 1 data file and has to be in the 
+                    loops.info file). By default: cond ='all' ie all available 
+                    data are loaded.
+            per_genes(Optional [Bool.]): if True, determines the list of genes 
+                    overlapping the loops positions and returns the outputs 
+                    self.loops_genes and self.genes[locus].is_loop described below.  
+            window (Optional [int.]): window around the loop positions for the 
+                    seeking of overlapping genes(Default: 0). All genes overlaping 
+                    any position between :
+                        loops_start_bin1 - window and loops_end_bin1 + window or
+                        loops_start_bin2 - window and loops_end_bin2 + window 
+                    are considered "loops" genes.
+
+        Output: 
+            self.loops_pos (dict. of dict.): new attribute of the Genome instance. 
+                        Dictionary containing one dictionary per condition listed
+                        in loops.info. Each subdictionary has 2 keys: "loops" and 
+                        "no_loops" and contains the corresponding lists of genomic
+                        positions.
+            self.loops_genes (dict. of dict.): created only if per_genes = True.
+                        New attribute of the Genome instance. Dictionary containing 
+                        one dictionary per condition listed in loops.info.
+                        The key of this dictionary contains the condition name and 
+                        the chosen window size (for example "cond_w100b" for a 100b 
+                        window). 
+                        Each subdictionary has 2 keys: "loops" and "no_loops" and 
+                        contains the corresponding lists of genes. 
+                        For example, self.loops_genes[cond_w0b]["loops"] returns
+                        the list of genes that overlap the loops positions. 
+            self.genes[locus].is_loop (dict.): created only if per_genes = True.
+                        new attribute of Gene instances related to the Genome 
+                        instance given as argument.Dictionary of shape 
+                        {condition:boolean}. The boolean is True if the gene 
+                        overlaps the loop positions (window included).
+            
+        N.B.: The position (pos) is the bin number. If data are binned at 2kb,
+        the bin with number 10 corresponds to data between 20000 and 22000.
+
+        N.B.: This method needs a genomic sequence and a genomic annotation. 
+        If no annotation is loaded, the load_annotation method with the default 
+        "sequence.gff3" file is computed. If no sequence is loaded, the load_seq
+        method with de defualt "sequence.fasta" is computed.
+        To use another annotation or sequence, please load them to your Transcriptome 
+        instance with the following commands before using this method:
+            >>> import Genome
+            >>> import HiC
+            >>> HC = HiC.HiC("ecoli")
+            >>> g = Genome.Genome(HC.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> g.load_seq(filename=chosen_file2
+            >>> HC.genes = g.genes   
+            >>> HC.length = g.length
+
+        !!!Caution: make sure that the version of the genome is the same as 
+        the version used in the HiC analysis workflow!!!
+
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_loops()
+            >>> g.loops_pos['WT2kb_bin2000b']['loops']
+            [254000,254001,254002,254003,...]
+            >>> g.loops_genes['WT2kb_bin2000b_w0b']['loops']
+            ['Dda3937_00221','Dda3937_04438','Dda3937_03673',...]
+            >>> g.genes['Dda3937_00221'].is_loop
+            {'acid2kb_bin2000b': False, 'WT2kb_bin2000b': True}
+        """
+        if not hasattr(self, "seq"): 
+            gen = Genome.Genome(self.name)
+            gen.load_seq()
+            self.length = gen.length
+        
+        if not hasattr(self, "genes"): 
+            gen = Genome.Genome(self.name)
+            gen.load_annotation()
+            self.genes = gen.genes
+        
+        if not hasattr(self, "loops_genes"):
+            self.loops_genes = {}
+
+        if not hasattr(self, "loops_pos"):
+            self.loops_pos = {}
+
+        if isinstance(cond, str):
+            cond = [cond]
+
+        if not hasattr(self,"loops_pos") or cond == ["all"]:
+            self.load_hic_loops(cond)
+        else : 
+            unloaded_cond = set(cond) - set(self.loops_pos.keys()) 
+            if unloaded_cond :
+                self.load_hic_loops(list(unloaded_cond))
+
+        if cond == ['all']:
+            cond = self.loops_pos.keys()
+        for c in cond:
+            print(f"Loading loops genes in {c}_w{window}b...")
+            loops_pos = self.loops_pos[c]["loops"]
+            is_loop = [False] * self.length
+            for pos in loops_pos:
+                is_loop[pos] = True
+
+
+            self.loops_genes[f"{c}_w{window}b"] = {
+                "loops": [], "no_loops": []}
+            for locus in self.genes.keys():
+                self.genes[locus].add_is_loop(c, False)
+                gene = self.genes[locus]
+                for pos in np.arange(gene.left - window,
+                                     gene.right + 1 + window):
+                    if gene.right + 1 + window >= self.length:
+                        pos = pos - self.length
+                    if is_loop[pos]:
+                        self.genes[locus].add_is_loop(c, True)
+                if self.genes[locus].is_loop[c]:
+                    self.loops_genes[f"{c}_w{window}b"]["loops"].append(
+                        locus)
+                else:
+                    self.loops_genes[f"{c}_w{window}b"]["no_loops"].append(
+                        locus)
+            print("Done")
+
+
+    def load_borders_genes(self, cond="all",window=0):
+        """
+
+        A MODIFIER !!!!!!
+
+        load_hic_borders imports a list of borders from a data file (typically 
+        a borders.tsv data file obtained with Chromosight) containing at least 
+        the border position (bin number) and determines the list of genes 
+        overlapping one of the borders.
+        Args:
+            cond (Optional [list of str.]): selection of one or several conditions 
+                    (1 condition corresponds to 1 data file and has to be in the 
+                    borders.info file). By default: cond ='all' ie all available 
+                    data are loaded.
+            per_genes(Optional [Bool.]): if True, determines the list of genes 
+                    overlapping the borders positions and returns the outputs 
+                    self.borders_genes and self.genes[locus].is_border described below.  
+            window (Optional [int.]): window around the border positions for the 
+                    seeking of overlapping genes(Default: 0). All genes overlaping 
+                    any position between border_start_bin - window and 
+                    border_end_bin + window are considered "borders" genes.
+
+        Output: 
+            self.borders_genes (dict. of dict.): created only if per_genes = True.
+                        New attribute of the Genome instance. Dictionary containing 
+                        one dictionary per condition listed in borders.info.
+                        The key of this dictionary contains the condition name and 
+                        the chosen window size (for example "cond_w100b" for a 100b 
+                        window). 
+                        Each subdictionary has 2 keys: "borders" and "no_borders" and 
+                        contains the corresponding lists of genes. 
+                        For example, self.borders_genes[cond_w0b]["borders"] returns
+                        the list of genes that overlap the borders positions. 
+            self.genes[locus].is_border (dict.): created only if per_genes = True.
+                        new attribute of Gene instances related to the Genome 
+                        instance given as argument.Dictionary of shape 
+                        {condition:boolean}. The boolean is True if the gene 
+                        overlaps the border positions (window included).
+
+        N.B.: The position (pos) is the bin number. If data are binned at 2kb,
+        the bin with number 10 corresponds to data between 20000 and 22000.
+        
+        N.B.: This method needs a genomic sequence and a genomic annotation. 
+        If no annotation is loaded, the load_annotation method with the default 
+        "sequence.gff3" file is computed. If no sequence is loaded, the load_seq
+        method with de defualt "sequence.fasta" is computed.
+        To use another annotation or sequence, please load them to your Transcriptome 
+        instance with the following commands before using this method:
+            >>> import Genome
+            >>> import HiC
+            >>> HC = HiC.HiC("ecoli")
+            >>> g = Genome.Genome(HC.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> g.load_seq(filename=chosen_file2
+            >>> HC.genes = g.genes   
+            >>> HC.length = g.length
+
+
+        !!!Caution: make sure that the version of the genome is the same as 
+        the version used in the HiC analysis workflow!!!
+
+        Example: 
+            >>> g = Genome.Genome("dickeya")
+            >>> g.load_borders()
+            >>> g.borders_pos["WT2_2kb_bin2000b"]['borders']
+            [20000,20001,20002,20003,20004,...]
+            >>> g.borders_genes['acid1kb_bin1000b_w0b']['borders']
+            ['Dda3937_00158','Dda3937_01107','Dda3937_01108',...]
+            >>> g.genes['Dda3937_00221'].is_border
+            {'acid1kb_bin1000b': False,'WT2_2kb_bin2000b': False}
+        """
+
+        if not hasattr(self, "seq"): 
+            gen = Genome.Genome(self.name)
+            gen.load_seq()
+            self.length = gen.length
+        
+        if not hasattr(self, "genes"): 
+            gen = Genome.Genome(self.name)
+            gen.load_annotation()
+            self.genes = gen.genes
+
+        if not hasattr(self, "borders_genes"):
+            self.borders_genes = {}
+
+        if isinstance(cond, str):
+            cond = [cond]
+
+        if not hasattr(self,"borders_pos") or cond == ["all"]:
+            self.load_hic_borders(cond)
+        else : 
+            unloaded_cond = set(cond) - set(self.borders_pos.keys()) 
+            if unloaded_cond :
+                self.load_hic_borders(list(unloaded_cond))
+
+        if cond == ["all"] : 
+            cond = self.borders_pos.keys()
+
+        for c in cond:
+            print(f"Loading borders genes in {c}_w{window}b...")
+            borders_pos = self.borders_pos[c]["borders"]
+            is_border = [False] * self.length
+            for pos in borders_pos:
+                is_border[pos] = True
+
+            self.borders_genes[f"{c}_w{window}b"] = {
+                    "borders": [], "no_borders": []}
+            for locus in self.genes.keys():
+                self.genes[locus].add_is_border(c, False)
+                gene = self.genes[locus]
+                for pos in np.arange(gene.left - window,
+                                     gene.right + 1 + window):
+                    if gene.right + 1 + window >= self.length:
+                        pos = pos - self.length
+                    if is_border[pos]:
+                        self.genes[locus].add_is_border(c, True)
+                if self.genes[locus].is_border[c]:
+                    self.borders_genes[f"{c}_w{window}b"]["borders"].append(
+                        locus)
+                else:
+                    self.borders_genes[f"{c}_w{window}b"]["no_borders"].append(
+                            locus)
+            print("Done")

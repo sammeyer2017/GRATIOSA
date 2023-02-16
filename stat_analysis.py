@@ -26,7 +26,10 @@ from datetime import datetime
 import pandas as pd
 
 def data_classification(data_x, data_y, class_nb, *args, **kwargs):
-    ''' Data classification in equal fractions or according to chosen 
+    ''' 
+    AJOTU NB PER CLASS  ????????????????????????????????????????????????????????????????????????
+
+    Data classification in equal fractions or according to chosen 
     thresholds.
 
     Required Args:
@@ -337,7 +340,7 @@ def enrichment_test(dict_cats,
             0. 'Category'(str.): category
             1. 'Selected_gene_nb'(int.): Nb of elements corresponding to this
                                       feature in the selection
-            2. 'Expected_selected_number' (int.): Expected nb of elements corresponding
+            2. 'Expected_selected_nb' (int.): Expected nb of elements corresponding
                                         to this feature in the selection
             3. 'Total_gene_nb'(int.): Nb of elements corresponding to this
                                    feature in the dict_features
@@ -373,13 +376,13 @@ def enrichment_test(dict_cats,
         0  GOterm1                9          11    0.818182  [0.4545, 1.0]  0.27206
         1  GOterm3                6          10    0.600000     [0.2, 1.0]  0.97059
 
-          Adj p-value (FDR)  Global_proportion  Expected_selected_number
+          Adj p-value (FDR)  Global_proportion  Expected_selected_nb
         0           0.54412        0.722222        7.944444
         1           0.97059        0.722222         7.22222
           Category  Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int  \
         0  GOterm1                9          11    0.818182  [0.6818, 0.9545]
         1  GOterm3                6          10    0.600000        [0.4, 0.8]
-          p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_number
+          p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_nb
         0 0.16563            0.33126        0.684211        7.526316
         1 0.90867            0.90867        0.684211        6.84210
         # GOterm2 was ignored because its nb of elements is less than 3.
@@ -467,7 +470,7 @@ def enrichment_test(dict_cats,
     df = pd.DataFrame(data=file, columns=['Category', 'p-value', 'Selected_gene_nb',
                                           'Total_gene_nb', 'Proportion',
                                           'Prop_conf_int', 'Global_proportion',
-                                          'Expected_selected_number'])
+                                          'Expected_selected_nb'])
 
     # pvalue correction for false discovery rate
     # (See statsmodels.stats.multitest.fdrcorrection documentation)
@@ -475,14 +478,14 @@ def enrichment_test(dict_cats,
 
     # Returns and saves the results as a dataframe
     df = df[['Category', 'Selected_gene_nb', 'Total_gene_nb', 'Proportion', 'Prop_conf_int',
-             'p-value', 'Adj p-value (FDR)', 'Global_proportion', 'Expected_selected_number']]
+             'p-value', 'Adj p-value (FDR)', 'Global_proportion', 'Expected_selected_nb']]
     # Sorts the results according to the adjusted pvalues
     df= df.sort_values(by=['Adj p-value (FDR)'], ascending=True)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     df2csv = df.round({'Proportion': 4, 'Global_proportion': 4})
     df2csv.to_csv(f"{output_dir}{output_file}.csv", sep='\t', index=False)
-    print(f"Results saved in {output_dir}{output_file}")
+    print(f"Results saved in {output_dir}{output_file}.csv")
 
 
     return df

@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 from globvar import *
-import wget
 from datetime import datetime
 import stat_analysis
+import os
+import re
 #==============================================================================#
 
 class GO:
@@ -13,8 +14,8 @@ class GO:
                 path2dir =f"{basedir}topo_database/",
                 obo_reload=False):
         if obo_reload :
-            wget.download("http://purl.obolibrary.org/obo/go/go-basic.obo",
-                          out=f"{basedir}topo_database/")
+            os.system(f"wget http://purl.obolibrary.org/obo/go/go-basic.obo \
+                -P {basedir}data/")
 
         self.dict_GO = {}
         with open(path2dir+filename, "r") as f:
@@ -27,37 +28,42 @@ class GO:
                         ID ="other"
                     self.dict_GO[ID]={}
                 elif "name" in line:
-                    self.dict_GO[ID]["name"] = line[1]
+                    self.dict_GO[ID]["Name"] = line[1]
+                    #print(self.dict_GO)
                 elif "namespace" in line:
-                    self.dict_GO[ID]["namespace"] = line[1]
+                    self.dict_GO[ID]["Namespace"] = line[1]
                 elif "def" in line:
-                    self.dict_GO[ID]["definition"] = line[1]
-        self.dict_GO.pop('other')
+                    self.dict_GO[ID]["Definition"] = line[1]
+
+        if 'other' in self.dict_GO.keys():
+            self.dict_GO.pop('other')
 
         self.dict_GOc, self.dict_GOp, self.dict_GOf = {}, {}, {}
         for GO in self.dict_GO.keys() :
-            if self.dict_GO[GO]["namespace"] == "biological_process":
-                self.dict_GOp[GO]={"name":self.dict_GO[GO]["name"],
-                              "definition":self.dict_GO[GO]["definition"]}
-            elif self.dict_GO[GO]["namespace"] == "molecular_function":
-                self.dict_GOf[GO]={"name":self.dict_GO[GO]["name"],
-                              "definition":self.dict_GO[GO]["definition"]}
-            elif self.dict_GO[GO]["namespace"] == "cellular_component":
-                self.dict_GOc[GO]={"name":self.dict_GO[GO]["name"],
-                              "definition":self.dict_GO[GO]["definition"]}
+            if self.dict_GO[GO]["Namespace"] == "biological_process":
+                self.dict_GOp[GO]={"Name":self.dict_GO[GO]["Name"],
+                              "Definition":self.dict_GO[GO]["Definition"]}
+            elif self.dict_GO[GO]["Namespace"] == "molecular_function":
+                self.dict_GOf[GO]={"Name":self.dict_GO[GO]["Name"],
+                              "Definition":self.dict_GO[GO]["Definition"]}
+            elif self.dict_GO[GO]["Namespace"] == "cellular_component":
+                self.dict_GOc[GO]={"Name":self.dict_GO[GO]["Name"],
+                              "Definition":self.dict_GO[GO]["Definition"]}
 
+############" AJOUTERreturn !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 def GO_enrichment_test(
                     dict_GOterms,
                     dict_features,
                     targ_features,
-                    path2dir =f"{basedir}topo_database/",
-                    GO_filename ="go-basic.obo",
                     all_features="all",
                     targ_cats="all",
                     all_cats="all",
                     min_nb_elements=4,
                     output_dir=f"{resdir}enrichment_test/",
-                    output_file=f"enrich_test{datetime.now()}"):
+                    output_file=f"enrich_test{datetime.now()}",
+                    GO_reload = False,
+                    GO_filename="go-basic.obo",
+                    GO_path2dir =f"{basedir}topo_database/"):
     ''' Computes enrichment tests (hypergeometric test) of a target in a 
     category.
     N.B.: performs a p-value correction for false discovery rate (See
@@ -101,7 +107,7 @@ def GO_enrichment_test(
             0. 'Term'(str.): GO term
             1. 'Selected_gene_nb'(int.): Nb of elements corresponding to this
                                       feature in the selection
-            2. 'Expected_selected_number' (int.): Expected nb of elements corresponding
+            2. 'Expected_selected_nb' (int.): Expected nb of elements corresponding
                                         to this feature in the selection
             3. 'Total_gene_nb'(int.): Nb of elements corresponding to this
                                    feature in the dict_features
@@ -119,40 +125,15 @@ def GO_enrichment_test(
                 reported in the output_file.
 
     Example:
-        >>>  dict_features = {
-                        "act":["B","D","E","H","I","M","P","Q","R","S","T","W"],
-                        "rep":["C","F","G","U","X"],
-                        "None":["A"],
-                        "NA":["J"]}
-        >>> dict_cats = {"GOterm1":["A","B","D","E","F","P","Q","R","S","T","U"],
-                         "GOterm2":["C","E"],
-                         "GOterm3":["A","B","F","G","H","I","M","U","V","W","X"],
-                         "GOterm4":["C","F","G","J"]}
-        >>> stat_analysis.enrichment_test(dict_cats,dict_features,
-                                          targ_features=["act","None"],
-                                          all_features=["act","None","rep","NA"],
-                                          targ_cats=["GOterm1","GOterm2","GOterm3"],
-                                          min_nb_elements=3,output_file="test")
-          Term  Selected_gene_nb  Total_gene_nb  Proportion  Prop_conf_int  p-value  \
-        0  GOterm1                9          11    0.818182  [0.4545, 1.0]  0.27206
-        1  GOterm3                6          10    0.600000     [0.2, 1.0]  0.97059
-
-          Adj p-value (FDR)  Global_proportion  Expected_selected_number
-        0           0.54412        0.722222        7.944444
-        1           0.97059        0.722222         7.22222
-          Term Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int  \
-        0  GOterm1                9          11    0.818182  [0.6818, 0.9545]
-        1  GOterm3                6          10    0.600000        [0.4, 0.8]
-          p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_number
-        0 0.16563            0.33126        0.684211        7.526316
-        1 0.90867            0.90867        0.684211        6.84210
-        # GOterm2 was ignored because its nb of elements is less than 3.
-        # GOterm4 was ignored because it was not selected in the "features"
+        >>> g = Genome.Genome("ecoli")
+        >>> g.load_GO()
+        >>> g.load_state_from_FC()
+        >>> GO.GO_enrichment_test(g.GO['GO'],g.statesFC['Blot'],'act')
     '''
     # Formats the objects given as arguments as lists containing no duplicates.
     
 
-    dGO = GO(filename=GO_filename,path2dir=path2dir)
+    dGO = GO(filename=GO_filename,path2dir=GO_path2dir,obo_reload=GO_reload)
 
     list_GO = ["GOc","GOp","GOf"]
 
@@ -161,7 +142,7 @@ def GO_enrichment_test(
     unknown_terms = [] 
     for t in dict_GOterms.keys():
         try :
-            sp = dGO.dict_GO[t]['namespace']
+            sp = dGO.dict_GO[t]['Namespace']
             if sp == "biological_process" :
                 dGOp[t] = dict_GOterms[t]
             elif sp == "molecular_function" :
@@ -171,7 +152,8 @@ def GO_enrichment_test(
 
         except :
             unknown_terms.append(t)
-    print(f"{len(unknown_terms)} GO terms are not in the GO annotation")
+    if len(unknown_terms) != 0 :
+        print(f"{len(unknown_terms)} GO terms are not in the GO annotation")
 
 
     for n,dict_cats in enumerate([dGOc,dGOp,dGOf]):
@@ -189,8 +171,36 @@ def GO_enrichment_test(
         names = []
         defs = []
         for t in terms :
-            names.append(dGO.dict_GO[t]['name'])
-            defs.append(dGO.dict_GO[t]['definition'])
+            names.append(dGO.dict_GO[t]['Name'])
+            defs.append(dGO.dict_GO[t]['Definition'])
         df2 = df_res.assign(name=names,definition=defs)
         df2csv = df2.round({'Proportion': 4, 'Global_proportion': 4})
-        df2csv.to_csv(f"{output_dir}{output_file}{list_GO[n]}.csv", sep='\t', index=False)
+        df2csv.to_csv(f"{output_dir}{o_file}.csv", sep='\t', index=False)
+
+
+def gaf2annot(path2file,startline,regexp_locus):
+    ''' converts 
+    GO_analysis.gaf2annot("/home/maiwenn/these/data/ecoli/GO_analysis/ecocyc",3
+    5,"b\d\d\d\d")
+    '''
+    if ".gaf" in path2file :
+        path2file = path2file[:-4]
+
+    f_out = open(path2file+".annot","w")
+    with open(path2file+".gaf", "r") as f_in:
+        i=0
+        while i < startline:
+            header = next(f_in)
+            i+=1
+        for line in f_in:
+            line = line.strip('\n').split('\t')
+            try : 
+                GOterm = line[4]
+                locus_part = line[10].split('|')
+                for l in locus_part :
+                    if re.compile(regexp_locus).search(l):
+                        f_out.write(f"{l}\t{GOterm}\n")
+            except Exception as e : 
+                print(e)
+    f_in.close()
+    f_out.close()
