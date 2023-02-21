@@ -483,7 +483,7 @@ def enrichment_test(dict_cats,
     df= df.sort_values(by=['Adj p-value (FDR)'], ascending=True)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    df2csv = df.round({'Proportion': 4, 'Global_proportion': 4})
+    df2csv = df.round({'Proportion': 3, 'Global_proportion': 3, 'p-value': 3, 'Adj p-value (FDR)': 3,'Expected_selected_nb':3})
     df2csv.to_csv(f"{output_dir}{output_file}.csv", sep='\t', index=False)
     print(f"Results saved in {output_dir}{output_file}.csv")
 

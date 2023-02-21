@@ -50,7 +50,6 @@ class GO:
                 self.dict_GOc[GO]={"Name":self.dict_GO[GO]["Name"],
                               "Definition":self.dict_GO[GO]["Definition"]}
 
-############" AJOUTERreturn !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 def GO_enrichment_test(
                     dict_GOterms,
                     dict_features,
@@ -59,9 +58,10 @@ def GO_enrichment_test(
                     targ_cats="all",
                     all_cats="all",
                     min_nb_elements=4,
+                    thresh_padj = 0.1,
                     output_dir=f"{resdir}enrichment_test/",
                     output_file=f"enrich_test{datetime.now()}",
-                    GO_reload = False,
+                    obo_reload = False,
                     GO_filename="go-basic.obo",
                     GO_path2dir =f"{basedir}topo_database/"):
     ''' Computes enrichment tests (hypergeometric test) of a target in a 
@@ -99,11 +99,18 @@ def GO_enrichment_test(
                          this feature is not relevant and is therefore neither
                          returned nor reported in the output file.
                          By default, min_nb_elements is set to 4.
+        thresh_padj (float.) : threshold on the adjusted p-value, used to create 
+                               the file containing only the significantly enriched 
+                               GO terms
         output_dir (str.): output directory
         output_file (str.): output filename
+        obo_reload (Bool.) : if true, the basic.obo file is reloaded. This file 
+                             allows each GO term to be associated with a category (
+                             GOf, GOp or GOc), a name and a description
 
     Returns:
-        dataframe containing the following columns:
+        3 files (one for GOf, one for GOp and one for GOc) containing the following 
+        columns:
             0. 'Term'(str.): GO term
             1. 'Selected_gene_nb'(int.): Nb of elements corresponding to this
                                       feature in the selection
@@ -120,9 +127,8 @@ def GO_enrichment_test(
             8. 'Genomic average' (float): ratio between nb of elements in the
                                           selection and nb of elements in
                                           dict_features
-            N.B.:
-                The DataFrame, ordered according to the adjusted pvalues,is
-                reported in the output_file.
+            The data are ordered according to the adjusted pvalues.
+        1 common file containing the significantly enriched GO terms 
 
     Example:
         >>> g = Genome.Genome("ecoli")
@@ -133,7 +139,7 @@ def GO_enrichment_test(
     # Formats the objects given as arguments as lists containing no duplicates.
     
 
-    dGO = GO(filename=GO_filename,path2dir=GO_path2dir,obo_reload=GO_reload)
+    dGO = GO(filename=GO_filename,path2dir=GO_path2dir,obo_reload=obo_reload)
 
     list_GO = ["GOc","GOp","GOf"]
 
@@ -174,8 +180,27 @@ def GO_enrichment_test(
             names.append(dGO.dict_GO[t]['Name'])
             defs.append(dGO.dict_GO[t]['Definition'])
         df2 = df_res.assign(name=names,definition=defs)
-        df2csv = df2.round({'Proportion': 4, 'Global_proportion': 4})
+        df2csv = df2.round({'Proportion': 3, 'Global_proportion': 3, 'p-value': 3, 'Adj p-value (FDR)': 3,'Expected_selected_nb':3})
         df2csv.to_csv(f"{output_dir}{o_file}.csv", sep='\t', index=False)
+
+
+    f_out = open(f"{output_dir}{output_file}_padj{thresh_padj}.csv", 'w')
+    f_out.write(f"GOtype\tCategory\tSelected_gene_nb\tTotal_gene_nb\tExpected_selected_nb\tAdj p-value (FDR)\tName\tDefinition\n")
+
+    for GOtype in ["GOc","GOf","GOp"] :
+        empty_test = True
+        with open(f"{output_dir}{output_file}_{GOtype}.csv", "r") as f :
+            header = next(f)
+            for line in f:
+                line = line.strip('\n').split('\t')
+                if float(line[6]) < thresh_padj:
+                    f_out.write(f"{GOtype}\t{line[0]}\t{line[1]}\t{line[2]}\t{line[8]}\t{line[6]}\t{line[9]}\t{line[10]}\n")
+                    empty_test = False
+        f.close()
+        if empty_test :
+            f_out.write(f"{GOtype}\tNA\n")
+    f_out.close()
+    print(f"Results saved in {output_dir}{output_file}_significant.csv")
 
 
 def gaf2annot(path2file,startline,regexp_locus):

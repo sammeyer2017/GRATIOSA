@@ -344,8 +344,8 @@ def plot_enrichment_test(dict_cats,
     if xlabel != "":
         plt.xlabel(xlabel)
     xticks_rotation = kwargs.get("xticks_rotation",0)
-    xticks_labels = kwargs.get("xticks_labels",cats)
-    plt.xticks(ticks=np.arange(len(cats)),
+    xticks_labels = kwargs.get("xticks_labels",targ_cats)
+    plt.xticks(ticks=np.arange(len(targ_cats)),
                labels = xticks_labels,
                rotation=xticks_rotation)
 
