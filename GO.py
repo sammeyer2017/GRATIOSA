@@ -5,13 +5,14 @@ from datetime import datetime
 import stat_analysis
 import os
 import re
+import pandas as pd
 #==============================================================================#
 
 class GO:
 
     def __init__(self,
                 filename="go-basic.obo",
-                path2dir =f"{basedir}topo_database/",
+                path2dir =f"{basedir}data/",
                 obo_reload=False):
         if obo_reload :
             os.system(f"wget http://purl.obolibrary.org/obo/go/go-basic.obo \
@@ -63,7 +64,7 @@ def GO_enrichment_test(
                     output_file=f"enrich_test{datetime.now()}",
                     obo_reload = False,
                     GO_filename="go-basic.obo",
-                    GO_path2dir =f"{basedir}topo_database/"):
+                    GO_path2dir =f"{basedir}data/"):
     ''' Computes enrichment tests (hypergeometric test) of a target in a 
     category.
     N.B.: performs a p-value correction for false discovery rate (See
@@ -164,7 +165,7 @@ def GO_enrichment_test(
 
     for n,dict_cats in enumerate([dGOc,dGOp,dGOf]):
         o_file = f"{output_file}_{list_GO[n]}"
-        df_res = stat_analysis.enrichment_test(dict_cats = dict_cats, 
+        df_res =  pd.DataFrame(stat_analysis.enrichment_test(dict_cats = dict_cats, 
                                                dict_features = dict_features, 
                                                targ_features = targ_features, 
                                                all_features = all_features, 
@@ -172,7 +173,7 @@ def GO_enrichment_test(
                                                all_cats = all_cats,
                                                min_nb_elements = min_nb_elements,
                                                output_dir = output_dir,
-                                               output_file = o_file)
+                                               output_file = o_file))
         terms = df_res["Category"]
         names = []
         defs = []
@@ -180,12 +181,25 @@ def GO_enrichment_test(
             names.append(dGO.dict_GO[t]['Name'])
             defs.append(dGO.dict_GO[t]['Definition'])
         df2 = df_res.assign(name=names,definition=defs)
-        df2csv = df2.round({'Proportion': 3, 'Global_proportion': 3, 'p-value': 3, 'Adj p-value (FDR)': 3,'Expected_selected_nb':3})
+        
+        df2[['p-value', 'Adj p-value (FDR)']] = df2[['p-value', 'Adj p-value (FDR)']].applymap(lambda x: '{:.2E}'.format(x))
+        df2[['Proportion', 'Global_proportion', 'Expected_selected_nb']] = df2[['Proportion', 'Global_proportion', 'Expected_selected_nb']].applymap(lambda x: '{:.3f}'.format(x))
+
+
+
+        #df2csv =df2.map('{:,0.3e}'.format)
+        #df2csv.set_option('precision', 3)
+        #df2csv = df2.round({'Proportion': 3, 'Global_proportion': 3, 'Expected_selected_nb':3})
+        df2csv = df2
+        #df2csv.style.format('{:.2f}',precision = 1)
+        #df2csv['p-value'].map('{:.2f}'.format)
+        #df2csv['Adj p-value (FDR)'].map('{:.2f}'.format)
+        #'p-value': 3, 'Adj p-value (FDR)': 3,
         df2csv.to_csv(f"{output_dir}{o_file}.csv", sep='\t', index=False)
 
 
     f_out = open(f"{output_dir}{output_file}_padj{thresh_padj}.csv", 'w')
-    f_out.write(f"GOtype\tCategory\tSelected_gene_nb\tTotal_gene_nb\tExpected_selected_nb\tAdj p-value (FDR)\tName\tDefinition\n")
+    f_out.write(f"GOtype\tCategory\tSelected_gene_nb\tTotal_gene_nb\tExpected_selected_nb\tp-value\tAdj p-value (FDR)\tName\tDefinition\n")
 
     for GOtype in ["GOc","GOf","GOp"] :
         empty_test = True
@@ -194,7 +208,7 @@ def GO_enrichment_test(
             for line in f:
                 line = line.strip('\n').split('\t')
                 if float(line[6]) < thresh_padj:
-                    f_out.write(f"{GOtype}\t{line[0]}\t{line[1]}\t{line[2]}\t{line[8]}\t{line[6]}\t{line[9]}\t{line[10]}\n")
+                    f_out.write(f"{GOtype}\t{line[0]}\t{line[1]}\t{line[2]}\t{line[8]}\t{line[5]}\t{line[6]}\t{line[9]}\t{line[10]}\n")
                     empty_test = False
         f.close()
         if empty_test :
