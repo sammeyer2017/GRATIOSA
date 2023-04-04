@@ -775,6 +775,7 @@ class Genome:
         some additional information, in the following order:
         [0] Annotation system [1] Filename [2] Locus tag column
         [3] GOterm column [4] Separator
+        GO.info and the data files have to be in the /GO/ directory
 
         Arg:
             self (Genome instance)
@@ -812,7 +813,7 @@ class Genome:
 
         warn_locus = []
         self.GO = {}
-        path2dir = f"{basedir}data/{self.name}/GO_analysis/"
+        path2dir = f"{basedir}data/{self.name}/GO/"
 
         # Opens .info file to obtain the information required to correctly
         # load the data for each annotation system.
