@@ -2,85 +2,104 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy import stats
-#from useful_functions import *
-#from globvar import *
 
-#==============================================================================#
+"""
+Functions called by Chipseq methods
+"""
 
-def binning(data, binsize,stat = "mean"):
-    """ 
-     #AJOUT COMMENTAIRE SUR POS BIN !!!!!!!!!!!!!!!!!!
-   data binning at a chosen binsize
-           N.B.: The position (pos) is the bin number. If data are binned at 2kb,
-        the bin with number 10 corresponds to data between 20000 and 22000. ?????????????? A VERIFIER 
-   input has to be an array 
-   stat can be : mean, std, median, count, sum, min, max, user-defined function (see binned_statistic documentation)
+
+def binning(data, binsize, stat="mean"):
     """
-    #determines the bin coordinates
-    l_data = len(data)
-    bins = np.arange(0,l_data,binsize)
-    bins = np.append(bins,l_data)
+    Data binning at a chosen binsize.
 
-    #performs the binning 
-    binned_data = stats.binned_statistic(np.arange(l_data),data,bins=bins,statistic=stat)
-    
+    Args:
+        data (array-like): A sequence of values to be binned.
+        binsize (int.): The bin size
+        stat (str.): The statistic to compute ('mean' by default). The 
+                following statistics are available: mean, std, median, count, 
+                sum, min, max. See scipy.stats.binned_statistic documentation 
+                for more details)
+
+    Returns:
+        Array containing the values of the selected statistic in each bin.
+    """
+    # determines the bin coordinates
+    l_data = len(data)
+    bins = np.arange(0, l_data, binsize)
+    bins = np.append(bins, l_data)
+
+    # performs the binning
+    binned_data = stats.binned_statistic(
+        np.arange(l_data), data, bins=bins, statistic=stat)
+
     return binned_data
 
 
-def average_replicates(data,binsize = None) :
-    """ 
-    compute the average between replicates
-    data is a list of np.arrays with same lengths
+def smoothing(data, window):
     """
-    binned_data = []
+    Data smoothing by moving average of CIRCULAR data.
 
-    for d in data :
-        d_new = binning(d,binsize,stat=stat).statistic
-        binned_data.append(d_new)
+    Args:
+        data (array-like): A sequence of values to be smoothed.
+        window (int.): window size. The value of the smoothed signal of a 
+                position p is equal to the average of the signal between 
+                p - window/2 and p + window/2.
 
-    average = np.mean(binned_data,axis=0)
-
-    return average
-
-
-def smoothing(data,window) : 
-    """ 
-    Data smoothing by moving average with the window size given as argument
-    """ 
+    Returns:
+        Array containing the smoothed data.
+    """
     s_data = []
-    i=0
-    w = int(window/2)
-    #circular DNA
-    while i < w :
-        window_average = np.mean(list(data[i-w:])+list(data[0:i+w+1]))
+    i = 0
+    w = int(window / 2)
+    # circular DNA
+    while i < w:
+        window_average = np.mean(list(data[i - w:]) + list(data[0:i + w + 1]))
         s_data.append(window_average)
         i += 1
-    while i < len(data) - w :
-        window_average = np.mean(data[i-w:i+w+1])
+    while i < len(data) - w:
+        window_average = np.mean(data[i - w:i + w + 1])
         s_data.append(window_average)
         i += 1
-    while i < len(data) :
-        window_average = np.mean(list(data[i-w:])+list(data[0:i+w-len(data)+1]))
+    while i < len(data):
+        window_average = np.mean(
+            list(data[i - w:]) + list(data[0:i + w - len(data) + 1]))
         s_data.append(window_average)
         i += 1
 
     return s_data
 
+
 def load_sites_cond(path2file, startline, sep, start_col, end_col):
-    ''' 
+    '''
+    Called by load_peaks, allows the peaks data to be loaded by specifying
+    files (typically a .BED file of peaks obtained with MACS2), and where 
+    each information is (one column for each type of information).
+
+    Args:
+        path2file (str.): path to the file containing the data
+        startline (int.): file start line
+        sep (str.): file separator
+        start_col (int.): index of the column containing the position of the
+                beginning of the peak
+        end_col (int.): index of the column containing the position of the 
+                end of the peak
+
+    Returns:
+        List of tuples of shape (start,end). One tuple represents one peak.
     '''
     peaks = []
-    if sep == '\\t': sep = '\t' 
+    if sep == '\\t':
+        sep = '\t'
 
     with open(path2file, 'r') as f:
-        i=1
+        i = 0
         while i < startline:
-            header=next(f)
-            i+=1
+            header = next(f)
+            i += 1
         for line in f:
             line = line.strip('\n').split(sep)
-            try: 
-                peaks.append((int(line[start_col]),int(line[end_col])))
+            try:
+                peaks.append((int(line[start_col]), int(line[end_col])))
             except Exception as e:
                 print(e)
     f.close()
