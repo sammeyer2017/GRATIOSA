@@ -97,7 +97,7 @@ def plot_region(gen, beg, end,
         >>> plot_genome.plot_region(g,2101000,2106000,
                                     RNASeq_cond = ["WT"],
                                     signals_cond=["cond12"],
-                                    R_ylables=["WT"],
+                                    R_ylabels=["WT"],
                                     S_ylabels=["cond12"],
                                     tr_object=tr,
                                     ch_object=ch,
@@ -192,7 +192,7 @@ def plot_region(gen, beg, end,
     ax.set_xlabel("Genomic position")
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     pathf = output_dir + output_file + file_extension
-    plt.savefig(pathf)
+    plt.savefig(pathf,transparent=False,facecolor='white')
     print(f"Saved as {pathf}")
     plt.show()
     plt.close()
@@ -336,7 +336,7 @@ def subplot_rnaseq_coverage(ax, tr, cond, beg, end, ylabel=None, xticks=None):
     ax.axhline(y=0, color="black", lw=1)
 
     if xticks is not None:
-        ax.set_xticks(ticks)
+        ax.set_xticks(xticks)
     else:
         ax.set_xticklabels([])
         ax.set_xticks([])

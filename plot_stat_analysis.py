@@ -150,14 +150,15 @@ def plot_proportion_test(dict_cats,
         brackets_linewidth (float.): Linewidth of the brackets. (default: 1.5)
         ymin (float): y-axis bottom limit
         ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,4)
+        figsize (float,float): width and height in inches (by default: (w,2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: cats)
         err_capsize (float.): Length of the error bar caps in points. 
                 (default: 4.0)
         bar_linewidth (float.): Width of the bars edge. (default: 2.0)
-        bar_width (float.): Width of the bars. (default: 0.6)
+        bar_width (float.): Width of the bars. (default dependent on the number 
+        of categories. If less than 5 cats: 0.6)
 
 
     Example:
@@ -186,20 +187,21 @@ def plot_proportion_test(dict_cats,
         ci[1, c] = res["confidence intervals"][c][1] - prop[c]
 
     if len(cats) < 5:
-        wb = 1.3
+        wb = 0.6
     elif len(cats) < 10:
-        wb = 0.8
-    elif len(cats) < 15:
-        wb = 0.5
-    elif len(cats) < 20:
         wb = 0.4
+    elif len(cats) < 15:
+        wb = 0.25
+    elif len(cats) < 20:
+        wb = 0.2
     else:
-        wb = 0.3
-    figsize = kwargs.get("figsize", (len(cats) * wb, 4))
+        wb = 0.14
+
+    figsize = kwargs.get("figsize", (len(cats) * wb, 2))
     plt.figure(figsize=figsize)
 
-    bar_width = kwargs.get("bar_width", 0.6)
-    bar_linewidth = kwargs.get("bar_linewidth", 2)
+    bar_width = kwargs.get("bar_width", wb)
+    bar_linewidth = kwargs.get("bar_linewidth", 1.5)
     err_capsize = kwargs.get("err_capsize", 4)
     plt.bar(cats, prop, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
@@ -248,6 +250,7 @@ def plot_enrichment_test(dict_cats,
                          xlabel="",
                          ylabel="Proportion",
                          title="",
+                         legend_text="Global\nproportion",
                          legend_loc="best",
                          annot_star=True,
                          *args, **kwargs):
@@ -293,18 +296,21 @@ def plot_enrichment_test(dict_cats,
                 to the p-values using stars annotaion (default: True)
         ymin (float): y-axis bottom limit
         ymax (float): y-axis top limit
+        legend_text (str.): Legend text (default: "Global proportion")
+                If set to None, no legend will be plotted.
         legend_loc (str.): Location of the legend such as 'upper right',
                 'lower right', 'lower left', 'lower left' and 'best' 
                 (default: 'best'). See matplotlib.pyplot.legend for more 
                 options
-        figsize (float,float): width and height in inches (by default: (w,4)
+        figsize (float,float): width and height in inches (by default: (w,2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: targ_cats)
         err_capsize (float.): Length of the error bar caps in points. 
                 (default: 4.0)
         bar_linewidth (float.): Width of the bars edge. (default: 2.0)
-        bar_width (float.): Width of the bars. (default: 0.6)
+        bar_width (float.): Width of the bars. (default dependent on the 
+        number of categories. If less than 5 cats: 0.6)
 
     Example:
         >>>  dataX = {"GOterm1":["A","B","D","E","F"],
@@ -344,20 +350,20 @@ def plot_enrichment_test(dict_cats,
         ci[1, n] = res[t]["Prop_conf_int"][1] - res[t]['Proportion']
 
     if len(targ_cats) < 5:
-        wb = 1.5
+        wb = 0.6
     elif len(targ_cats) < 10:
-        wb = 0.8
-    elif len(targ_cats) < 15:
-        wb = 0.5
-    elif len(targ_cats) < 20:
         wb = 0.4
+    elif len(targ_cats) < 15:
+        wb = 0.25
+    elif len(targ_cats) < 20:
+        wb = 0.2
     else:
-        wb = 0.3
+        wb = 0.14
 
-    figsize = kwargs.get("figsize", (len(targ_cats) * wb, 4))
+    figsize = kwargs.get("figsize", (len(targ_cats) * wb, 2.2))
     plt.figure(figsize=figsize)
 
-    bar_width = kwargs.get("bar_width", 0.6)
+    bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 2)
     err_capsize = kwargs.get("err_capsize", 4)
     plt.bar(targ_cats, prop, yerr=ci,
@@ -378,7 +384,7 @@ def plot_enrichment_test(dict_cats,
                      2, s, ha='center', fontsize=14)
 
     ymin = kwargs.get('ymin', plt.ylim()[0])
-    ymax = kwargs.get('ymax', max_ci)
+    ymax = kwargs.get('ymax', max_ci*1.1)
     plt.ylim(ymin, ymax)
     plt.ylabel(ylabel)
     if xlabel != "":
@@ -391,8 +397,9 @@ def plot_enrichment_test(dict_cats,
 
     # plots an horizontal line corresponing to the Global_proportion
     plt.axhline(df_res["Global_proportion"][0], c="blue", ls='--',
-                label="Global_proportion")
-    plt.legend(loc=legend_loc)
+                label=legend_text)
+    if legend_text not in [None,"None"] :
+        plt.legend(loc=legend_loc)
     plt.title(title)
     plt.tight_layout()
     plt.savefig(
@@ -405,7 +412,7 @@ def plot_enrichment_test(dict_cats,
 
 def plot_student_test(dict_data, cats="all",
                       alt_hyp="one-sided",
-                      output_dir=f"{resdir}student_tyYest/",
+                      output_dir=f"{resdir}student_test/",
                       output_file=f"student_test{datetime.now()}",
                       file_extension=".pdf",
                       xlabel="",
@@ -442,14 +449,15 @@ def plot_student_test(dict_data, cats="all",
         brackets_linewidth (float.): Linewidth of the brackets.(default: 1.5)
         ymin (float): y-axis bottom limit
         ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,4)
+        figsize (float,float): width and height in inches (by default: (w,2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: cats)
         err_capsize (float.): Length of the error bar caps in points. 
                 (default: 4.0)
         bar_linewidth (float.): Width of the bars edge. (default: 2.0)
-        bar_width (float.): Width of the bars. (default: 0.6)
+        bar_width (float.): Width of the bars. (default: 0.6) (default 
+        dependent on the number of categories. If less than 5 cats: 0.6)
 
     Example:
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}
@@ -478,10 +486,10 @@ def plot_student_test(dict_data, cats="all",
         wb = 0.2
     else:
         wb = 0.14
-    figsize = kwargs.get("figsize", (len(cats) * wb, 1))
+    figsize = kwargs.get("figsize", (len(cats) * wb, 2))
     plt.figure(figsize=figsize)
 
-    bar_width = kwargs.get("bar_width", 0.6)
+    bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 2)
     err_capsize = kwargs.get("err_capsize", 4)
     plt.bar([str(c) for c in cats], means, yerr=ci,

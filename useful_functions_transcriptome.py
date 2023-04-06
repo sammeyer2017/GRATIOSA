@@ -247,7 +247,7 @@ def process_bam_paired_end(tr):
 
                 # save results ; .npz contains two .npy Rpos and Rneg
                 file = open(path2dir + 'reads.info', 'a')
-                file.write(f"{bam_cond}'\t'{bam_cond}_reads.npz\t{bam_file}\n")
+                file.write(f"{bam_cond}\t{bam_cond}_reads.npz\t{bam_file}\n")
                 file.close()
                 np.savez(f"{path2dir}{bam_cond}_reads.npz", 
                          Rpos=Rpos, 
