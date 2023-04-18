@@ -23,7 +23,9 @@ plt.rcParams.update({'font.family': "Arial"})
 
 
 def plot_region(gen, beg, end,
-                RNASeq_cond=[], signals_cond=[], gene_names=True,
+                RNASeq_cond=[], 
+                signals_cond=[], 
+                gene_names=True,
                 output_dir=f"{resdir}Genome_plot/",
                 output_file=f"Genome_{datetime.now()}",
                 file_extension=".pdf",
@@ -126,6 +128,7 @@ def plot_region(gen, beg, end,
     if len(signals_cond) != 0:
         try:
             ch = kwargs.get('ch_object')
+            ch.get_all_signals()
         except BaseException:
             sys.exit("Please give a Chipseq instance with loaded signal in input with the 'ch_object' argument.")
         error = set(signals_cond) - set(ch.all_signals.keys())
@@ -291,13 +294,13 @@ def subplot_genes(ax, gen, beg, end, xticks=None, gene_names=True):
                 minlength=0)
             if gene_names and beg < (g.end + g.start) / 2 < end:
                 if g.start - g.end > length / 10:
-                    ax.text(
-                        (g.start + g.end) / 2, -2, "$\\it{%s}$" %
-                        (g.name), size=8, horizontalalignment='center', verticalalignment='center', color="w")
+                    ax.text((g.start + g.end) / 2, -2, "$\\it{%s}$" %
+                            (g.name), size=8, horizontalalignment='center', 
+                             verticalalignment='center', color="w")
                 else:
-                    ax.text(
-                        (g.start + g.end) / 2, -0.5, "$\\it{%s}$" %
-                        (g.name), size=8, horizontalalignment='center', verticalalignment='center', color="black")
+                    ax.text((g.start + g.end) / 2, -0.5, "$\\it{%s}$" %
+                            (g.name), size=8, horizontalalignment='center', 
+                            verticalalignment='center', color="black")
 
     ax.set_yticks([])
     ax.set_yticklabels([])
@@ -368,6 +371,8 @@ def subplot_signal(ax, ch, cond, beg, end, ylabel=None, xticks=None):
         xticks (list of float): xaxis' tick locations.
             None by default ie. the xaxis is left empty.
     """
+    if not hasattr(ch, "all_signals"):
+        ch.get_all_signals()
     coverage = ch.all_signals[cond]
 
     y = coverage[beg:end]

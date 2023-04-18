@@ -54,16 +54,10 @@ class Chipseq:
                     available signals are loaded. All selected conditions have to 
                     be listed in signal.info file.
 
-        Outputs: creates or adds items to 2 Chipseq instance attributes
+        Outputs: 
             self.signal (dict.):
                    Dictionary of shape {condition: array containing one signal
                    value per genomic position}
-            self.all_signals (dict.):
-                   Dictionary of shape {condition: array containing one signal
-                   value per genomic position}
-            The difference between these 2 attributes is that self.signal 
-            contains the signals loaded with this method only whereas 
-            self.all_signals contains the signals loaded with all Chipseq methods.
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
@@ -110,10 +104,6 @@ class Chipseq:
                         if not hasattr(self, "signal"):
                             self.signal = {}
                         self.signal[line[0]] = np.array(np.repeat(signal, bs))
-
-                        if not hasattr(self, "all_signals"):
-                            self.all_signals = {}
-                        self.all_signals[line[0]] = self.signal[line[0]]
             f.close()
 
         else:
@@ -147,7 +137,7 @@ class Chipseq:
                     available signals are loaded. All selected conditions have 
                     to be listed in signal.info file.
 
-        Outputs: creates or adds items to 3 Chipseq instance attributes
+        Outputs: creates or adds items to 2 Chipseq instance attributes
             self.signal (dict.):
                     Dictionary of shape {condition: array containing one signal
                     value per genomic position (before binning)}
@@ -155,18 +145,11 @@ class Chipseq:
                     Dictionary of shape {cond_bin: array containing one binned 
                     signal value per genomic position} with cond_bin the condition 
                     name merged with the bin size (example: WT_bin200b). 
-            self.all_signals (dict.):
-                Dictionary of shape {cond_bin: array containing one binned 
-                signal value per genomic position}
-            The difference between binned_signal and all_signals attributes is 
-            that binned_signal contains the signals loaded with this method only 
-            whereas self.all_signals contains the signals loaded with all 
-            Chipseq methods.
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_binned_signal(binsize=100,cond='Signal_Test')
-            >>> ch.all_signals["Signal_Test_bin100b"]
+            >>> ch.binned_signal["Signal_Test_bin100b"]
             array([100,   100,   100, ..., 10, 10, 10])
         '''
         if not hasattr(self, "length"):
@@ -230,11 +213,6 @@ class Chipseq:
                 # saves the data as a .npy file
                 np.save(f"{f_path}{cond_name}.npy", binned_data)
 
-        if not hasattr(self, "all_signals"):
-            self.all_signals = {}
-        self.all_signals[cond_name] = self.binned_signal[cond_name]
-
-
     def load_smoothed_signal(self, window, cond="all", *args, **kwargs):
         '''
         If a data file containing the data for the chosen condition and 
@@ -260,7 +238,7 @@ class Chipseq:
                     have to be listed in signal.info file.
 
 
-        Outputs: creates or adds items to 3 Chipseq instance attributes
+        Outputs: creates or adds items to 2 Chipseq instance attributes
             self.signal (dict.):
                    Dictionary of shape {condition: array containing one signal
                    value per genomic position (before smoothing)}
@@ -269,19 +247,11 @@ class Chipseq:
                     signal value per genomic position} with cond_smoo the 
                     condition name merged with the smoothing window size 
                     (example:  WT_smooth200b).
-            self.all_signals (dict.):
-                    Dictionary of shape {cond_smoo: array containing one binned 
-                    signal value per genomic position}
-
-            The difference between smoothed_signal and all_signals attributes is 
-            that smoothed_signal contains the signals loaded with this method 
-            only whereas self.all_signals contains the signals loaded with all 
-            Chipseq methods. 
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_smoothed_signal(window=100,cond='Signal_Test')
-            >>> ch.all_signals["Signal_Test_smooth100b"]
+            >>> ch.smoothed_signal["Signal_Test_smooth100b"]
             array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
         '''
         # gets the path to data and .info files
@@ -336,10 +306,6 @@ class Chipseq:
                 # saves the data as a .npy file
                 np.save(f"{f_path}{cond_name}.npy", smooth_data)
 
-        if not hasattr(self, "all_signals"):
-            self.all_signals = {}
-        self.all_signals[cond_name] = self.smoothed_signal[cond_name]
-
 
     def load_signals_average(self, list_cond, average_name, *args, **kwargs):
         '''
@@ -371,26 +337,16 @@ class Chipseq:
 
         See Chipseq.load_signal method for the data requirements
 
-        Outputs: creates or adds items to the following Chipseq instance attributes
+        Outputs: 
             self.signals_average (dict.):
                     Dictionary of shape {average_name: array containing one 
                     averaged signal value per genomic position}.
-            self.all_signals (dict.):
-                    Dictionary of shape {average_name: array containing one 
-                    averaged signal value per genomic position}.
-            The difference between signals_average and all_signals attributes is 
-            that signals_average contains the signals loaded with this method 
-            only whereas self.all_signals contains the signals loaded with all 
-            Chipseq methods. 
-
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_signals_average(list_cond=["Signal1","Signal2"],
                                         average_name="Mean_signal",
                                         data_treatment = "smoothing",
                                         window=500)
-            >>> ch.all_signals["Mean_signal"]
-            array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
             >>> ch.signals_average["Mean_signal"]
             array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
         '''
@@ -466,9 +422,24 @@ class Chipseq:
             file.write(f"\n{average_name}\t{list_cond}\t{data_treatment}\t{size}")
             file.close()
 
-        if not hasattr(self, "all_signals"):
-            self.all_signals = {}
-        self.all_signals[average_name] = self.signals_average[average_name]
+
+    def get_all_signals(self):
+        '''
+        get_all_signals groups all loaded signals into a single attribute. 
+
+        Args:
+            self (Chipseq instance)
+            
+        Outputs: 
+            self.all_signals (dict.): New Chipseq instance attribute
+                   Dictionary of shape {condition: array containing one signal
+                   value per genomic position}
+        '''
+        d = {}
+        for attr in ("signal","binned_signal","smoothed_signal","signals_average"):
+            if hasattr(self, attr):
+                d.update(getattr(self, attr))
+        self.all_signals = d
 
 
     def load_signal_per_genes(self, cond='all', window=0):
@@ -520,7 +491,7 @@ class Chipseq:
             {'WT': 0.40348639903919425,
              'Signal_Test': 0.210505235030067}
         """
-
+        self.get_all_signals()
         if not hasattr(self, "signals_gene"):
             self.signals_gene = {}
         if not hasattr(self, "genes"):

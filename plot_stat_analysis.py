@@ -150,15 +150,14 @@ def plot_proportion_test(dict_cats,
         brackets_linewidth (float.): Linewidth of the brackets. (default: 1.5)
         ymin (float): y-axis bottom limit
         ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,2)
+        figsize (float,float): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: cats)
-        err_capsize (float.): Length of the error bar caps in points. 
-                (default: 4.0)
-        bar_linewidth (float.): Width of the bars edge. (default: 2.0)
+        err_capsize (float.): Length of the error bar caps in points
+        bar_linewidth (float.): Width of the bars edge. (default: 1.5)
         bar_width (float.): Width of the bars. (default dependent on the number 
-        of categories. If less than 5 cats: 0.6)
+        of categories. If less than 5 cats: 0.7)
 
 
     Example:
@@ -187,25 +186,21 @@ def plot_proportion_test(dict_cats,
         ci[1, c] = res["confidence intervals"][c][1] - prop[c]
 
     if len(cats) < 5:
-        wb = 0.6
-    elif len(cats) < 10:
-        wb = 0.4
+        wb = 0.7
     elif len(cats) < 15:
-        wb = 0.25
-    elif len(cats) < 20:
-        wb = 0.2
+        wb = 0.5
     else:
-        wb = 0.14
-
-    figsize = kwargs.get("figsize", (len(cats) * wb, 2))
+        wb = 0.4
+    figsize = kwargs.get("figsize", (len(cats) * wb/1.5+0.2, 2.2))
     plt.figure(figsize=figsize)
 
     bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 1.5)
-    err_capsize = kwargs.get("err_capsize", 4)
-    plt.bar(cats, prop, yerr=ci,
+    err_capsize = kwargs.get("err_capsize", bar_width*5)
+    plt.bar([str(c) for c in cats], means, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)
+
     error_max = np.amax(res['confidence intervals'], axis=1)
 
     if annot_brackets:
@@ -302,15 +297,14 @@ def plot_enrichment_test(dict_cats,
                 'lower right', 'lower left', 'lower left' and 'best' 
                 (default: 'best'). See matplotlib.pyplot.legend for more 
                 options
-        figsize (float,float): width and height in inches (by default: (w,2)
+        figsize (float,float): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: targ_cats)
-        err_capsize (float.): Length of the error bar caps in points. 
-                (default: 4.0)
-        bar_linewidth (float.): Width of the bars edge. (default: 2.0)
+        err_capsize (float.): Length of the error bar caps in points
+        bar_linewidth (float.): Width of the bars edge. (default: 1.5)
         bar_width (float.): Width of the bars. (default dependent on the 
-        number of categories. If less than 5 cats: 0.6)
+        number of categories. If less than 5 cats: 0.7)
 
     Example:
         >>>  dataX = {"GOterm1":["A","B","D","E","F"],
@@ -349,27 +343,22 @@ def plot_enrichment_test(dict_cats,
         ci[0, n] = res[t]['Proportion'] - res[t]["Prop_conf_int"][0]
         ci[1, n] = res[t]["Prop_conf_int"][1] - res[t]['Proportion']
 
-    if len(targ_cats) < 5:
-        wb = 0.6
-    elif len(targ_cats) < 10:
-        wb = 0.4
-    elif len(targ_cats) < 15:
-        wb = 0.25
-    elif len(targ_cats) < 20:
-        wb = 0.2
+    if len(cats) < 5:
+        wb = 0.7
+    elif len(cats) < 15:
+        wb = 0.5
     else:
-        wb = 0.14
-
-    figsize = kwargs.get("figsize", (len(targ_cats) * wb, 2.2))
+        wb = 0.4
+    figsize = kwargs.get("figsize", (len(cats) * wb/1.5+0.2, 2.2))
     plt.figure(figsize=figsize)
 
     bar_width = kwargs.get("bar_width", wb)
-    bar_linewidth = kwargs.get("bar_linewidth", 2)
-    err_capsize = kwargs.get("err_capsize", 4)
-    plt.bar(targ_cats, prop, yerr=ci,
+    bar_linewidth = kwargs.get("bar_linewidth", 1.5)
+    err_capsize = kwargs.get("err_capsize", bar_width*5)
+    plt.bar([str(c) for c in cats], means, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)
-
+    
     # gets the ylim to defines the necessary difference between the
     # errorbar and the annotation in order to be readable
     ax_y0, ax_y1 = plt.gca().get_ylim()
@@ -449,15 +438,14 @@ def plot_student_test(dict_data, cats="all",
         brackets_linewidth (float.): Linewidth of the brackets.(default: 1.5)
         ymin (float): y-axis bottom limit
         ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,2)
+        figsize (float,float): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
         xticks_rotation (int.): x-ticks labels rotation in degrees
         xticks_labels (list.): x-ticks labels (by default: cats)
-        err_capsize (float.): Length of the error bar caps in points. 
-                (default: 4.0)
+        err_capsize (float.): Length of the error bar caps in points
         bar_linewidth (float.): Width of the bars edge. (default: 2.0)
         bar_width (float.): Width of the bars. (default: 0.6) (default 
-        dependent on the number of categories. If less than 5 cats: 0.6)
+        dependent on the number of categories. If less than 5 cats: 0.7)
 
     Example:
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}
@@ -477,21 +465,17 @@ def plot_student_test(dict_data, cats="all",
         ci[1, c] = res["confidence intervals"][c][1] - means[c]
 
     if len(cats) < 5:
-        wb = 0.6
-    elif len(cats) < 10:
-        wb = 0.4
+        wb = 0.7
     elif len(cats) < 15:
-        wb = 0.25
-    elif len(cats) < 20:
-        wb = 0.2
+        wb = 0.5
     else:
-        wb = 0.14
-    figsize = kwargs.get("figsize", (len(cats) * wb, 2))
+        wb = 0.4
+    figsize = kwargs.get("figsize", (len(cats) * wb/1.5+0.2, 2.2))
     plt.figure(figsize=figsize)
 
     bar_width = kwargs.get("bar_width", wb)
-    bar_linewidth = kwargs.get("bar_linewidth", 2)
-    err_capsize = kwargs.get("err_capsize", 4)
+    bar_linewidth = kwargs.get("bar_linewidth", 1.5)
+    err_capsize = kwargs.get("err_capsize", bar_width*5)
     plt.bar([str(c) for c in cats], means, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)

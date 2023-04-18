@@ -516,7 +516,7 @@ def quantitative_data_student_test(dict_data, cats="all",
     scipy.stats.ttest_ind.
 
     Required args:
-        dict_data (dict.): feature corresponding to each element in a
+        dict_data (dict.): datapoints corresponding to each category in a
                 dictionary of shape {category:list of datapoints}
 
     Optional args:
@@ -532,7 +532,7 @@ def quantitative_data_student_test(dict_data, cats="all",
 
     Returns:
         dict. of shape {"categories":cats,
-                        "proportions":prop,
+                        "means":means,
                         "confidence intervals":(ci0,ci1),
                         "p-values":{(cat1,cat2):pval}
         N.B. These data are also reported in the output_file
