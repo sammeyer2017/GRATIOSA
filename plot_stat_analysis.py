@@ -197,7 +197,7 @@ def plot_proportion_test(dict_cats,
     bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 1.5)
     err_capsize = kwargs.get("err_capsize", bar_width*5)
-    plt.bar([str(c) for c in cats], means, yerr=ci,
+    plt.bar(cats, prop, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)
 
@@ -355,7 +355,7 @@ def plot_enrichment_test(dict_cats,
     bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 1.5)
     err_capsize = kwargs.get("err_capsize", bar_width*5)
-    plt.bar([str(c) for c in cats], means, yerr=ci,
+    plt.bar(targ_cats, prop, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)
     
