@@ -343,13 +343,13 @@ def plot_enrichment_test(dict_cats,
         ci[0, n] = res[t]['Proportion'] - res[t]["Prop_conf_int"][0]
         ci[1, n] = res[t]["Prop_conf_int"][1] - res[t]['Proportion']
 
-    if len(cats) < 5:
+    if len(targ_cats) < 5:
         wb = 0.7
-    elif len(cats) < 15:
+    elif len(targ_cats) < 15:
         wb = 0.5
     else:
         wb = 0.4
-    figsize = kwargs.get("figsize", (len(cats) * wb/1.5+0.2, 2.2))
+    figsize = kwargs.get("figsize", (len(targ_cats) * wb/1.5+0.2, 2.2))
     plt.figure(figsize=figsize)
 
     bar_width = kwargs.get("bar_width", wb)
