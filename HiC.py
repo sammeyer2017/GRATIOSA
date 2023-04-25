@@ -9,63 +9,62 @@ from pathlib import Path
 from globvar import *
 import Genome
 
-'''
-The HiC class is used to gather spatial information obtained from HiC data 
-analysis with tools such as Chromosight. The two patterns analyzed here are 
-borders (between two topological domains) and loops (more specifically the 
-positions of the two regions that come into contact).
-'''
-
-
 class HiC:
+    '''
+    The HiC class is used to gather spatial information obtained from HiC data 
+    analysis with tools such as Chromosight. The two patterns analyzed here are 
+    borders (between two topological domains) and loops (more specifically the 
+    positions of the two regions that come into contact).
+
+    Each HiC instance has to be initialized with an organism name
+    
+        >>> hc = HiC.HiC("dickeya")
+    '''
 
     def __init__(self, name):
-        """ Called when an HiC instance is created,
-        initializes the attribute name.
-        """
         self.name = name
 
     def load_hic_borders(self, cond="all"):
         """
         load_hic_borders imports a list of borders from a data file (typically
-        a borders.tsv data file obtained with Chromosight) containing:
-        + (required) border coordinate (bin number),
-        + (optional) border score (pearson correlation coefficient between 
-        the border kernel and the detected pattern), border pvalue and border qvalue
-        See Chromosight documentation for more details.
+        a borders.tsv data file obtained with Chromosight) containing at least,
+        for each border, its position (bin number) and optionally its identification 
+        score (pearson correlation coefficient between the border kernel and the 
+        detected pattern), pvalue and qvalue.
+        Creates 2 new attributes of the HiC instance:
+            * self.borders (dict. of dict.) 
+                    dictionary containing one subdictionary per condition 
+                    with the shape self.borders[cond]={bin_nb: {"score": 
+                    score, "pval": pvalue, "qval": qvalue,"binsize":binsize}}.
+                    N.B.: If data are binned at 2kb, the bin with number 10 
+                    corresponds to data between 20000 and 22000.    
+            * self.borders_pos (dict. of dict)
+                    dictionary containing one subdictionary per 
+                    condition, with the shape self.borders_pos[cond] =
+                    {'borders':list of positions that are in a border
+                    'no_borders':list of positions that are not in a border}
 
         Args:
-            self (HiC instance)
             cond (Optional [list of str.]): selection of one or several
                     conditions (1 condition corresponds to 1 data file and 
                     each condition has to be listed in the border.info file).
                     By default: cond ='all' ie all available conditions are 
                     loaded.
-
-        Requirements:
+        Note:
             The data importation requires a borders.info file that contains the
             column indices of each information in the data file and some
             additional information, in the following order:
-                (required) [0] Condition, [1] Filename, [2] Startline,
-                           [3] Separator, [4] Bin, [5] Binsize (in b)
-                (optional) [6] Score, [7] Pvalue,[8] Qvalue
+                * (required) [0] Condition, [1] Filename, [2] Startline,
+                  [3] Separator, [4] Bin, [5] Binsize (in b)
+                * (optional) [6] Score, [7] Pvalue,[8] Qvalue
             borders.info and data file have to be in the /HiC/Borders/ directory
 
-        Output:
-            self.borders (dict. of dict.): new attribute of the HiC instance,
-                    dictionary containing one subdictionary per condition 
-                    with the shape self.borders[cond]={bin_nb: {"score": 
-                    score, "pval": pvalue, "qval": qvalue,"binsize":binsize}}
-                    N.B.: If data are binned at 2kb, the bin with number 10 
-                    corresponds to data between 20000 and 22000.
-            self.borders_pos (dict. of dict): new attribute of the HiC 
-                    instance, dictionary containing one subdictionary per 
-                    condition, with the shape self.borders_pos[cond] =
-                    {'borders':list of positions that are in a border,
-                     'no_borders':list of positions that are not in a border}
+        Note: 
+            See Chromosight documentation for more details about the input format.
 
-        !!!WARNING: make sure that the version of the genome is the same as
-        the version used in the HiC analysis workflow!!!
+        Warning:
+            Make sure that the version of the genome is the same as
+            the version used in the HiC analysis workflow
 
         Example:
             >>> hc = HiC.HiC("dickeya")
@@ -150,11 +149,24 @@ class HiC:
     def load_hic_loops(self, cond="all"):
         """
         load_hic_loops imports a list of loops from a data file (typically
-        a loops.tsv data file obtained with Chromosight) containing:
-        + (required) loops coordinates (bin numbers),
-        + (optional) loops score (pearson correlation coefficient between the
-        loop kernel and the detected pattern), loop pvalue and loop qvalue
-        See Chromosight documentation for more details.
+        a loops.tsv data file obtained with Chromosight) containing, for each 
+        loop, at least the loop coordinates (2 bin numbers) and optionally the 
+        loop score (pearson correlation coefficient between the loop kernel and 
+        the detected pattern), the p-value and the q-value.
+
+        Creates 2 new attributes of the HiC instance:
+            * self.loops (dict. of dict.)
+                dictionary containing one subdictionary per condition with 
+                the shape self.loops[cond] =
+                {(bin1_nb,bin2_nb): {"score": score, "pval": pvalue,
+                "qval": qvalue, "binsize":binsize}}
+                N.B.: If data are binned at 2kb, the bin with number 10 
+                corresponds to data between 20000 and 22000.
+            * self.loops_pos (dict. of dict)
+                dictionary containing one subdictionary per condition, with 
+                the shape self.loops_pos[cond] =
+                {'loops':list of positions that are in a loop,
+                'no_loops':list of positions that are not in a loop}
 
         Args:
             self (HiC instance)
@@ -163,33 +175,22 @@ class HiC:
                     has to be in the loops.info file). By default: 
                     cond ='all' ie all available data are loaded.
 
-        Requirements:
+        Note:
             The data importation requires a loops.info file that contains the
             column indices of each information in the data file and some 
             additional information, in the following
             order:
-                (required) [0] Condition, [1] Filename, [2] Startline,
-                           [3] Separator, [4] Bin1, [5] Bin2, 
-                           [6] Binsize (in b),
-                (optional) [7] Score, [8] Pvalue,[9] Qvalue
+                * (required) [0] Condition, [1] Filename, [2] Startline,
+                  [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
+                * (optional) [7] Score, [8] Pvalue,[9] Qvalue
             loops.info and data file have to be in the /HiC/Loops/ directory
+        
+        Note: 
+            See Chromosight documentation for more details about the input format.
 
-        Output:
-            self.loops (dict. of dict.): new attribute of the HiC instance,
-                dictionary containing one subdictionary per condition with 
-                the shape self.loops[cond] =
-                {(bin1_nb,bin2_nb): {"score": score, "pval": pvalue,
-                "qval": qvalue, "binsize":binsize}}
-                N.B.: If data are binned at 2kb, the bin with number 10 
-                corresponds to data between 20000 and 22000.
-            self.loops_pos (dict. of dict): new attribute of the HiC instance,
-                dictionary containing one subdictionary per condition, with 
-                the shape self.loops_pos[cond] =
-                {'loops':list of positions that are in a loop,
-                 'no_loops':list of positions that are not in a loop}
-
-        !!!WARNING: make sure that the version of the genome is the same as
-        the version used in the HiC analysis workflow!!!
+        Warning:
+            Make sure that the version of the genome is the same as
+            the version used in the HiC analysis workflow
 
         Example:
             >>> hc = HiC.HiC("dickeya")
@@ -288,14 +289,28 @@ class HiC:
         containing at least the loops coordinates (2 bin numbers) and 
         determines the list of genes overlapping one of the loops positions.
 
-        Requirements:
-            The data importation requires a loops.info file that contains 
-            the column indices of each information in the data file and 
-            some additional information, in the following order:
-            (required) [0] Condition, [1] Filename, [2] Startline, 
-                       [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
-            (optional) [7] Score, [8] Pvalue,[9] Qvalue
-            loops.info and data file have to be in the /HiC/Loops/ directory
+        Creates:
+            self.loops_pos (dict. of dict.) 
+                    new attribute of the Genome 
+                    instance. Dictionary containing one dictionary per 
+                    condition listed in loops.info. Each subdictionary has 
+                    2 keys: "loops" and "no_loops" and contains the 
+                    corresponding lists of genomic positions.
+            self.loops_genes (dict. of dict.) 
+                    New attribute of the Genome instance. 
+                    Dictionary containing one dictionary per condition listed 
+                    in loops.info. The key of this dictionary contains the 
+                    condition name and the chosen window size (for example 
+                    "cond_w100b" for a 100b window).
+                    Each subdictionary has 2 keys: "loops" and "no_loops" and
+                    contains the corresponding lists of genes.
+                    For example, self.loops_genes[cond_w0b]["loops"] returns
+                    the list of genes that overlap the loops positions.
+            self.genes[locus].is_loop (dict.) 
+                    New attribute of Gene instances related to the Genome
+                    instance given as argument.Dictionary of shape
+                    {condition:boolean}. The boolean is True if the gene
+                    overlaps the loop positions (window included).
 
         Args:
             cond (Optional [list of str.]): selection of one or several 
@@ -309,53 +324,43 @@ class HiC:
             window (Optional [int.]): window around the loop positions (ie
                     around the 2 bins) for the seeking of overlapping genes
                     (Default: 0). All genes overlaping any position between:
-                        loops_start_bin1 - window and loops_end_bin1 + window 
-                     or loops_start_bin2 - window and loops_end_bin2 + window
+                        * loops_start_bin1 - window and loops_end_bin1 + window or 
+                        * loops_start_bin2 - window and loops_end_bin2 + window
                     are considered "loops" genes.
 
-        Output:
-            self.loops_pos (dict. of dict.): new attribute of the Genome 
-                    instance. Dictionary containing one dictionary per 
-                    condition listed in loops.info. Each subdictionary has 
-                    2 keys: "loops" and "no_loops" and contains the 
-                    corresponding lists of genomic positions.
-            self.loops_genes (dict. of dict.): created only if 
-                    per_genes = True. New attribute of the Genome instance. 
-                    Dictionary containing one dictionary per condition listed 
-                    in loops.info. The key of this dictionary contains the 
-                    condition name and the chosen window size (for example 
-                    "cond_w100b" for a 100b window).
-                    Each subdictionary has 2 keys: "loops" and "no_loops" and
-                    contains the corresponding lists of genes.
-                    For example, self.loops_genes[cond_w0b]["loops"] returns
-                    the list of genes that overlap the loops positions.
-            self.genes[locus].is_loop (dict.): created only if per_genes = True.
-                    new attribute of Gene instances related to the Genome
-                    instance given as argument.Dictionary of shape
-                    {condition:boolean}. The boolean is True if the gene
-                    overlaps the loop positions (window included).
+        Note:
+            The data importation requires a loops.info file that contains 
+            the column indices of each information in the data file and 
+            some additional information, in the following order:
+                * (required) [0] Condition, [1] Filename, [2] Startline, 
+                  [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
+                * (optional) [7] Score, [8] Pvalue,[9] Qvalue
+            loops.info and data file have to be in the /HiC/Loops/ directory
+        
+        Note:    
+            The position (pos) is the bin number. If data are binned at 2kb,
+            the bin with number 10 corresponds to data between 20000 and 22000.
 
-        N.B.: The position (pos) is the bin number. If data are binned at 2kb,
-        the bin with number 10 corresponds to data between 20000 and 22000.
+        Warning:
+            This method needs a genomic sequence and a genomic annotation.
+            If no annotation is loaded, the load_annotation method with the 
+            default "sequence.gff3" file is computed. If no sequence is loaded, 
+            the load_seq method with de defualt "sequence.fasta" is computed.
+            To use another annotation or sequence, please load them to your
+            Transcriptome instance with the following commands before using this 
+            method:
+                >>> import Genome
+                >>> import HiC
+                >>> HC = HiC.HiC("ecoli")
+                >>> g = Genome.Genome(HC.name)
+                >>> g.load_annotation(annot_file=chosen_file)
+                >>> g.load_seq(filename=chosen_file2
+                >>> HC.genes = g.genes
+                >>> HC.length = g.length
 
-        N.B.: This method needs a genomic sequence and a genomic annotation.
-        If no annotation is loaded, the load_annotation method with the 
-        default "sequence.gff3" file is computed. If no sequence is loaded, 
-        the load_seq method with de defualt "sequence.fasta" is computed.
-        To use another annotation or sequence, please load them to your
-        Transcriptome instance with the following commands before using this 
-        method:
-            >>> import Genome
-            >>> import HiC
-            >>> HC = HiC.HiC("ecoli")
-            >>> g = Genome.Genome(HC.name)
-            >>> g.load_annotation(annot_file=chosen_file)
-            >>> g.load_seq(filename=chosen_file2
-            >>> HC.genes = g.genes
-            >>> HC.length = g.length
-
-        !!!Caution: make sure that the version of the genome is the same as
-        the version used in the HiC analysis workflow!!!
+        Warning:
+            Make sure that the version of the genome is the same as
+            the version used in the HiC analysis workflow
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -427,6 +432,31 @@ class HiC:
         containing at least the border position (bin number) and determines 
         the list of genes overlapping one of the borders.
 
+        Creates:
+            * self.borders_genes (dict. of dict.) 
+                    created only if per_genes = True. New attribute of the 
+                    Genome instance. Dictionary containing one dictionary 
+                    per condition listed in borders.info. The key of this 
+                    dictionary contains the condition name and the chosen
+                    window size (for example "cond_w100b" for a 100b window).
+                    Each subdictionary has 2 keys: "borders" and "no_borders" 
+                    and contains the corresponding lists of genes. For 
+                    example, self.borders_genes[cond_w0b]["borders"] returns
+                    the list of genes that overlap the borders positions.
+            * self.borders_pos (dict. of dict) 
+                    new attribute of the HiC instance, dictionary containing 
+                    one subdictionary per condition, with the shape 
+                    self.borders_pos[cond] =
+                    {'borders':list of positions that are in a border,
+                    'no_borders':list of positions that are not in a border}
+            * self.genes[locus].is_border (dict.) 
+                    created only if per_genes = True.
+                    New attribute of Gene instances related to the Genome
+                    instance given as argument.Dictionary of shape
+                    {condition:boolean}. The boolean is True if the gene
+                    overlaps the border positions (window included).
+
+
         Args:
             cond (Optional [list of str.]): selection of one or several 
                     conditions (1 condition corresponds to 1 data file and 
@@ -442,62 +472,40 @@ class HiC:
                     border_start_bin - window and border_end_bin + window 
                     are considered "borders" genes.
 
-        Requirements:
+        Note:
             The data importation requires a borders.info file that contains 
             the column indices of each information in the data file and some
             additional information, in the following order:
-                (required) [0] Condition, [1] Filename, [2] Startline,
-                           [3] Separator, [4] Bin, [5] Binsize (in b)
-                (optional) [6] Score, [7] Pvalue,[8] Qvalue
-            borders.info and data file have to be in the /HiC/Borders/ 
-            directory
+                * (required) [0] Condition, [1] Filename, [2] Startline,
+                  [3] Separator, [4] Bin, [5] Binsize (in b)
+                * (optional) [6] Score, [7] Pvalue,[8] Qvalue
+            borders.info and data file have to be in the /HiC/Borders/ directory
 
-        Output:
-            self.borders_genes (dict. of dict.): 
-                    created only if per_genes = True. New attribute of the 
-                    Genome instance. Dictionary containing one dictionary 
-                    per condition listed in borders.info. The key of this 
-                    dictionary contains the condition name and the chosen
-                    window size (for example "cond_w100b" for a 100b window).
-                    Each subdictionary has 2 keys: "borders" and "no_borders" 
-                    and contains the corresponding lists of genes. For 
-                    example, self.borders_genes[cond_w0b]["borders"] returns
-                    the list of genes that overlap the borders positions.
-            self.borders_pos (dict. of dict): 
-                    new attribute of the HiC instance, dictionary containing 
-                    one subdictionary per condition, with the shape 
-                    self.borders_pos[cond] =
-                    {'borders':list of positions that are in a border,
-                     'no_borders':list of positions that are not in a border}
-            self.genes[locus].is_border (dict.): 
-                    created only if per_genes = True.
-                    New attribute of Gene instances related to the Genome
-                    instance given as argument.Dictionary of shape
-                    {condition:boolean}. The boolean is True if the gene
-                    overlaps the border positions (window included).
+        Note:
+            The position (pos) is the bin number. If data are binned at 2kb,
+            the bin with number 10 corresponds to data between 20000 and 22000.
 
-        N.B.: The position (pos) is the bin number. If data are binned at 2kb,
-        the bin with number 10 corresponds to data between 20000 and 22000.
-
-        N.B.: This method needs a genomic sequence and a genomic annotation.
-        If no annotation is loaded, the load_annotation method with the 
-        default "sequence.gff3" file is computed. If no sequence is loaded, 
-        the load_seq method with de defualt "sequence.fasta" is computed.
-        To use another annotation or sequence, please load them to your 
-        Transcriptome instance with the following commands before using this 
-        method:
-            >>> import Genome
-            >>> import HiC
-            >>> HC = HiC.HiC("ecoli")
-            >>> g = Genome.Genome(HC.name)
-            >>> g.load_annotation(annot_file=chosen_file)
-            >>> g.load_seq(filename=chosen_file2
-            >>> HC.genes = g.genes
-            >>> HC.length = g.length
+        Warning:
+            This method needs a genomic sequence and a genomic annotation.
+            If no annotation is loaded, the load_annotation method with the 
+            default "sequence.gff3" file is computed. If no sequence is loaded, 
+            the load_seq method with de defualt "sequence.fasta" is computed.
+            To use another annotation or sequence, please load them to your 
+            Transcriptome instance with the following commands before using this 
+            method:
+                >>> import Genome
+                >>> import HiC
+                >>> HC = HiC.HiC("ecoli")
+                >>> g = Genome.Genome(HC.name)
+                >>> g.load_annotation(annot_file=chosen_file)
+                >>> g.load_seq(filename=chosen_file2
+                >>> HC.genes = g.genes
+                >>> HC.length = g.length
 
 
-        !!!Caution: make sure that the version of the genome is the same as
-        the version used in the HiC analysis workflow!!!
+        Warning:
+            make sure that the version of the genome is the same as
+            the version used in the HiC analysis workflow
 
         Example:
             >>> g = Genome.Genome("dickeya")

@@ -22,9 +22,13 @@ def add_expression_to_genes(genes_dict,
     """
     Called by load_expression, adds expression data to Gene objects by 
     parsing a file with one column containing the locus tags of the genes and 
-    one containing the expression data.
+    one containing the expression data. 
 
-    Arg:
+    Creates a new attribute "expression" of the Gene objects contained in 
+    the genes_dict given as argument. This attribute is a dictionary of shape 
+    {condition: expression level [float.]}
+
+    Args:
         genes_dict (dict.): dictionary of shape {locus: Gene object}
         cond (str.): condition name
         filename (str.): path to the file containing the expression data
@@ -34,17 +38,13 @@ def add_expression_to_genes(genes_dict,
         is_log (bool.): True if the data are already in log2, such as log2RPKM.
                         False if the data are RPKM.
         separartor (str.): file separator
-    NB: The numbering starts at 0.
-
-    Output:
-        expression (dict.): new attribute of the Gene objects contained in 
-                the genes_dict given as argument.
-                Dictionary of shape {condition: expression level (float.)}
 
     Returns:
-        Dictionary of shape {'locus':Gene object} with in key the locus tags 
-                associated to an expression data and in value the gene object 
-                associated to each of these locus tags.
+        Dictionary: Dict. of shape {'locus':Gene object} with in key the locus 
+                tags associated to an expression data and in value the gene 
+                object associated to each of these locus tags.
+    Note: 
+        Column numbering starts at 0.
     """
     genes_valid = {}
     except_locus = []
@@ -117,10 +117,12 @@ def load_fc_pval_cond(genes_dict,
         p_val_col (int.): index of the column containing the p-values in the
                 file. If no index is indicated (default: None), the p-values 
                 will be assigned to 0 for all genes.
-    NB: The numbering starts at 0.
-
+    
     Returns:
-        List containing the locus tags of all genes having a valid log2FC
+        List: locus tags of all genes having a valid log2FC
+
+    Note: 
+        Column numbering starts at 0.
     '''
     genes_valid = []
     if separator == '\\t':
@@ -165,26 +167,28 @@ def process_bam_paired_end(tr):
     converts paired-end .bam files in .npy files containing the fragments.
     These files will enable a faster data loading for the next data
     importation with load_cov_start_end or load_rnaseq_cov.
-    The paired-end .bam reads files are, with a bam_files.info file, in the
-    /rnaseq_reads/ directory. The bam_files.info file contains the following
-    information:  [0] Condition [1] Reads filename for this condition
+    
+    Creates:
+        * For each condition listed in the bam_files.info file, this function
+          creates a npz file containing the coverage data on both DNA strands
+          (Rpos.npy and Rneg.npy). These files are saved in the /rnaseq_reads/
+          directory
+        *  A reads.info file containing the information required to associate
+           each .npz  file to a condition name is also created (or completed if
+           this file already exists) in the /rnaseq_reads/ directory. This file
+           contains the following columns:
+           [0] Condition [1] Reads filename [2] BAM filename
 
-    WARNING: For paired-end reads only !
-
-    Arg:
+    Args:
         tr: Transcriptome instance
 
-    Outputs:
-        For each condition listed in the bam_files.info file, this function
-        creates a npz file containing the coverage data on both DNA strands
-        (Rpos.npy and Rneg.npy). These files are saved in the /rnaseq_reads/
-        directory
-
-        A reads.info file containing the information required to associate
-        each .npz  file to a condition name is also created (or completed if
-        this file already exists) in the /rnaseq_reads/ directory. This file
-        contains the following columns:
-        [0] Condition [1] Reads filename [2] BAM filename
+    Note: 
+        The paired-end .bam reads files are, with a bam_files.info file, in the
+        /rnaseq_reads/ directory. The bam_files.info file contains the following
+        information:  [0] Condition [1] Reads filename for this condition
+    
+    Warnings: 
+        Only for paired-end reads !
     """
 
     exist_cond = []
@@ -259,25 +263,28 @@ def cov_from_reads(tr):
     Called by load_rnaseq_cov, cov_from_reads computes the coverage from 
     paired-end reads previously converted to .npz format (containing one .npy 
     per strand: Rpos.npy and Rneg.npy) with the process_bam_paired_end 
-    function. The .npz files have to be, with a reads.info file (also created 
-    by the process_bam_paired_end function), in the /rnaseq_reads/ directory. 
-    This reads.info file contains at least the following information: 
-    [0] Condition [1] Reads filename
+    function. 
 
-    Arg:
+    Creates:
+        * For each condition listed in the reads.info file, this function
+          creates a npz file containing the coverage data on both DNA strands:
+          cov_pos.npy and cov_neg.npy. These files are saved in the 
+          /rnaseq_cov/ directory and will enable a faster data loading for the 
+          next data importation with load_rnaseq_cov.
+
+        * A cov.info file containing the information required to associate
+          each .npz  file to a condition name is also created (or completed if
+          this file already exists) in the /rnaseq_cov/ directory. This file
+          contains the following columns:  [0] Condition [1] Coverage filename
+
+    Args:
         tr: Transcriptome instance
 
-    Outputs:
-        For each condition listed in the reads.info file, this function
-        creates a npz file containing the coverage data on both DNA strands:
-        cov_pos.npy and cov_neg.npy. These files are saved in the 
-        /rnaseq_cov/ directory and will enable a faster data loading for the 
-        next data importation with load_rnaseq_cov.
-
-        A cov.info file containing the information required to associate
-        each .npz  file to a condition name is also created (or completed if
-        this file already exists) in the /rnaseq_cov/ directory. This file
-        contains the following columns:  [0] Condition [1] Coverage filename
+    Note: 
+        The .npz files have to be, with a reads.info file (also created 
+        by the process_bam_paired_end function), in the /rnaseq_reads/ directory. 
+        This reads.info file contains at least the following information: 
+        [0] Condition [1] Reads filename
     """
     # load npz file
     gen = Genome.Genome(tr.name)
@@ -333,28 +340,29 @@ def cov_start_stop_from_reads(tr):
     density of RNA fragment starts and ends from paired-end reads previously 
     converted to .npz format (containing one .npy per strand: Rpos.npy and 
     Rneg.npy) with the process_bam_paired_end function.
-    The .npz files have to be, with a reads.info file (also created by 
-    process_bam_paired_end function), in the /rnaseq_reads/ directory. 
-    This reads.info file contains at least the following information:
-    [0] Condition [1] Reads filename
+    
+    Creates:
+        * For each condition listed in the reads.info file, this function
+          creates a npz file containing the density of RNA fragment starts and
+          ends on both DNA strands: cov_start_pos.npy, cov_start_neg.npy,
+          cov_end_pos.npy and cov_end_neg.npy.
+          These files are saved in the /rnaseq_cov/ directory and will enable
+          a faster data loading for the next data importation with the
+          cov_start_stop_from_reads function.
+        * A cov_start_stop.info file containing the information required to 
+          associate each .npz  file to a condition name is also created (or 
+          completed if this file already exists) in the /rnaseq_cov/ directory. 
+          This file contains the following columns:  
+          [0] Condition [1] Coverage filename
 
-    Arg:
+    Args:
         tr: Transcriptome instance
 
-    Outputs:
-        For each condition listed in the reads.info file, this function
-        creates a npz file containing the density of RNA fragment starts and
-        ends on both DNA strands: cov_start_pos.npy, cov_start_neg.npy,
-        cov_end_pos.npy and cov_end_neg.npy.
-        These files are saved in the /rnaseq_cov/ directory and will enable
-        a faster data loading for the next data importation with the
-        cov_start_stop_from_reads function.
-
-        A cov_start_stop.info file containing the information required to 
-        associate each .npz  file to a condition name is also created (or 
-        completed if this file already exists) in the /rnaseq_cov/ directory. 
-        This file contains the following columns:  
-        [0] Condition [1] Coverage filename
+    Note: 
+        The .npz files have to be, with a reads.info file (also created by 
+        process_bam_paired_end function), in the /rnaseq_reads/ directory. 
+        This reads.info file contains at least the following information:
+        [0] Condition [1] Reads filename
     """
     gen = Genome.Genome(tr.name)
     if not hasattr(gen, "seq"):

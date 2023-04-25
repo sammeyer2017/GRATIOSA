@@ -3,15 +3,12 @@
 
 import numpy as np
 
-'''
-The Gene class allows to gather information at the level of a single gene:
-its identifiers, its coordinates, its expression levels under different
-conditions, its functional annotations...
-'''
-
-
 class Gene:
-
+    '''
+    The Gene class allows to gather information at the level of a single gene:
+    its identifiers, its coordinates, its expression levels under different
+    conditions, its functional annotations...
+    '''
     def __init__(self, locus_tag, name, ID, left, right, strand, ASAP_name):
         self.locus_tag = locus_tag
         self.ID = ID

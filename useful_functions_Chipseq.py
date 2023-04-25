@@ -1,12 +1,12 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-import numpy as np
-from scipy import stats
 
 """
 Functions called by Chipseq methods
 """
 
+import numpy as np
+from scipy import stats
 
 def binning(data, binsize, stat="mean"):
     """
@@ -86,6 +86,9 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col):
 
     Returns:
         List of tuples of shape (start,end). One tuple represents one peak.
+
+    Note: 
+        Column numbering starts at 0.
     '''
     peaks = []
     if sep == '\\t':

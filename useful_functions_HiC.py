@@ -29,13 +29,14 @@ def load_HiC_site_cond(site_type,
         bin1_col (int.): index of the column containing the position of the 
                 first bin
         binsize (int.): binsize (in b)
+        bin2_col (Optional [int.]): index of the column containing the position of the
+                second bin
+        score_col (Optional [int.]): index of the column containing the position of the score
+        pval_col (Optional [int.]): index of the column containing the position of the pvalue
+        qval_col (Optional [int.]): index of the column containing the position of the qvalue
 
-    Optional args:
-        bin2_col (int.): index of the column containing the position of the
-            second bin
-        score_col (int.): index of the column containing the position of the score
-        pval_col (int.): index of the column containing the position of the pvalue
-        qval_col (int.): index of the column containing the position of the qvalue
+    Note: 
+        Column numbering starts at 0.
     '''
     if sep == '\\t':
         sep = '\t'

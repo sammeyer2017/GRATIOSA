@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import sys
 import os
 import operator
@@ -11,23 +12,20 @@ from TSS_TTS_TU import TSS, TTS, TU
 from datetime import datetime
 from pathlib import Path
 
-'''
-The Genome class is one of the main classes of this package. It gathers all
-the attributes of a genome such as the sequence, the set of genes (with their
-functional annotations and their orientation) but also all the annotations of
-TSS, TU and TTS.
-'''
-
-
 class Genome:
 
+    '''
+    The Genome class is one of the main classes of this package. It gathers all
+    the attributes of a genome such as the sequence, the set of genes (with their
+    functional annotations and their orientation) but also all the annotations of
+    TSS, TU and TTS.
+
+    Each Genome instance has to be initialized with an organism name
+    
+        >>> g = Genome.Genome("ecoli")
+    '''
+
     def __init__(self, name):
-        """
-        Called when a Genome instance is created,
-        initializes the name attribute.
-        Example:
-            >>> g = Genome.Genome("dickeya")
-        """
         self.name = name
 
     def load_seq(self, filename="sequence.fasta"):
@@ -36,16 +34,14 @@ class Genome:
         main directory of the organism using useful_functions_genome.load_seq
         function. Adds this sequence, its complement, and its length to a
         Genome instance.
+        Creates 3 new attributes to the Genome instance
+            * seq (str.): genomic sequence compose of A,T,G and C
+            * seqcompl (str.): complement sequence to seq
+            * length (int.): length of the genomic sequence
 
         Args:
-            self (Genome instance)
             filename (Optional [str.}): name of the file containing the DNA
                     sequence in FASTA format. Default: "sequence.fasta"
-
-        Outputs: creates 3 new attributes to the Genome instance
-            seq (str.): genomic sequence compose of A,T,G and C
-            seqcompl (str.): complement sequence to seq
-            length (int.): length of the genomic sequence
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -71,26 +67,29 @@ class Genome:
         """
         load_annotation loads a gene annotation (coordinates, length,
         name...) from a file present in the /annotation/ directory.
-        If the file is a .gff3 or .gff information will be loaded using
-        useful_functions_genome.load_gff.
-        Else, the information importation requires an annotation.info file,
-        containing column indices of each information in the data file and some
-        additional information, in the following order:
-        [0] Filename [1] Separator [2] Locus_tag column [3] Name column
-        [4] ID column [5] Strand column [6] Left coordinate column
-        [7] Right coordinate column [8] File start line
+
+        Creates a new attribute of the Genome instance: 
+            * self.genes (dict.) 
+                self.genes is a dictionary of shape 
+                {locus_tags: Gene object}. Each Gene object is 
+                initialized with the following attributes:
+                locus_tag, ID, name,strand, left, right, start, end, 
+                middle, length and ASAP. 
 
         Args:
-            self (Genome instance)
             filename (Optional [str.]): name of the file containing the 
                     genomic annotation. Default: "sequence.gff3"
-        Output:
-            self.genes (dict.): new attribute of the Genome instance.
-                    self.genes is a dictionary of shape 
-                    {locus_tags: Gene object}. Each Gene object is 
-                    initialized with the following attributes:
-                    locus_tag, ID, name,strand, left, right, start, end, 
-                    middle, length and ASAP. 
+
+        Note: 
+            If the file is a .gff3 or .gff information will be loaded using
+            useful_functions_genome.load_gff.
+            Else, the information importation requires an annotation.info file,
+            containing column indices of each information in the data file and 
+            some additional information, in the following order:
+            [0] Filename [1] Separator [2] Locus_tag column [3] Name column
+            [4] ID column [5] Strand column [6] Left coordinate column
+            [7] Right coordinate column [8] File start line
+
         Example:
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation()
@@ -131,25 +130,25 @@ class Genome:
         """
         load_genes_per_pos associates each position with a list of genes
         overlapping this and its surrounding positions delimited
-        by the window size given as an argument.
+        by the window size given as an argument. 
 
-        Args:
-            self (Genome instance)
-            window (Optional [int.]): window size in b. load_genes_per_pos 
-                    finds genes between pos-window/2 and pos+window/2
-                    (inclusive). Default: window = 0
-
-        Output:
-            self.genes_per_pos (dict.): new attribute of the Genome instance.
+        Creates a new attribute of the Genome instance: 
+            * self.genes_per_pos (dict.)
                     self.genes is a dictionary of shape {position: list of 
                     genes}. It contains, for each position p, the list of
                     genes overlapping any position between p-window/2 and 
                     p+window/2 (inclusive)
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using the load_genes_per_pos method.
+        Args:
+            window (Optional [int.]): window size in b. load_genes_per_pos 
+                    finds genes between pos-window/2 and pos+window/2
+                    (inclusive). Default: window = 0
+
+        Warning:
+            This method needs a genomic annotation. If no annotation is
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using the load_genes_per_pos method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -187,32 +186,32 @@ class Genome:
         """
         For each gene and positions, load_neighbor_all finds nearest
         neighbors (left and right) on genome, whatever their strand.
+        
+        Creates 2 new attributes of Gene instances:
+            * self.genes[locus].left_neighbor 
+                locus of the nearest left-side neighbor gene
+            * self.genes[locus].right_neighbor 
+                locus of the nearest right-side neighbor gene
 
-        Arg:
-            self (Genome instance)
-
-        Outputs:
-            2 new attributes of Gene instances related to the Genome
-            instance given as argument:
-                self.genes[locus].left_neighbor: locus of the nearest
-                        left-side neighbor gene
-                self.genes[locus].right_neighbor: locus of the nearest
-                        right-side neighbor gene
-            4 new attributes of Genome instance:
-                self.genomic_situation (dict.): dict of shape {position:
-                        situation} with situation either "intergenic" or
-                        "intragenic".
-                self.left_neighbor (dict.): dict of shape {position:
-                        locus of the nearest left-side neighbor gene}
-                self.right_neighbor (dict.): dict of shape {position:
-                        locus of the nearest right-side neighbor gene}
-                self.gene (dict.): dict of shape {position: gene} with
-                        gene = "NA" if the position is intergenic.
-
-        N.B.: This method needs a genomic annotation. If no annotation is 
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using the load_neighbor_all method.
+        and 4 new attributes of Genome instance:
+            * self.genomic_situation (dict.) 
+                dict of shape {position: situation} with situation either 
+                "intergenic" or "intragenic".
+            * self.left_neighbor (dict.) 
+                dict of shape {position: locus of the nearest left-side 
+                neighbor gene}
+            * self.right_neighbor (dict.) 
+                dict of shape {position: locus of the nearest right-side 
+                neighbor gene}
+            * self.gene (dict.) 
+                dict of shape {position: gene} with gene = "NA" if the 
+                position is intergenic.
+            
+        Warning:
+            This method needs a genomic annotation. If no annotation is 
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using the load_neighbor_all method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -288,46 +287,46 @@ class Genome:
 
     def load_gene_orientation(self, couple=3, max_dist=5000):
         """
-        Compute gene orientation with the following criteria:
-        If couple = 3, gene is considered:
-            divergent if left neighbor on - strand
-                     and right neighbor on + strand,
-            convergent if left neighbor on + strand
-                      and right neighbor on - strand,
-            tandem if left and right neighbors on same strand
-                   (whatever the strand of the given gene is)
-            isolated if the distance between neighbors is higher than the
-                     maximal distance given as argument
-        If couple = 2, gene is considered
-            tandem if predecessor (left neighbor for gene on + strand,
-                   right neighbor for gene on - strand) is on same strand,
-            divergent if the predecessor is on opposite strand.
+        Compute gene orientation with the following criteria: 
 
-        Args:
-            self (Genome instance)
-            couple (int.): number of genes to consider in a "couple"
-                    if couple = 2: computes the orientation of a
-                                   gene relative to its predecessor
-                    if couple = 3: computes the orientation of a gene 
-                                    relative to its two neighbors
-                    Default: 3
-            max_dist (Optional [int.]): maximal distance between 2 genes 
-                    start positions for seeking neighbor (Default: 5kb)
+        * If couple = 3, gene is considered:
 
-        Outputs:
-            self.orientation (dict.): new attribute of the Genome instance.
+            * `divergent` if left neighbor on - strand and right neighbor on + strand,
+            * `convergent` if left neighbor on + strand and right neighbor on - strand,
+            * `tandem` if left and right neighbors on same strand (whatever the strand of the given gene is),
+            * `isolated` if the distance between neighbors is higher than the maximal distance given as argument.
+        * If couple = 2, gene is considered:
+
+            * `tandem` if predecessor (left neighbor for gene on + strand, right neighbor for gene on - strand) is on same strand,
+            * `divergent` if the predecessor is on opposite strand.
+
+        Creates new attributes: 
+            * self.orientation (dict.) 
+                    new attribute of the Genome instance.
                     self.orientation is a dictionary of shape {orientation: 
                     list of genes}. It contains the list of genes for each
                     orientation (tandem, divergent, convergent, and isolated 
                     if couple=3, tandem and divergent if couple=2)
-            self.genes[locus].orientation (str.): new attribute of Gene
-                    instances related to the Genome instance given as 
-                    argument
+            * self.genes[locus].orientation (str.) 
+                    new attribute of Gene instances related to the Genome instance 
+                    given as argument
+        Args:
+            couple (int.): number of genes to consider in a "couple". 
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using this method.
+                * If couple = 2: computes the orientation of a gene 
+                  relative to its predecessor
+                * If couple = 3: computes the orientation of a gene 
+                  relative to its two neighbors
+                Default: 3
+
+            max_dist (Optional [int.]): maximal distance between 2 genes 
+                    start positions for seeking neighbor (Default: 5kb)            
+
+        Warning:
+            This method needs a genomic annotation. If no annotation is 
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using the load_neighbor_all method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -398,38 +397,34 @@ class Genome:
 
     def load_pos_orientation(self, max_dist=5000):
         """
-        Compute gene orientation with the following criteria:
-            divergent if left neighbor on - strand and
-                         right neighbor on + strand,
-            convergent if left neighbor on + strand and
-                          right neighbor on - strand,
-            tandem if left and right neighbors on same strand
-            isolated if the distance between neighbors is higher than the
-                          maximal distance given as argument
+        Computes gene orientation with the following criteria:
 
-        Args:
-            self (Genome instance)
-            max_dist (Optional [int.]): maximal distance between 2 genes 
-                    start positions for seeking neighbor (Default: 5kb)
-
-        Outputs:
-            self.pos_orientation (dict of dic): new attribute of the Genome 
-                    instance. self.pos_orientation is a dictionary containing 
-                    2 subdictionaries. One subdictionary for "intergenic" 
-                    positions and one for "intragenic" positions.
+            * `divergent` if left neighbor on - strand and right neighbor on + strand,
+            * `convergent` if left neighbor on + strand and right neighbor on - strand,
+            * `tandem` if left and right neighbors on same strand
+            * `isolated` if the distance between neighbors is higher than the maximal distance given as argument
+        
+        Creates 2 new attributes of the Genome instance:
+            * self.pos_orientation (dict of dict)
+                    dictionary containing 2 subdictionaries. 
+                    One subdictionary for "intergenic" positions and one for 
+                    "intragenic" positions.
                     Each subdictionary contains the list of position for 
                     each orientation. {"intergenic":{orientation: list of 
                     positions}}, "intragenic":{orientation: list of positions}}
                     with orientation in ["divergent","convergent","tandem",
                     "isolated"]
-            self.orientation_per_pos (dict.): new attribute of the Genome 
-                    instance. self.orientation_per_pos is a dizctionary of
-                    shape {position: orientation}.
+            * self.orientation_per_pos (dict.)
+                    dictionary of shape {position: orientation}.
+        Args:
+            max_dist (Optional [int.]): maximal distance between 2 genes 
+                    start positions for seeking neighbor (Default: 5kb)            
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using this method.
+        Warning:
+            This method needs a genomic annotation. If no annotation is
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -496,23 +491,11 @@ class Genome:
     def load_TSS(self):
         """
         load_TSS loads a TSS annotation from a file present in the /TSS/
-        directory. The information importation requires a TSS.info file,
-        containing column indices of each information in the data file and 
-        some additional information, in the following order:
-        [0] Condition [1] Filename [2] Locus tag column [3] TSS position
-        [4] File start line [5] Separator [6] Strand column
-        [7] Sigma factor column [8] Sites column [9] Score column
+        directory.
 
-        If some of the data types are missing (locus tags, sigma factors,
-        scores or sites), an empty space can be left in the .info file.
-        See the load_TSS_cond function in useful_functions_genome for more
-        details.
-
-        Arg:
-            self (Genome instance)
-
-        Outputs:
-            self.TSSs (dict. of dict.): new attribute of the Genome instance.
+        Creates:
+            * self.TSSs (dict. of dict.)
+                    New attribute of the Genome instance
                     self.TSSs is a dictionary of shape 
                     {Condition: {TSS position: TSS object}}. 
                     One subdictionary is created for each condition listed in 
@@ -524,15 +507,29 @@ class Genome:
                     the associated value is a tuple containing the positions 
                     of promoter elements. See __init__ and add_promoter in 
                     the TSS class for more details about each attribute.
-            self.TSSs['all_TSSs'] (subdictionary of self.TSSs):
+
+            * self.TSSs['all_TSSs'] (subdictionary of self.TSSs)
                     additional subdictionary of self.TSSs, of shape:
                     self.TSSs['all_TSSs']={TSSpos: [TSScond]} with [TSScond] 
-                    the list of TSS conditions where this TSS was found.
+                    the list of TSS conditions where this TSS was found.        
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using this method.
+        Note:
+            The information importation requires a TSS.info file,
+            containing column indices of each information in the data file and 
+            some additional information, in the following order:
+            [0] Condition [1] Filename [2] Locus tag column [3] TSS position
+            [4] File start line [5] Separator [6] Strand column
+            [7] Sigma factor column [8] Sites column [9] Score column
+
+        Note:
+            If some of the data types are missing (locus tags, sigma factors,
+            scores or sites), an empty space can be left in the .info file.
+
+        Warning:
+            This method needs a genomic annotation. If no annotation is
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -587,10 +584,12 @@ class Genome:
         load_prom_elements extracts sequences of the different promoter 
         elements (spacer, -10, -35, discriminator, region around TSS) based 
         on -35 and -10 coordinates loaded with load_TSS method, for all TSS 
-        conditions.
+        conditions. For each sigma factor associated to a TSS annotation, creates 
+        a subdictionary in self.TSSs[condTSS][TSS].promoter with the shape
+        promoter[sigma] = {element: sequence of the element} with element 
+        in ["spacer", "minus10", "minus35", "discriminator", "region"].
 
         Args:
-            self (Genome instance)
             shift (Optional [int.]): number of nucleotides to include beyond 
                     each region on either side (Default: 0nt)
             prom_region (Optional [int.,int.]): region upstream and 
@@ -598,19 +597,15 @@ class Genome:
                     [length before TSS, length after TSS]. 
                     Default: [0,0] ie no sequence will be extracted around 
                     TSS.
-
-        Outputs:
-            For each sigma factor associated to a TSS annotation, creates a
-            subdictionary in self.TSSs[condTSS][TSS].promoter with the shape
-            promoter[sigma] = {element: sequence of the element} with element 
-            in ["spacer", "minus10", "minus35", "discriminator", "region"]
+        Note:
             See load_TSS description to understand the structure of the
             subdictionary self.TSSs[condTSS][TSS].promoter
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using this method.
+        Warning:
+            This method needs a genomic annotation. If no annotation is
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using this method.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -645,19 +640,10 @@ class Genome:
     def load_TU(self):
         """
         load_TU loads a TU annotation from a file present in the /TU/
-        directory. The information importation requires a TU.info file,
-        containing column indices of each information in the data file and 
-        some additional information, in the following order:
-        [0] Condition [1] Filename [2] Start column [3] Stop column
-        [4] Strand column [5] Gene column [6] File start line [7] Separator
-        See the load_TU_cond function in useful_functions_genome for more
-        details.
+        directory.
 
-        Arg:
-            self (Genome instance)
-
-        Output:
-            self.TUs (dict. of dict.): new attribute of the Genome instance.
+        Creates a new attribute of the Genome instance:
+            * self.TUs (dict. of dict.)
                     self.TUs is a dictionary of shape
                     {Condition: {TU start pos: TU object}}
                     One subdictionary is created for each condition listed 
@@ -665,6 +651,15 @@ class Genome:
                     following attributes:  start, stop, orientation, genes,
                     left,right. See __init__ in the TU class for more details 
                     about each attribute.
+
+        Note:
+            The information importation requires a TU.info file,
+            containing column indices of each information in the data file and 
+            some additional information, in the following order:
+            [0] Condition [1] Filename [2] Start column [3] Stop column
+            [4] Strand column [5] Gene column [6] File start line [7] Separator
+            See the load_TU_cond function in useful_functions_genome for more
+            details.
 
         Example:
             >>> g = Genome.Genome("dickeya")
@@ -699,38 +694,41 @@ class Genome:
     def load_TTS(self):
         """
         load_TTS loads a TTS annotation from a file present in the /TTS/
-        directory. The information importation requires a TTS.info file,
-        containing column indices of each information in the data file and
-        some additional information, in the following order:
-        [0] Condition [1] Filename [2] Left coordinate column
-        [3] Right coordinate column [4] Strand column [5] Startline
-        [6] Separator [7] Sequence column
-        and optionally:
-        [8] Score column [9] Genes column [10] Rho dependency column
-        See the load_TTS_cond function in useful_functions_genome for more
-        details.
+        directory.
 
-        Arg:
-            self (Genome instance)
+        Creates:
+            * self.TTSs (dict. of dict.)
+                New attribute of the Genome instance
+                self.TTSs is a dictionary of shape
+                {Condition: {TTS position: TTS object}}.
+                One subdictionary is created for each condition listed 
+                in TTS.info file. Each TTS object is initialized with the 
+                following attributes: left, right,  start, end, strand,                    
+                rho_dpdt, genes, seq, score.
+                If the data do not contain information about associated 
+                genes, sequence, or rho dependency, the corresponding 
+                attributes will be initialized as "None".
+                See __init__ in the TTS class for more details about 
+                each attribute.
+            * self.TTSs['all_TTSs'] (subdictionary of self.TTSs)
+                additional subdictionary of self.TTSs, of shape:
+                self.TTSs['all_TTSs']={TTSpos: [TTScond]}
+                with [TTScond] the list of TTS conditions where this TTS 
+                was found.
+        Note: 
+            The information importation requires a TTS.info file,
+            containing column indices of each information in the data file and
+            some additional information, in the following order:
+            [0] Condition [1] Filename [2] Left coordinate column
+            [3] Right coordinate column [4] Strand column [5] Startline
+            [6] Separator [7] Sequence column
+            and optionally:
+            [8] Score column [9] Genes column [10] Rho dependency column
 
-        Outputs:
-            self.TTSs (dict. of dict.): new attribute of the Genome instance.
-                    self.TTSs is a dictionary of shape
-                     {Condition: {TTS position: TTS object}}.
-                    One subdictionary is created for each condition listed 
-                    in TTS.info file. Each TTS object is initialized with the 
-                    following attributes: left, right,  start, end, strand,
-                    rho_dpdt, genes, seq, score.
-                    If the data do not contain information about associated 
-                    genes, sequence, or rho dependency, the corresponding 
-                    attributes will be initialized as "None".
-                    See __init__ in the TTS class for more details about 
-                    each attribute.
-            self.TTSs['all_TTSs'] (subdictionary of self.TTSs):
-                    additional subdictionary of self.TTSs, of shape:
-                    self.TTSs['all_TTSs']={TTSpos: [TTScond]}
-                    with [TTScond] the list of TTS conditions where this TTS 
-                    was found.
+        Note: 
+            See the load_TTS_cond function in useful_functions_genome for more
+            details.
+
         Example:
             >>> g = Genome.Genome("dickeya")
             >>> g.load_TTS()
@@ -768,36 +766,36 @@ class Genome:
     def load_GO(self):
         """
         load_GO loads file specified in GO.info to assign GO terms to genes.
-        Other annotation systems such as COG, or domain assignment can also
-        be used.
-        The information importation requires a GO.info file,
-        containing column indices of each information in the data file and
-        some additional information, in the following order:
-        [0] Annotation system [1] Filename [2] Locus tag column
-        [3] GOterm column [4] Separator
-        GO.info and the data files have to be in the /GO/ directory
 
-        Arg:
-            self (Genome instance)
+        Creates:      
+            * self.GO (dict. of dict)
+                new attribute of the Genome instance. self.GO is a dictionary of 
+                shape {annot_syst: {GOterm: list of genes}} i.e. one subdictionary 
+                is created for each annotation system (such as GOc, COG or domain) 
+                listed in GO.info file.
+            * self.genes[locus].GO (list)
+                new attribute of Gene instances related to the Genome instance given
+                as argument. List of terms (such as GO terms) associated to the gene.            
+        
+        Note:           
+            The information importation requires a GO.info file,
+            containing column indices of each information in the data file and
+            some additional information, in the following order:
+            [0] Annotation system [1] Filename [2] Locus tag column
+            [3] GOterm column [4] Separator
+            GO.info and the data files have to be in the /GO/ directory
 
-        Outputs:
-            self.GO (dict. of dict.): new attribute of the Genome instance.
-                                      self.GO is a dictionary of shape
-                                      {annot_syst: {GOterm: list of genes}}
-                                      i.e. one subdictionary is created for
-                                      each annotation system (such as GOc,
-                                      COG or domain) listed in GO.info file.
-            self.genes[locus].GO (list): new attribute of Gene instances
-                                         related to the Genome instance given
-                                         as argument. List of terms (such as
-                                         GO terms) associated to the gene.
+        Note:
+            Other annotation systems such as COG, or domain assignment can also
+            be used.
 
-        N.B.: This method needs a genomic annotation. If no annotation is
-        loaded, the load_annotation method with the default "sequence.gff3"
-        file is computed. To use another annotation, please load an
-        annotation before using this method.
+        Warning:
+            This method needs a genomic annotation. If no annotation is
+            loaded, the load_annotation method with the default "sequence.gff3"
+            file is computed. To use another annotation, please load an
+            annotation before using this method.
 
-        Example:
+        Example
             >>> g = Genome.Genome("dickeya")
             >>> g.load_GO()
             >>> g.GO['GO']['GO:0000100']

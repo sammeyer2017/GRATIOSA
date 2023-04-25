@@ -23,36 +23,35 @@ def data_classification(data_x, data_y, class_nb, *args, **kwargs):
     class_sizes argument) or into classes of equal size (if neither the
     thresholds argument nor the class_sizes argument is specified).
 
-    Required Args:
+    Args:
         data_x (list): list of elements such as positions or gene names
         data_y (list): list of data associated with each element such as 
                 signal coverage or gene expression
         class_nb (int.): number of classes (fractions) to create
-
-    Optional Args:
-        class_names (list): list of names to give to each class
+        class_names (Optionnal [list]): list of names to give to each class
                 By default, each class will be named by a number between 0 
                 and class_nb.
-        thresholds (list of ints.): Thresholds used for the classification.
+        thresholds (Optionnal [list of ints.]): Thresholds used for the classification.
                 If not given, the classification will distribute the data in 
                 fractions of equal sizes.
-        class_sizes (list of ints.): Number of elements to put in each class.
+        class_sizes (Optionnal [list of ints.]): Number of elements to put in each class.
                 The total must be equal to the number of  elements in data_x 
                 and in data_y.
 
-    Returns: tuple of 2 dictionaries
-        dict. of shape {class_name:list of elements}
-        dict. of shape {class_name: list of data associated with each element}
+    Returns: 
+        tuple: 2 dictionaries:
+            * dict. of shape {class_name:list of elements}
+            * dict. of shape {class_name: list of data associated with each element}
 
     Example:
-        >>> stat_analysis.data_classification(["a","b","d","c","e"],[1,2,4,3,5],
-                                           class_nb=3,thresholds = [1,5])
+        >>> stat_analysis.data_classification(["a","b","d","c","e"],[1,2,4,3,5], 
+        ...                                   class_nb=3,thresholds = [1,5])
         ({0: ['a'], 1: ['b', 'c', 'd'], 2: []}, {0: [1], 1: [2, 3, 4], 2: []})
-        >>> stat_analysis.data_classification(["a","b","d","c","e"],[1,2,4,3,5],
-                                            class_nb=3,class_sizes=[1,1,3])
+        >>> stat_analysis.data_classification(["a","b","d","c","e"],[1,2,4,3,5], 
+        ...                                   class_nb=3,class_sizes=[1,1,3])
         ({0: ['a'], 1: ['b'], 2: ['c', 'd', 'e']}, {0: [1], 1: [2], 2: [3, 4, 5]})
-        >>> stat_analysis.data_classification(["a","b","d","c","e","f"],[1,2,4,3,5,6],
-                                            class_nb=3)
+        >>> stat_analysis.data_classification(["a","b","d","c","e","f"],[1,2,4,3,5,6], 
+        ...                                   class_nb=3)
         ({0: ['a', 'b'], 1: ['c', 'd'], 2: ['e', 'f']}, {0: [1, 2], 1: [3, 4], 2: [5, 6]})
     '''
 
@@ -147,47 +146,43 @@ def proportion_test(dict_cats,
     The proportion test is based on a normal test using the
     stats.proportion.proportions_ztest function from statsmodels.
 
-    Required args:
+    Args:
         dict_cats (dict.): classification of each element in a dictionary of
-                shape {category:[elements]}
-               Example: {"border":["GeneA","GeneB"], "None":["GeneC","GeneD"]}
+               shape {category:[elements]}
         dict_features (dict.): feature corresponding to each element in a
                 dictionary of shape {feature:[elements]}
-                Example: {"act": ["GeneA","GeneC","GeneD"], "rep":["GeneB"]}
         targ_features (list or string): targeted feature(s)
-
-    Optional args:
-        all_features (list or string): features that will be used to 
+        all_features (Optionnal [list or str.]): features that will be used to 
                 calculate the proportion, including targ_features
                 (default: all keys of the dict_features dictionary)
-        cats (list): list of categories to compare
+        cats (Optionnal [list]): list of categories to compare
                 (default: all keys of dict_cats)
-        alt_hyp ("two-sided" or "one-sided"): alternative hypothesis.
+        alt_hyp (Optionnal ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one-sided tests will be 
                 performed with the statsmodels.stats.proportions_ztest 
                 function and the smaller p-value will be kept. 
                 See statsmodels documentation for more details.
                 (default: "one-sided")
-        output_dir (str.): output directory
-        output_file (str.): output filename
+        output_dir (Optionnal [str.]): output directory
+        output_file (Optionnal [str.]): output filename
 
     Returns:
-        dict. of shape {"categories":cats,
-                        "proportions":prop,
-                        "confidence intervals":(ci0,ci1),
-                        "p-values":{(cat1,cat2):pval}
-        N.B. These data are also reported in the output_file
+        Dictionary: dict. of shape {"categories":cats, "proportions":prop,
+        "confidence intervals":(ci0,ci1), "p-values":{(cat1,cat2):pval}
+
+    Note:
+        Test results are saved in the output_file
 
     Example:
         >>> dict_cats = {"borders":["A","B","G","K","L"],
-                         "loops":["C","D","F","H","J"],
-                         "None":["E","I"]}
+        ...              "loops":["C","D","F","H","J"],
+        ...              "None":["E","I"]}
         >>> data = {"act":["A","B","C","F","H"],
-                    "rep":["D","G","L","I"],
-                    "None":["J","K"],"NA":["E"]}
+        ...         "rep":["D","G","L","I"],
+        ...         "None":["J","K"],"NA":["E"]}
         >>> res = stat_analysis.proportion_test(dict_cats,data,"act",
-                                                all_features=["act","rep"],
-                                                alt_hyp="two-sided")
+        ...                                     all_features=["act","rep"],
+        ...                                     alt_hyp="two-sided")
         >>> res["categories"]
         ['borders', 'loops', 'None']
         >>> res["proportions"]
@@ -316,83 +311,80 @@ def enrichment_test(dict_cats,
     '''
     Computes enrichment tests (hypergeometric test) of a target in a
     category.
-    N.B.: performs a p-value correction for false discovery rate (See
-          statsmodels.stats.multitest.fdrcorrection for more details)
 
-    Required args:
+    Args:
         dict_cats (dict.): classification of each element in a dictionary of
                 shape {category:[elements]}
                 N.B.: the same element can be associated to multiple features
-                Example: {"GOterm1":["GeneA","GeneB"], 
-                          "GOterm2:["GeneA","GeneC"]}
         dict_features (dict.): feature corresponding to each element in a
                 dictionary of shape {feature:[elements]}
-                Example: {"act": ["GeneA","GeneC","GeneD"], "rep":["GeneB"]}
         targ_features (list or string): targeted feature(s)
-
-    Optional args:
-        all_features (list or string): features that will be used to 
+        all_features (Optional[list or str.]): features that will be used to 
                 calculate the proportion, including targ_features
                 (default: all keys of the dict_features dictionary)
-        targ_cats (list): list of categories. The enrichment test is 
+        targ_cats (Optional[list]): list of categories. The enrichment test is 
                 performed for each category. (default: all keys of dict_cats)
-        all_cats (list): list of categories used to compute the global
+        all_cats (Optional[list]): list of categories used to compute the global
                 proportion and the expected number in the selection,
                 including targ_cats.
                 (default: all keys of dict_cats)
-        min_nb_elements: Number of elements used as thresholds for the 
-                feature selection. If there is strictly less than 
+        min_nb_elements (Optional[int.]): Number of elements used as thresholds 
+                for the feature selection. If there is strictly less than 
                 min_nb_elements corresponding to a feature, the result 
                 corresponding to this feature is not relevant and is 
                 therefore neither returned nor reported in the output file.
                 By default, min_nb_elements is set to 4.
-        output_dir (str.): output directory
-        output_file (str.): output filename
+        output_dir (Optional[str.]): output directory
+        output_file (Optional[str.]): output filename
 
-    Returns:
-        dataframe containing the following columns:
-            0. 'Category'(str.): category
-            1. 'Selected_gene_nb'(int.): Nb of elements corresponding to this
-                    feature in the selection
-            2. 'Expected_selected_nb' (int.): Expected nb of elements 
-                    corresponding to this feature in the selection
-            3. 'Total_gene_nb'(int.): Nb of elements corresponding to this
-                    feature in the dict_features
-            4. 'Proportion'(float): ratio between Selected_gene_nb and 
-                    Total_gene_nb
-            5. 'Prop_conf_int' (np.array): 95% confidence interval with equal
-                    areas around the proportion.
-            6. 'p-value' (float): p-value obtained with the enrichment test
-            7. 'Adj p-value (FDR)' (float): p-value corrected for false
-                    discovery rate
-            8. 'Global_proportion' (float): ratio between nb of elements in 
-                    the selection and nb of elements in dict_features
-            N.B.: The DataFrame, ordered according to the adjusted pvalues,
-                    is reported in the output_file.
+    Returns: 
+        DataFrame: DataFrame containing the following columns:
+            * 'Category'(str.): category
+            * 'Selected_gene_nb'(int.): Nb of elements corresponding to this
+              feature in the selection
+            * 'Expected_selected_nb' (int.): Expected nb of elements 
+              corresponding to this feature in the selection
+            * 'Total_gene_nb'(int.): Nb of elements corresponding to this
+              feature in the dict_features
+            * 'Proportion'(float): ratio between Selected_gene_nb and 
+              Total_gene_nb
+            * 'Prop_conf_int' (np.array): 95% confidence interval with equal
+              areas around the proportion.
+            * 'p-value' (float): p-value obtained with the enrichment test
+            * 'Adj p-value (FDR)' (float): p-value corrected for false
+              discovery rate
+            * 'Global_proportion' (float): ratio between nb of elements in 
+              the selection and nb of elements in dict_features
+
+    Note: 
+        This function performs a p-value correction for false discovery rate using
+        statsmodels.stats.multitest.fdrcorrection 
+
+    Note: 
+        The created DataFrame, ordered according to the adjusted pvalues,
+        is reported in the output_file.
 
     Example:
-        >>>  dict_features = {
-                        "act":["B","D","E","H","I","M","P","Q","R","S","T","W"],
-                        "rep":["C","F","G","U","X"],
-                        "None":["A"],
-                        "NA":["J"]}
-        >>> dict_cats = {"GOterm1":["A","B","D","E","F","P","Q","R","S","T","U"],
-                         "GOterm2":["C","E"],
-                         "GOterm3":["A","B","F","G","H","I","M","U","V","W","X"],
-                         "GOterm4":["C","F","G","J"]}
-        >>> stat_analysis.enrichment_test(dict_cats,dict_features,
-                                          targ_features=["act","None"],
-                                          all_features=["act","None","rep","NA"],
-                                          targ_cats=["GOterm1","GOterm2","GOterm3"],
-                                          min_nb_elements=3,output_file="test")
-          Category  Selected_gene_nb  Total_gene_nb  Proportion  Prop_conf_int  p-value  \
+        >>> dict_features = {"act": ["B", "D", "E", "H", "I", "M", "P", "Q", "R", "S", "T", "W"], 
+        ...                  "rep": ["C", "F", "G", "U", "X"], "None": ["A"], "NA": ["J"]}                
+        >>> dict_cats = {"GOterm1": ["A", "B", "D", "E", "F", "P", "Q", "R", "S", "T", "U"], 
+        ...              "GOterm2": ["C", "E"], 
+        ...              "GOterm3": ["A", "B", "F", "G", "H", "I", "M", "U", "V", "W", "X"], 
+        ...              "GOterm4": ["C", "F", "G", "J"]}               
+        >>> stat_analysis.enrichment_test(dict_cats,
+        ...                           dict_features,
+        ...                           targ_features=["act", "None"],
+        ...                           all_features=["act", "None", "rep", "NA"],
+        ...                           targ_cats=["GOterm1", "GOterm2", "GOterm3"],
+        ...                           min_nb_elements=3,
+        ...                           output_file="test")
+          Category  Selected_gene_nb  Total_gene_nb  Proportion  Prop_conf_int  p-value  
         0  GOterm1                9          11    0.818182  [0.4545, 1.0]  0.27206
         1  GOterm3                6          10    0.600000     [0.2, 1.0]  0.97059
-
           Adj p-value (FDR)  Global_proportion  Expected_selected_nb
         0           0.54412        0.722222        7.944444
         1           0.97059        0.722222         7.22222
-          Category  Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int  \
+          Category  Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int 
         0  GOterm1                9          11    0.818182  [0.6818, 0.9545]
         1  GOterm3                6          10    0.600000        [0.4, 0.8]
           p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_nb
@@ -515,27 +507,25 @@ def quantitative_data_student_test(dict_data, cats="all",
     Computes the T-test for the means of independants categories using the
     scipy.stats.ttest_ind.
 
-    Required args:
+    Args:
         dict_data (dict.): datapoints corresponding to each category in a
                 dictionary of shape {category:list of datapoints}
-
-    Optional args:
-        cats (list): list of categories to compare
+        cats (Optional [list]): list of categories to compare
                 (default: all keys of dict_data)
-        alt_hyp ("two-sided" or "one-sided"): alternative hypothesis.
+        alt_hyp (Optional ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one-sided tests will be 
                 performed with the scipy.stats.ttest_ind function and the 
                 smaller p-value will be kept. See scipy documentation for 
                 more details. (default: "one-sided")
-        output_dir (str.): output directory
-        output_file (str.): output filename
+        output_dir (Optional[str.]): output directory
+        output_file (Optional[str.]): output filename
 
     Returns:
-        dict. of shape {"categories":cats,
-                        "means":means,
-                        "confidence intervals":(ci0,ci1),
-                        "p-values":{(cat1,cat2):pval}
-        N.B. These data are also reported in the output_file
+        Dictionary: dict. of shape 
+        {"categories":cats, "means":means,
+        "confidence intervals":(ci0,ci1), "p-values":{(cat1,cat2):pval}
+    Note:
+        Test results are also reported in the output_file.
 
     Example:
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}

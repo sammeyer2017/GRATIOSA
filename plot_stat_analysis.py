@@ -48,8 +48,7 @@ def barplot_annotate_brackets(categories, y_up, dict_pval, *args, **kwargs):
         dict_pval (dict.): dictionnary of shape {"cat1-cat2":pvalue} with 
                 cat1 and cat2 contained in the categories list given as
                 argument
-    Optional args:
-        linewidth (float.): Linewidth of the brackets. (default: 1.5)
+        linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.5)
     """
     # gets the position of each category on the barplot
     pos = {}
@@ -117,7 +116,7 @@ def plot_proportion_test(dict_cats,
     categories. The proportion test, based on normal test, is computed with
     stat_analysis.proportion_test (see its documentation for more details)
 
-    Required args:
+    Args:
         dict_cats (dict.): classification of each elements in a dictionary of
                 shape {category:[elements]}
                 Example: {"border":["GeneA","GeneB"],"None":["GeneC","GeneD"]}
@@ -125,53 +124,51 @@ def plot_proportion_test(dict_cats,
                 dictionary of shape {feature:[elements]}
                 Example: {"act": ["GeneA","GeneC","GeneD"], "rep":["GeneB"]}
         targ_features (list or string): targeted feature(s)
-
-    Optional args:
-        all_features (list or string): features that will be used to calculate
+        all_features (Optional [list or string]): features that will be used to calculate
                 the proportion, including targ_features default: all keys of 
                 the dict_features dictionary)
-        cats (list): list of categories to compare (default: all keys of 
+        cats (Optional [list]): list of categories to compare (default: all keys of 
                 dict_cats)
-        alt_hyp ("two-sided" or "one-sided"): alternative hypothesis.
+        alt_hyp (Optional ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one sided tests will be 
                 perform with the statsmodels.stats.proportions_ztest 
                 function and the smaller pvalue will be kept. 
                 See statsmodels documentation for more details. 
                 (default: "one-sided")
-        output_dir (str.): output directory
-        output_file (str.): output filename for the proportion test data 
+        output_dir (Optional [str.]): output directory
+        output_file (Optional [str.]): output filename for the proportion test data 
                 (.txt) and the plot
-        file_extension (str.): Graphic file extension type (.pdf by default)
-        xlabel (str.): label for the x-axis (default: empty)
-        ylabel (str.): label for the y-axis (default: "Proportion")
-        title (str.): general title for the figure
-        annot_brackets (bool.): if True, the barplot will be annotated according
+        file_extension (Optional [str.]): Graphic file extension type (.pdf by default)
+        xlabel (Optional [str.]): label for the x-axis (default: empty)
+        ylabel (Optional [str.]): label for the y-axis (default: "Proportion")
+        title (Optional [str.]): general title for the figure
+        annot_brackets (Optional [bool.]): if True, the barplot will be annotated according
                 to the p-values using stars annotaion (default: True)
-        brackets_linewidth (float.): Linewidth of the brackets. (default: 1.5)
-        ymin (float): y-axis bottom limit
-        ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,2.2)
+        brackets_linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.5)
+        ymin (Optional [float]): y-axis bottom limit
+        ymax (Optional [float]): y-axis top limit
+        figsize (Optional [(float,float)]): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
-        xticks_rotation (int.): x-ticks labels rotation in degrees
-        xticks_labels (list.): x-ticks labels (by default: cats)
-        err_capsize (float.): Length of the error bar caps in points
-        bar_linewidth (float.): Width of the bars edge. (default: 1.5)
-        bar_width (float.): Width of the bars. (default dependent on the number 
-        of categories. If less than 5 cats: 0.7)
+        xticks_rotation (Optional [int.]): x-ticks labels rotation in degrees
+        xticks_labels (Optional [list.]): x-ticks labels (by default: cats)
+        err_capsize (Optional [float.]): Length of the error bar caps in points
+        bar_linewidth (Optional [float.]): Width of the bars edge. (default: 1.5)
+        bar_width (Optional [float.]): Width of the bars. (default dependent on the number 
+                of categories. If less than 5 cats: 0.7)
 
 
     Example:
         >>> import numpy as np
         >>> dict_cat = {"cat1":np.arange(100,154),"cat2":np.arange(1,100),
-                        "cat3":np.arange(154,180),"cat4":np.arange(180,230)}
+        ...             "cat3":np.arange(154,180),"cat4":np.arange(180,230)}
         >>> dict_features ={"act":list(np.arange(1,90))+list(np.arange(100,120))
-                           +list(np.arange(154,158))+list(np.arange(180,220)),
-                   "rep":list(np.arange(90,94))+list(np.arange(120,150))
-                           +list(np.arange(158,177))+list(np.arange(220,225)),
-                   "None":list(np.arange(94,100))+list(np.arange(150,154))
-                           +list(np.arange(177,180))+list(np.arange(225,230))}
+        ...                +list(np.arange(154,158))+list(np.arange(180,220)),
+        ...        "rep":list(np.arange(90,94))+list(np.arange(120,150))
+        ...                +list(np.arange(158,177))+list(np.arange(220,225)),
+        ...        "None":list(np.arange(94,100))+list(np.arange(150,154))
+        ...                +list(np.arange(177,180))+list(np.arange(225,230))}
         >>> plot_stat_analysis.plot_proportion_test(dict_cat,dict_features,"act",
-                           all_features=["act","rep"],alt_hyp="two-sided",output_file="test")
+        ...                all_features=["act","rep"],alt_hyp="two-sided",output_file="test")
     '''
     res = stat_analysis.proportion_test(
         dict_cats=dict_cats, dict_features=dict_features, targ_features=targ_features, all_features=all_features,
@@ -254,70 +251,67 @@ def plot_enrichment_test(dict_cats,
     sublist. The test is performed with stat_analysis.enrichment_test (see 
     its documentation for more details)
 
-    Required args:
+    Args:
         dict_cats (dict.): classification of each elements in a dictionary 
                 of shape {category:[elements]}
                 N.B.: the same element can be associated to multiple features
-                fcExample: {"GOterm1":["GeneA","GeneB"],
-                                      "GOterm2:["GeneA","GeneC"]}
+                fcExample: {"GOterm1":["GeneA","GeneB"],"GOterm2:["GeneA","GeneC"]}
         dict_features (dict.): feature corresponding to each element in a
                 dictionary of shape {feature:[elements]}
                 Example: {"act": ["GeneA","GeneC","GeneD"], "rep":["GeneB"]}
         targ_features (list or string): targeted feature(s)
-
-    Optional args:
-        all_features (list or string): features that will be used to calculate
+        all_features (Optional [list or str.]): features that will be used to calculate
                 the proportion, including targ_features
                 (Default: all keys of the dict_features dictionary)
-        targ_cats (list): list of categories. The enrichment test is 
+        targ_cats (Optional [list]): list of categories. The enrichment test is 
                 performed for each catergory. (default: all keys of dict_cats)
-        all_cats (list): list of categories used to compute the global
+        all_cats (Optional [list]): list of categories used to compute the global
                 proportion and the expected number in the selection. 
                 All_cats includes targ_cats. (default: all keys of dict_cats)
-        min_nb_elements: Number of elements used as thresholds for the 
+        min_nb_elements (Optional [int.]): Number of elements used as thresholds for the 
                 feature selection. If there is stricly less than 
                 min_nb_elements corresponding to a feature, the result 
                 corresponding to this feature is not relevant and is 
                 therefore neither returned nor reported in the output file.
                 By default, min_nb_elements is set to 4.
-        output_dir (str.): output directory
-        output_file (str.): output filename for the proportion test data 
+        output_dir (Optional [str.]): output directory
+        output_file (Optional [str.]): output filename for the proportion test data 
                 (.txt) and the plot
-        file_extension (str.): Graphic file extension type (.pdf by default)
-        xlabel (str.): label for the x-axis (default: empty)
-        ylabel (str.): label for the y-axis (default: "Proportion")
-        title (str.): general title for the figure
-        annot_star (bool.): if True, the barplot will be annotated according
+        file_extension (Optional [str.]): Graphic file extension type (.pdf by default)
+        xlabel (Optional [str.]): label for the x-axis (default: empty)
+        ylabel (Optional [str.]): label for the y-axis (default: "Proportion")
+        title (Optional [str.]): general title for the figure
+        annot_star (Optional [bool.]): if True, the barplot will be annotated according
                 to the p-values using stars annotaion (default: True)
-        ymin (float): y-axis bottom limit
-        ymax (float): y-axis top limit
-        legend_text (str.): Legend text (default: "Global proportion")
+        ymin (Optional [float]): y-axis bottom limit
+        ymax (Optional [float]): y-axis top limit
+        legend_text (Optional [str.]): Legend text (default: "Global proportion")
                 If set to None, no legend will be plotted.
-        legend_loc (str.): Location of the legend such as 'upper right',
+        legend_loc (Optional [str.]): Location of the legend such as 'upper right',
                 'lower right', 'lower left', 'lower left' and 'best' 
                 (default: 'best'). See matplotlib.pyplot.legend for more 
                 options
-        figsize (float,float): width and height in inches (by default: (w,2.2)
+        figsize (Optional [(float,float)]): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
-        xticks_rotation (int.): x-ticks labels rotation in degrees
-        xticks_labels (list.): x-ticks labels (by default: targ_cats)
-        err_capsize (float.): Length of the error bar caps in points
-        bar_linewidth (float.): Width of the bars edge. (default: 1.5)
-        bar_width (float.): Width of the bars. (default dependent on the 
-        number of categories. If less than 5 cats: 0.7)
+        xticks_rotation (Optional [int.]): x-ticks labels rotation in degrees
+        xticks_labels (Optional [list.]): x-ticks labels (by default: targ_cats)
+        err_capsize (Optional [float]): Length of the error bar caps in points
+        bar_linewidth (Optional [float]): Width of the bars edge. (default: 1.5)
+        bar_width (Optional [float]): Width of the bars. (default dependent on the 
+                number of categories. If less than 5 cats: 0.7)
 
     Example:
         >>>  dataX = {"GOterm1":["A","B","D","E","F"],
-                      "GOterm2":["C","E"],
-                      "GOterm3":["A","B","F","G","H","I","M"],
-                      "GOterm4":["C","F","G","J"]}
+        ...           "GOterm2":["C","E"],
+        ...           "GOterm3":["A","B","F","G","H","I","M"],
+        ...           "GOterm4":["C","F","G","J"]}
         >>>  = ["A","E","I","F","G","H","J"]
         >>> plot_stat_analysis.plot_enrichment_test(
-                                    dict_cats,dict_features,
-                                    targ_feature=["act","None"],
-                                    all_features=["act","None","rep","NA"],
-                                    targ_cats=["GOterm1","GOterm2","GOterm3"],
-                                    min_nb_elements=3,output_file="test1")
+        ...                         dict_cats,dict_features,
+        ...                         targ_feature=["act","None"],
+        ...                         all_features=["act","None","rep","NA"],
+        ...                         targ_cats=["GOterm1","GOterm2","GOterm3"],
+        ...                         min_nb_elements=3,output_file="test1")
     '''
 
     df_res = stat_analysis.enrichment_test(dict_cats=dict_cats,
@@ -413,39 +407,37 @@ def plot_student_test(dict_data, cats="all",
     Barplots of the student test computed with stat_analysis.quantitative_
     data_student_test (see its documentation for more details)
 
-    Arg:
+    Args:
         dict_data (dict.): feature corresponding to each element in a
                 dictionary of shape {category:list of datapoints}
-
-    Optional args:
-        cats (list): list of categories to compare
+        cats (Optional [list]): list of categories to compare
                 (default: all keys of dict_data)
-        alt_hyp ("two-sided" or "one-sided"): alternative hypothesis.
+        alt_hyp (Optional ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one-sided tests will be 
                 performed with the scipy.stats.ttest_ind function and the 
                 smaller p-value will be kept. See scipy documentation for 
                 more details. (default: "one-sided")
-        output_dir (str.): output directory
-        output_file (str.): output filename for the student test data (.txt)
+        output_dir (Optional [str.]): output directory
+        output_file (Optional [str.]): output filename for the student test data (.txt)
                 and the plot
-        file_extension (str.): Graphic file extension type (.pdf by default)
-        xlabel (str.): label for the x-axis (default: empty)
-        ylabel (str.): label for the y-axis (default: "Mean(data)")
-        title (str.): general title for the figure
-        annot_brackets (bool.): if True, the barplot will be annotated 
+        file_extension (Optional [str.]): Graphic file extension type (.pdf by default)
+        xlabel (Optional [str.]): label for the x-axis (default: empty)
+        ylabel (Optional [str.]): label for the y-axis (default: "Mean(data)")
+        title (Optional [str.]): general title for the figure
+        annot_brackets (Optional [bool.]): if True, the barplot will be annotated 
                 according to the p-values using stars annotaion
                 (default: True)
-        brackets_linewidth (float.): Linewidth of the brackets.(default: 1.5)
-        ymin (float): y-axis bottom limit
-        ymax (float): y-axis top limit
-        figsize (float,float): width and height in inches (by default: (w,2.2)
+        brackets_linewidth (Optional [float.]): Linewidth of the brackets.(default: 1.5)
+        ymin (Optional [float]): y-axis bottom limit
+        ymax (Optional [float]): y-axis top limit
+        figsize (Optional [(float,float)]): width and height in inches (by default: (w,2.2)
                 with w dependent on the number of categories)
-        xticks_rotation (int.): x-ticks labels rotation in degrees
-        xticks_labels (list.): x-ticks labels (by default: cats)
-        err_capsize (float.): Length of the error bar caps in points
-        bar_linewidth (float.): Width of the bars edge. (default: 2.0)
-        bar_width (float.): Width of the bars. (default: 0.6) (default 
-        dependent on the number of categories. If less than 5 cats: 0.7)
+        xticks_rotation (Optional [int.]): x-ticks labels rotation in degrees
+        xticks_labels (Optional [list]): x-ticks labels (by default: cats)
+        err_capsize (Optional [float]): Length of the error bar caps in points
+        bar_linewidth (Optional [float]): Width of the bars edge. (default: 2.0)
+        bar_width (Optional [float]): Width of the bars. (default: 0.6) (default 
+                dependent on the number of categories. If less than 5 cats: 0.7)
 
     Example:
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}

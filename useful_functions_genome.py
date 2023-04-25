@@ -46,24 +46,26 @@ def load_gff(annotations_filename):
         filename (str.): name of the annotation file.
 
     Returns:
-        Dictionary of shape {locus: Gene object} with each Gene object
-        initialized with the following attributes:
-            locus_tag: "locus_tag" recorded in the annotation,
-            ID: "ID" or "locus_tag" if no "ID" is associated this gene in
-                the annotation,
-            name: "gene" or "locus_tag" if no "gene" is associated to this
-                gene in the annotation,
-            ASAP: "ASAP" name (By default: '').
-            strand: gene strand,
-            left, right: gene coordinates (does not take into account the
-                          strand, ie right > left)
-            start, end, middle: positions of the beginning, the middle and
-                                the end of the gene
-            length: gene length (=right-left)
+        Dictionary: Dictionary of shape {locus: Gene object} with each Gene 
+        object initialized with the following attributes:
+
+            * locus_tag: "locus_tag" recorded in the annotation,
+            * ID: "ID" or "locus_tag" if no "ID" is associated this gene in 
+              the annotation,
+            * name: "gene" or "locus_tag" if no "gene" is associated to this
+              gene in the annotation,
+            * ASAP: "ASAP" name (By default: '').
+            * strand: gene strand,
+            * left, right: gene coordinates (does not take into account the
+              strand, ie right > left)
+            * start, end, middle: positions of the beginning, the middle and
+              the end of the gene
+            * length: gene length (=right-left)
 
 
-    WARNING: ASAP name  is found only if it is noted on the same line as the
-             "name" line or the line next to it
+    Warnings: 
+        ASAP name  is found only if it is noted on the same line as the
+        "name" line or the line next to it
     '''
     genes_dict = {}
     annot_file = open(annotations_filename, "r")
@@ -156,18 +158,20 @@ def load_annot_general(annotations_filename,
                 coordinates
         ASAP_column (int.):index of the column containing the ASAP names
         start_line (int.): file start line
-    NB: The numbering starts at 0.
-        Forward strand can be noted with one of the following writings:
-            "forward","1","+","true","plus" (case insensitive)
-        Reverse strand can be noted with one of the following writings:
-            "complement","-1","-","false","minus" (case insensitive)
-
-
+    
     Returns:
-        Dictionary of shape {locus: Gene object} with each Gene object
+        Dictionary: Dict. of shape {locus: Gene object} with each Gene object
         initialized with the following attributes: locus_tag, ID, name,
         left (left coordinate), right (right coordinate), middle, length, 
         strand, start, end and ASAP.
+
+    Note: 
+        Column numbering starts at 0.
+
+        Strands can be noted with one of the following writings:
+
+            * Forward: "forward","1","+","true","plus" (case insensitive)
+            * Reverse: "complement","-1","-","false","minus" (case insensitive)
     '''
     genes_dict = {}
     with open(annotations_filename, 'r') as f:
@@ -246,14 +250,10 @@ def load_TSS_cond(genes_dict,
                          By default: None (ie not on file)
         scorecol (int.): index of the TSS scores column in the file
                          By default: None (ie not on file)
-    NB: The numbering starts at 0.
-        In the data file, forward strand can be noted with one of the 
-        following writings: "forward","1","+","true","plus" (case insensitive)
-        Reverse strand can be noted with one of the following writings:
-        "complement","-1","-","false","minus" (case insensitive)
+
 
     Returns:
-        Dictionary of shape {TSS position: TSS object} with each TSS object
+        Dictionary: dict. of shape {TSS position: TSS object} with each TSS object
         initialized with, at least, the following attributes: pos and strand.
         Depending on the data present in the file and passed as arguments,
         the following attributes may also have been added: genes, score and
@@ -262,6 +262,14 @@ def load_TSS_cond(genes_dict,
         this subdictionary is "sites" and the associated value is a tuple
         containing the positions of promoter elements (-10l,-10r,-35l,-35r)
         with l = left coordinate and r = right coordinate.
+
+    Note: 
+        Column numbering starts at 0.
+
+        Strands can be noted with one of the following writings:
+        
+            * Forward: "forward","1","+","true","plus" (case insensitive)
+            * Reverse: "complement","-1","-","false","minus" (case insensitive)
     '''
     TSS_dict = {}  # dict of TSS objects
     with open(filename, 'r') as f:
@@ -351,20 +359,23 @@ def load_TTS_cond(filename,
                 genes associated to each TTS in the file.
                 By default: None (ie not on file)
 
-    NB: The numbering starts at 0.
-        In the data file, forward strand can be noted with one of the 
-        following writings: "forward","1","+","true","plus" (case insensitive).
-        Reverse strand can be noted with one of the following writings:
-            "complement","-1","-","false","minus" (case insensitive)
-        Rho dependent TTS can be noted with one of the following
-            writings: "True","1" (case insensitive)
-
     Returns:
-        Dictionary of shape {TTS position: TTS object} with each TTS object
+        Dictionary: Dict. of shape {TTS position: TTS object} with each TTS object
         initialized with, at least, the following attributes: left,
         right, start, end, strand and rho_dpdt. Depending on the data 
         present in the file and passed as arguments, the following attributes 
         may also have been added: genes, score and seq.
+
+    Note: 
+        Column numbering starts at 0.
+
+        Strands can be noted with one of the following writings:
+        
+            * Forward: "forward","1","+","true","plus" (case insensitive)
+            * Reverse: "complement","-1","-","false","minus" (case insensitive)
+
+        Rho dependent TTS can be noted with one of the following writings: 
+        "True","1" (case insensitive)
     '''
 
     TTS_dict = {}  # dict of TTS objects
@@ -435,14 +446,17 @@ def load_TU_cond(filename,
         start_line (int.): file start line
         separator (str.): file separator
 
-    NB: The numbering starts at 0.
-        In the data file, forward strand can be noted with one of the 
-        following writings: "forward","1","+","true","plus" (case insensitive).
-        Reverse strand can be noted with one of the following writings:
-            "complement","-1","-","false","minus" (case insensitive)
     Returns:
-        Dictionary of shape {TU start: TU object} with each TU object
+        Dictionary: dict. of shape {TU start: TU object} with each TU object
         initialized with the attributes start, end, strand and genes.
+
+    Note: 
+        Column numbering starts at 0.
+
+        Strands can be noted with one of the following writings:
+        
+            * Forward: "forward","1","+","true","plus" (case insensitive)
+            * Reverse: "complement","-1","-","false","minus" (case insensitive)
     '''
 
     TUs = {}

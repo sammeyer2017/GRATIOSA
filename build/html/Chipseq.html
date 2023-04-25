@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chipseq &mdash; topo_package 1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="HiC" href="HiC.html" />
+    <link rel="prev" title="Transcriptome" href="Transcriptome.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            topo_package
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Presentation.html">Presentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Genome.html">Genome</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Transcriptome.html">Transcriptome</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Chipseq</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#class-methods">class methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-useful_functions_Chipseq">useful functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HiC.html">HiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_genome.html">plot_genome</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GO.html">GO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_analysis.html">statistical analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TSS_TTS_TU.html">TSS_TTS_TU</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">topo_package</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Chipseq</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Chipseq.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="chipseq">
+<h1>Chipseq<a class="headerlink" href="#chipseq" title="Permalink to this heading"></a></h1>
+<section id="class-methods">
+<h2>class methods<a class="headerlink" href="#class-methods" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="Chipseq.Chipseq">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Chipseq.</span></span><span class="sig-name descname"><span class="pre">Chipseq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq" title="Permalink to this definition"></a></dt>
+<dd><p>The Chipseq class is mainly used to collect coverage data (Chipseq signals)
+along a genome. The associated methods and functions allow the binning and
+averaging of these signals. The enrichment peaks positions can also be loaded
+as an attribute of this class.</p>
+<p>Each Chipseq instance has to be initialized with an organism name</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_signal">
+<span class="sig-name descname"><span class="pre">load_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_signal" title="Permalink to this definition"></a></dt>
+<dd><p>load_signal imports a 1D distribution along the chromosome (typically a
+CHIPSeq distribution) from a data file (typically a .bedGraph obtained
+with bamCompare) containing: (1) bin starting positions, (2) bin ending
+positions and (3) signal in  each bin.</p>
+<dl class="simple">
+<dt>Creates a new attribute of the Chipseq instance:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>self.signal (dict.)</dt><dd><p>Dictionary of shape {condition: array containing one signal
+value per genomic position}</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cond</strong> (<em>list of str.</em>) – Selection of one or several conditions (1 condition
+corresponds to 1 data file). By default: cond =’all’ ie all
+available signals are loaded. All selected conditions have to
+be listed in signal.info file.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The data importation requires an signal.info file that contains the
+columns positions of each information in the data file, in the following
+order:
+[0] condition, [1] filename, [2] separator used in the data file,
+[3] bin_start, [4] bin_end, [5] signal</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_signal</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">signal</span><span class="p">[</span><span class="s1">&#39;Signal_Test&#39;</span><span class="p">]</span>
+<span class="go">array([100,   0,   0, ..., 100, 100,   0])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_binned_signal">
+<span class="sig-name descname"><span class="pre">load_binned_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">binsize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_binned_signal" title="Permalink to this definition"></a></dt>
+<dd><p>If a file containing the data for the chosen condition and binsize
+exists, load_binned_signal loads these data using the load_signal method
+Else, load_binned signal performs the following steps:
+1 - imports a 1D distribution along the chromosome (typically a CHIPSeq
+distribution) using the load_signal method
+2 - performs the binning at the chosen binsize using the
+useful_functions_Chipseq.binning
+3 - saves the binned data in a file</p>
+<dl class="simple">
+<dt>Creates or adds items to 2 Chipseq instance attributes:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>self.signal (dict.)</dt><dd><p>Dictionary of shape {condition: array containing one signal
+value per genomic position (before binning)}</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>self.binned_signal (dict.)</dt><dd><p>Dictionary of shape {cond_bin: array containing one binned
+signal value per genomic position} with cond_bin the condition
+name merged with the bin size (example: WT_bin200b).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>binsize</strong> (<em>int.</em>) – </p></li>
+<li><p><strong>cond</strong> (<em>list of str.</em>) – Selection of one or several conditions (1 condition
+corresponds to 1 data file). By default: cond =’all’ ie all
+available signals are loaded. All selected conditions have
+to be listed in signal.info file.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>See ChipSeq.load_signal method for the data requirements.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_binned_signal</span><span class="p">(</span><span class="n">binsize</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span><span class="n">cond</span><span class="o">=</span><span class="s1">&#39;Signal_Test&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">binned_signal</span><span class="p">[</span><span class="s2">&quot;Signal_Test_bin100b&quot;</span><span class="p">]</span>
+<span class="go">array([100,   100,   100, ..., 10, 10, 10])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_smoothed_signal">
+<span class="sig-name descname"><span class="pre">load_smoothed_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">window</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_smoothed_signal" title="Permalink to this definition"></a></dt>
+<dd><p>If a data file containing the data for the chosen condition and
+smoothing exists, load_binned_signal loads these data using the
+load_signal method
+Else, load_smoothed_signal performs the following steps:
+1 - imports a 1D distribution along the chromosome (typically
+a CHIPSeq distribution) using the load_signal method
+2 - performs the smoothing (moving average with the chosen
+window size) using the useful_functions_Chipseq.smoothing
+3 - saves the smoothed data in a file</p>
+<dl class="simple">
+<dt>Creates or adds items to 2 Chipseq instance attributes:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>self.signal (dict.)</dt><dd><p>Dictionary of shape {condition: array containing one signal
+value per genomic position (before smoothing)}</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>self.smoothed_signal (dict.)</dt><dd><p>Dictionary of shape {cond_smoo: array containing one binned
+signal value per genomic position} with cond_smoo the
+condition name merged with the smoothing window size
+(example:  WT_smooth200b).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>window</strong> (<em>int.</em>) – window size. The value of the smoothed signal
+of a position p is equal to the average of the signal
+between p - window/2 and p + window/2.</p></li>
+<li><p><strong>cond</strong> (<em>list of str.</em>) – Selection of one or several conditions (1 condition
+corresponds to 1 data file). By default: cond =’all’ ie
+all available signals are loaded. All selected conditions
+have to be listed in signal.info file.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>See Chipseq.load_signal method for the data requirements.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_smoothed_signal</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span><span class="n">cond</span><span class="o">=</span><span class="s1">&#39;Signal_Test&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">smoothed_signal</span><span class="p">[</span><span class="s2">&quot;Signal_Test_smooth100b&quot;</span><span class="p">]</span>
+<span class="go">array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_signals_average">
+<span class="sig-name descname"><span class="pre">load_signals_average</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_cond</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average_name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_signals_average" title="Permalink to this definition"></a></dt>
+<dd><p>Load_signals_average computes and loads the average of signals replicates.
+First, the function loads the signals (which must be listed in the
+signals.info file in the /chipseq/signals/ folder) using the load_signal
+method. It can then process the data using the load_binned_signal or
+load_smoothed_signal methods. Finally, the average of these signals at
+each genomic position of the genome is calculated. This average signal
+is assigned to the Chipseq instance as signals_average attribute:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt>self.signals_average (dict.):</dt><dd><p>Dictionary of shape {average_name: array containing one
+averaged signal value per genomic position}.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>list_cond</strong> (<em>list of str.</em>) – Selection of conditions that will be averaged. All selected
+conditions have to be listed in signal.info file.</p></li>
+<li><p><strong>average_name</strong> (<em>str.</em>) – Name of the obtained signal</p></li>
+<li><p><strong>data_treatment</strong> (<em>Optionnal</em><em> [</em><em>str.</em><em>] </em><em>&quot;binning&quot;</em><em>, </em><em>&quot;smoothing&quot;</em><em> or </em><em>None</em>) – Treatment to be applied to the different signals
+before averaging them (None by default).</p></li>
+<li><p><strong>window</strong> (<em>Optionnal</em><em> [</em><em>int.</em><em>]</em>) – window size used only if data_treatment = “smoothing”
+The value of the smoothed signal of a position p is
+equal to the average of the signal between
+p - window/2 and p + window/2</p></li>
+<li><p><strong>binsize</strong> (<em>Optionnal</em><em> [</em><em>int.</em><em>]</em>) – bin size used only if data_treatment = “binning”</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>See Chipseq.load_signal method for the data requirements</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_signals_average</span><span class="p">(</span><span class="n">list_cond</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Signal1&quot;</span><span class="p">,</span><span class="s2">&quot;Signal2&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">average_name</span><span class="o">=</span><span class="s2">&quot;Mean_signal&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                        <span class="n">data_treatment</span> <span class="o">=</span> <span class="s2">&quot;smoothing&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                        <span class="n">window</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">signals_average</span><span class="p">[</span><span class="s2">&quot;Mean_signal&quot;</span><span class="p">]</span>
+<span class="go">array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.get_all_signals">
+<span class="sig-name descname"><span class="pre">get_all_signals</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.get_all_signals" title="Permalink to this definition"></a></dt>
+<dd><p>get_all_signals groups all loaded signals into a single attribute:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt>self.all_signals (dict.):</dt><dd><p>Dictionary of shape {condition: array containing one signal
+value per genomic position}</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_signal_per_genes">
+<span class="sig-name descname"><span class="pre">load_signal_per_genes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_signal_per_genes" title="Permalink to this definition"></a></dt>
+<dd><p>Load_signal_per_genes computes the mean signal for each Gene (i.e.
+the mean signal between the gene start and gene end). Genomic signals
+have to be loaded (using load_signal,load_binned_signal,
+load_smoothed_signal or load_signals_average methods) before using
+load_signal_per_genes.</p>
+<dl class="simple">
+<dt>Creates:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>self.genes[locus].signal (float.):</dt><dd><p>new attribute of Gene instances
+related to the Chipseq instance given as argument.Contains
+the Gene mean signal.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>self.signals_gene (dict. of dict.):</dt><dd><p>Dictionary containing one  subdictionary per condition given
+in input. Each  subdictionary contains the signal (value) for
+each gene (locus_tag as key).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cond</strong> (<em>Optional</em><em> [</em><em>list of str.</em><em>]</em>) – selection of one or several
+conditions (1 condition corresponds to 1 data file).
+By default cond =’all’ ie all available loaded signals are
+used.</p></li>
+<li><p><strong>window</strong> (<em>Optional int.</em>) – to include the signal around the gene.
+The mean signal will be computed between
+gene start - window and gene end + window.
+By default, window = 0</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This method needs a genomic annotation. If no annotation is
+loaded, the load_annotation method with the default “sequence.gff3”
+file is computed. To use another annotation, please load an annotation
+to your Transcriptome instance with the following commands before using
+this method:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">Genome</span><span class="o">,</span> <span class="nn">Chipseq</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span> <span class="o">=</span> <span class="n">Genome</span><span class="o">.</span><span class="n">Genome</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">g</span><span class="o">.</span><span class="n">load_annotation</span><span class="p">(</span><span class="n">annot_file</span><span class="o">=</span><span class="n">chosen_file</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">genes</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">genes</span>
+</pre></div>
+</div>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span> <span class="o">=</span> <span class="n">Chipseq</span><span class="o">.</span><span class="n">Chipseq</span><span class="p">(</span><span class="s2">&quot;ecoli&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_signal</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">load_signal_per_genes</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">signals_gene</span><span class="p">[</span><span class="s2">&quot;WT&quot;</span><span class="p">][</span><span class="s2">&quot;b0984&quot;</span><span class="p">]</span>
+<span class="go">0.40348639903919425</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="s2">&quot;b0984&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">signal</span>
+<span class="go">{&#39;WT&#39;: 0.40348639903919425,</span>
+<span class="go"> &#39;Signal_Test&#39;: 0.210505235030067}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="Chipseq.Chipseq.load_peaks">
+<span class="sig-name descname"><span class="pre">load_peaks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chipseq.Chipseq.load_peaks" title="Permalink to this definition"></a></dt>
+<dd><p>load_peaks imports a list of peaks from a data file (typically
+a .BED file of peaks obtained with MACS2) containing, at least,
+the start and end positions of peaks.</p>
+<dl class="simple">
+<dt>Creates:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>self.peaks (dict.): new attribut of the Chipseq instance.</dt><dd><p>self.peaks is a dictionary of shape
+{cond:[(start,end)]}. It contains, for each
+condition, a list of tuples of shape (start,end).
+One tuple represents one peak.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The data importation requires a peaks.info file that contains the
+column indices of each information in the data file and some
+additional information, in the following order:
+[0] Condition, [1] Filename, [2] Startline,
+[3] Separator, [4] StartCol, [5] StopCol
+peaks.info and data file have to be in the /chipseq/peaks/ directory</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-useful_functions_Chipseq">
+<span id="useful-functions"></span><h2>useful functions<a class="headerlink" href="#module-useful_functions_Chipseq" title="Permalink to this heading"></a></h2>
+<p>Functions called by Chipseq methods</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="useful_functions_Chipseq.binning">
+<span class="sig-prename descclassname"><span class="pre">useful_functions_Chipseq.</span></span><span class="sig-name descname"><span class="pre">binning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binsize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#useful_functions_Chipseq.binning" title="Permalink to this definition"></a></dt>
+<dd><p>Data binning at a chosen binsize.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>array-like</em>) – A sequence of values to be binned.</p></li>
+<li><p><strong>binsize</strong> (<em>int.</em>) – The bin size</p></li>
+<li><p><strong>stat</strong> (<em>str.</em>) – The statistic to compute (‘mean’ by default). The
+following statistics are available: mean, std, median, count,
+sum, min, max. See scipy.stats.binned_statistic documentation
+for more details)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array containing the values of the selected statistic in each bin.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="useful_functions_Chipseq.smoothing">
+<span class="sig-prename descclassname"><span class="pre">useful_functions_Chipseq.</span></span><span class="sig-name descname"><span class="pre">smoothing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#useful_functions_Chipseq.smoothing" title="Permalink to this definition"></a></dt>
+<dd><p>Data smoothing by moving average of CIRCULAR data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>array-like</em>) – A sequence of values to be smoothed.</p></li>
+<li><p><strong>window</strong> (<em>int.</em>) – window size. The value of the smoothed signal of a
+position p is equal to the average of the signal between
+p - window/2 and p + window/2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array containing the smoothed data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="useful_functions_Chipseq.load_sites_cond">
+<span class="sig-prename descclassname"><span class="pre">useful_functions_Chipseq.</span></span><span class="sig-name descname"><span class="pre">load_sites_cond</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path2file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">startline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_col</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#useful_functions_Chipseq.load_sites_cond" title="Permalink to this definition"></a></dt>
+<dd><p>Called by load_peaks, allows the peaks data to be loaded by specifying
+files (typically a .BED file of peaks obtained with MACS2), and where
+each information is (one column for each type of information).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path2file</strong> (<em>str.</em>) – path to the file containing the data</p></li>
+<li><p><strong>startline</strong> (<em>int.</em>) – file start line</p></li>
+<li><p><strong>sep</strong> (<em>str.</em>) – file separator</p></li>
+<li><p><strong>start_col</strong> (<em>int.</em>) – index of the column containing the position of the
+beginning of the peak</p></li>
+<li><p><strong>end_col</strong> (<em>int.</em>) – index of the column containing the position of the
+end of the peak</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of tuples of shape (start,end). One tuple represents one peak.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Column numbering starts at 0.</p>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Transcriptome.html" class="btn btn-neutral float-left" title="Transcriptome" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="HiC.html" class="btn btn-neutral float-right" title="HiC" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Pineau, Forquet, Meyer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

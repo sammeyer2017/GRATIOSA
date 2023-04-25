@@ -37,56 +37,59 @@ def plot_region(gen, beg, end,
     are created with the subplot_rnaseq_coverage and subplot_signal functions
     respectively.
 
-    Required args:
-        gen (Genome instance)
+    Args:
+        gen: Genome instance
         beg (int.): beginning of the region to be plotted
         end (int.): end of the region to be plotted
-
-    Optional args:
         RNASeq_cond (list of str.): list of the RNASeq conditions names to
-            represent. WARNING: All these conditions must first be loaded on
-            the Transcriptome instance using tr.load_rnaseq_cov() and this
-            instance must be given as input with the argument "tr_object".
-            Left empty by default ie no cover is plotted.
+            represent. Left empty by default ie no cover is plotted.
         tr_object (Transcriptome instance): Transcriptome instance with 
             loaded RNASeq coverages
         signals_cond (list of str.): list of the Chipseq conditions names to
-            represent. WARNING: All these conditions must first be loaded on
-            the Chipseq instance using one of the ChipSeq method (for example
-            load_signal or load_signals_average). This Chipseq instance must
-            then be given as input with the argument "ch_object".
-            Left empty by default ie no signal is plotted.
+            represent. Left empty by default ie no signal is plotted.
         ch_object (Chipseq instance): Chipseq instance with loaded signals.
-        gene_names (Bool.): If true, the name of the genes is noted on their
+        gene_names (Optional [Bool.]): If true, the name of the genes is noted on their
             representation. (True by default).
-        output_dir (str.): output directory
-        output_file (str.): output filename for plot
-        file_extension (str.): Graphic file extension type (.pdf by default)
-        R_ylabels (list of str.): y-axis label for RNASeq data subplots.
+        output_dir (Optional [str.]): output directory
+        output_file (Optional [str.]): output filename for plot
+        file_extension (Optional [str.]): Graphic file extension type (.pdf by default)
+        R_ylabels (Optional [list of str.]): y-axis label for RNASeq data subplots.
             By default, conditions names given in input with the RNASeq_cond
             argument.
-        S_ylabels (list of str.): y-axis label for RNASeq data subplots.
+        S_ylabels (Optional [list of str.]): y-axis label for RNASeq data subplots.
             By default, conditions names given in input with the signals_cond
             argument.
-        vlines (dict.): Dictionnary of shape {position: annotation text}.
+        vlines (Optional [dict.]): Dictionnary of shape {position: annotation text}.
             One green vertical line and its annotation are plotted for each
             item of this dictionnary.
-        figsize (float,float): width and height in inches
+        figsize (Optional [(float,float)]): width and height in inches
             (by default: (3.5,n) with n the number of suplots)
-
-        hratios (array-like): Relative heights of the subplots. If not given,
+        hratios (Optional [array-like]): Relative heights of the subplots. If not given,
             all rows will have the same height except the genes subplot.
-        hspace (float): Height space between subplots, expressed as a 
+        hspace (Optional [float]): Height space between subplots, expressed as a 
             fraction of the average axis height. By default: 0.05
-        figpos (array-like of length 4): Position of the subplots as a 
+        figpos (Optional [array-like of length 4]): Position of the subplots as a 
             fraction of figure width or height. The array contains the 
             positions in the following order: bottom, top, left and right.
 
-    N.B.: This method needs a genomic annotation. If no annotation is
+    
+    Warning:
+        This method needs a genomic annotation. If no annotation is
         loaded to the Genome instance, the load_annotation method of with
         the default "sequence.gff3" file is computed. To use another 
         annotation, please load an annotation to your Genome instance before 
         using this method.
+
+    Warning:
+        To plot a ChIPseq coverage, all the selected conditions must first be loaded 
+        on the Chipseq instance using one of the ChipSeq method (for example
+        load_signal or load_signals_average). This Chipseq instance must
+        then be given as input with the argument "ch_object".
+
+    Warning:
+        To plot a RNAseq coverage, all the selected conditions must first be loaded 
+        on the Transcriptome instance using tr.load_rnaseq_cov() and this
+        instance must be given as input with the argument "tr_object".
 
     Example:
         >>> g = Genome.Genome("ecoli")
@@ -95,7 +98,7 @@ def plot_region(gen, beg, end,
         >>> tr.load_rnaseq_cov()
         >>> ch = Chipseq.Chipseq("ecoli")
         >>> ch.load_signals_average(list_cond=["cond1","cond2"],
-                                    average_name="cond12")
+        ...                         average_name="cond12")
         >>> plot_genome.plot_region(g,2101000,2106000,
                                     RNASeq_cond = ["WT"],
                                     signals_cond=["cond12"],
@@ -216,7 +219,8 @@ def subplot_genes(ax, gen, beg, end, xticks=None, gene_names=True):
         gene_names (Bool.): If true, the name of the genes is noted on their
             representation. (True by default).
 
-    N.B.: This method needs a genomic annotation. If no annotation is
+    Warnings:
+        This method needs a genomic annotation. If no annotation is
         loaded to the Genome instance, the load_annotation method of with
         the default "sequence.gff3" file is computed. To use another 
         annotation, please load an annotation to your Genome instance before using this method.
@@ -351,9 +355,6 @@ def subplot_rnaseq_coverage(ax, tr, cond, beg, end, ylabel=None, xticks=None):
 
 def subplot_signal(ax, ch, cond, beg, end, ylabel=None, xticks=None):
     """
-    plots experimental information for region
-    ch= chipseq object with loaded coverage
-
     Plots a subplot with the with the experimental data (Chipseq signal) of 
     the selected region.
 

@@ -7,15 +7,13 @@ import os
 import re
 import pandas as pd
 
-'''
-The GO (Gene Ontology) class contains the information (names, definitions) 
-of the GO terms of the different categories (biological process, molecular 
-function and cellular component). The associated function 
-(GO_enrichment_test) allows the study of functional enrichment.
-'''
-
-
 class GO:
+    '''
+    The GO (Gene Ontology) class contains the information (names, definitions) 
+    of the GO terms of the different categories (biological process, molecular 
+    function and cellular component). The associated function 
+    (GO_enrichment_test) allows the study of functional enrichment.
+    '''
 
     def __init__(self,
                  filename="go-basic.obo",
@@ -23,7 +21,6 @@ class GO:
                  obo_reload=False):
         """
         Args:
-            self (GO instance)
             filename (str.): name of the Gene Ontology .obo file
             path2dir (str.): path to the directory containing the .obo file
             obo_reload (Bool.) : if true, the Gene Ontology basic.obo file is
@@ -33,20 +30,22 @@ class GO:
                     and a description
 
         Initializes GO object with the following attributes:
-            dict_GO (dict. of dict.): dictionary containing one subdictionary
+            dict_GO (dict. of dict.) 
+                    dictionary containing one subdictionary
                     per GO term. Each subdictionary contains the "Name", the 
                     "Namespace" (biological_process, molecular_function or 
                     cellular_component) and the definition corresponding to 
                     the GO term.
-            dict_GOc (dict. of dict.): dictionary containing only the GOterms
+            dict_GOc (dict. of dict.) 
+                    dictionary containing only the GOterms
                     from "cellular_component" namespace. This dictionary 
                     contains one subdictionary per GO term, with the 
                     following shape self.dict_GOc["GOterm1"] = {"Name": GO 
                     name, "Definition": associated definition}
-            dict_GOf (dict. of dict.): idem for the GOterms from 
-                    "molecular_function" namespace
-            dict_GOp (dict. of dict.): idem for the GOterms from 
-                    "biological_process" namespace
+            dict_GOf (dict. of dict.) 
+                    idem for the GOterms from "molecular_function" namespace
+            dict_GOp (dict. of dict.) 
+                    idem for the GOterms from "biological_process" namespace
 
         Example:
             >>> go = GO.GO()

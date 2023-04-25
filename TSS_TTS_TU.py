@@ -9,34 +9,24 @@ import pandas as pd
 '''
 The TTS (Transcription Termination Site), TSS (Transcription Start Site) and
 TU (Transcription Unit) classes allow to gather information on the positions, 
-reliability
-and sequences of these elements.
+reliability and sequences of these elements.
 '''
 
-
 class TSS:
-    def __init__(self, pos=None, strand=None, genes=[], score=None):
-        """
-        Called when a TSS instance is created,initializes the following 
-        attributes: pos, strand, genes, promoter and score.
-        Args:
-            self: TSS instance
-            pos (int.): position of the TSS
-            strand (bool.): DNA strand (True for forward strand, False for 
-                    complementary strand)
-            genes (list of str.): list of locus tags of genes associated with 
-                    the TSS
-            score (float.): TSS score
+    """ 
+    Each TTS instance has to be initialized with the following attributes:
+        * pos (int.): position of the TSS
+        * strand (bool.): DNA strand (True for forward strand, False for 
+          complementary strand)
+        * genes (list of str.): list of locus tags of genes associated with 
+          the TSS
+        * score (float.): TSS score
+    """
 
-        Example:
-            >>> from TSS_TTS_TU import TSS
-            >>> tss = TSS(pos=4707030,strand=False)
-            >>> tss.pos
-            4707030
-        """
-        self.pos = pos
+    def __init__(self, pos=None, strand=None, genes=[], score=None):
+        self.pos = pos 
         self.strand = strand
-        self.genes = genes
+        self.genes = genes  
         self.promoter = {}
         self.score = score
 
@@ -48,7 +38,6 @@ class TSS:
         genes_dict.
 
         Args:
-            self: TSS instance
             tags (str.): locus tags separated by commas
             genes_dict: dictionary of shape {locus tag : Gene object}
 
@@ -72,19 +61,13 @@ class TSS:
     def add_promoter(self, sig, *arg, **kwargs):
         """
         add_promoter completes the promoter attribute of the TSS instance.
+        Creates or complete the 'promoter' of the TSS instance with the shape {[sig]:(sites)}
 
-        Required args:
-            self: TSS instance
+        Args:
             sig (str.): sigma factor
-
-        Optional arg:
-            sites (str.): the left and right coordinates of the -10 and -35 
+            sites (Optional [str.]): the left and right coordinates of the -10 and -35 
                     elements with the shape "-10l,-10r,-35r,-35l"
-            genes_dict: dictionary of shape {locus tag : Gene object}
-
-        Output:
-            self.promoter (dict.): completed attribute of the TSS instance.
-                                   with the shape {[sig]:(sites)}
+            genes_dict (Optional [dict.]): dictionary of shape {locus tag : Gene object}
 
         Example:
             >>> from TSS_TTS_TU import TSS
@@ -107,11 +90,19 @@ class TSS:
         '''
         add_prom_elements extracts sequences of the different promoter 
         elements (spacer, -10, -35, discriminator, region around TSS) based 
-        on -35 and -10 coordinates that are included in the promoter 
-        attribute (which must first be loaded using the add_promoter method).
+        on -35 and -10 coordinates that are included in the promoter attribute.
+
+        Completes the 'promoter' attribute of the TSS instance:
+                Before using this method, this attribute was a dictionary of 
+                shape {sigma factor: subdictionary} containing, for each 
+                sigma factor, a subdictionary of shape "sites":(-10l,-10r,-35r,
+                -35l)} with -10l, -10r, -35r and -35l the left and right 
+                coordinates of the -10 and -35 elements. Now, this 
+                subdictionary contains 4 new keys : 
+                "spacer", "minus10","minus35" and "discriminator". 
+                Each associated value is the sequence of the element.
 
         Args:
-            self (TSS instance with a promoter attribute)
             gen_seq (str.): sequence of the forward strand
             gen_seqcompl (str.): sequence of the complementary strand
                     (WARNING: 3' -> 5')
@@ -121,29 +112,18 @@ class TSS:
                     to extract. Argument with the shape:
                     [length before TSS, length after TSS]
                     Default: [0,0] ie no sequence will be extracted around 
-                    TSS
+                    TSS.
+                    
+        Note: 
+            If prom !=[0,0], self.promoter dictionary has also a new 
+            "region" key. self.promoter['region'] returns the sequence 
+            of the region chosen with the prom argument.
+                
 
-        Outputs:
-            self.promoter (dict.): completed attribute of the TSS instance.
-                    Before this function, this dictionary of shape 
-                    {sigma factor: subdictionary} contained, for each sigma 
-                    factor, a subdictionary of shape "sites":(-10l,-10r,-35r,
-                    -35l)} with -10l, -10r, -35r and -35l the left and right 
-                    coordinates of the -10 and -35 elements. Now, this 
-                    subdictionary contains 4 new keys : 
-                    "spacer", "minus10","minus35" and "discriminator". 
-                    Each associated value is the sequence of the element.
-
-                if prom !=[0,0], self.promoter dictionary has also a new 
-                "region" key. self.promoter['region'] returns the sequence 
-                of the region chosen with the prom argument.
-
-            New TSS attributes promoter
-            Dictionnary of shape {element: sequence} with element in
-            ["spacer", "minus10", "minus35", "discriminator", "region"]
-            See load_TSS description to understand the structure of the
-            subdictionary self.TSSs[condTSS][TSS].promoter
-
+        Warning: 
+            the promoter attribute has to be loaded prior using 
+            this method. Use add_promoter method.
+            
 
         Example:
             >>> import Genome
@@ -153,10 +133,10 @@ class TSS:
             >>> tss = TSS(pos=4707030,strand=False)
             >>> tss.add_promoter(sig = "sigma70", sites="4707037,4707046,4707062,4707068")
             >>> tss.add_prom_elements(g.seq,
-                                      g.seqcompl,
-                                      sig = "sigma70",
-                                      sites="4707039,4707044,4707060,4707065",
-                                      prom=[20,20])
+            ...                       g.seqcompl,
+            ...                       sig = "sigma70",
+            ...                       sites="4707039,4707044,4707060,4707065",
+            ...                       prom=[20,20])
             >>> tss.promoter
             {'sigma70': {'sites': (4707037, 4707046, 4707062, 4707068),
              'spacer': 'CCTCGCCCACCCTCA',
@@ -197,32 +177,22 @@ class TSS:
 
 
 class TTS:
+    """
+    Each TTS instance has to be initialized with the following attributes:
+        * left (int.) and right (int.): TTS coordinates (does not take into
+          account the strand, ie right > left)
+        * start (int.) and end (int.): positions of the beginning and the 
+          end of the TTS
+        * strand (bool.): DNA strand (True for forward strand, False for 
+          complementary strand)
+        * rho_dpdt (bool.): rho dependency of the TTS
+        * genes (list of str.): list of locus tags of genes associated with 
+          the TTS
+        * score (float.): TSS score
+    """
 
     def __init__(self, start=None, end=None, left=None, right=None,
                  strand=None, rho_dpdt=None, genes=[], seq="", score=None):
-        """
-        Called when a TTS instance is created,initializes the following 
-        attributes: left, right, start, end, strand, rho_dpdt, genes, score 
-        and seq.
-        Args:
-            self: TTS instance
-            left (int.) and right (int.): TTS coordinates (does not take into
-                    account the strand, ie right > left)
-            start (int.) and end (int.): positions of the beginning and the 
-                    end of the TTS
-            strand (bool.): DNA strand (True for forward strand, False for 
-                    complementary strand)
-            rho_dpdt (bool.): rho dependency of the TTS
-            genes (list of str.): list of locus tags of genes associated with 
-                    the TTS
-            score (float.): TSS score
-
-        Example:
-            >>> from TSS_TTS_TU import TSS
-            >>> tts = TTS(left=1,right=10,strand=True)
-            >>> tss.left
-            1
-        """
         self.start = start
         self.end = end
         self.left = left
@@ -257,7 +227,6 @@ class TTS:
         with the genes that are given as tags and that are in the genes_dict.
 
         Args:
-            self: TTS instance
             tags (str.): locus tags separated by commas
             genes_dict: dictionary of shape {locus tag : Gene object}
 
@@ -281,30 +250,18 @@ class TTS:
 
 
 class TU:
+    """
+    Each TU instance has to be initialized with the following attributes:
+        * left (int.) and right (int.): TU coordinates (does not take into
+          account the strand, ie right > left)
+        * start (int.) and end (int.): positions of the beginning and the end of the TU
+        * strand (bool.): DNA strand (True for forward strand, False for 
+          complementary strand)
+        * genes (list of str.): list of locus tags of genes associated with the TU
 
+    """
     def __init__(self, start=None, end=None, left=None,
                  right=None, strand=None, genes=[]):
-        """
-        Called when a TU instance is created,initializes the following 
-        attributes: left, right, start, end, strand, and genes.
-
-        Args:
-            self: TU instance
-            left (int.) and right (int.): TU coordinates (does not take into
-                    account the strand, ie right > left)
-            start (int.) and end (int.): positions of the beginning and the 
-                    end of the TU
-            strand (bool.): DNA strand (True for forward strand, False for 
-                    complementary strand)
-            genes (list of str.): list of locus tags of genes associated with 
-                    the TU
-
-        Example:
-            >>> from TSS_TTS_TU import TU
-            >>> tu = TU(start=100,end=10,strand=False)
-            >>> tu.left
-            10
-        """
         self.start = start
         self.end = end
         self.left = left
@@ -336,7 +293,6 @@ class TU:
         with the genes that are given as tags and that are in the genes_dict.
 
         Args:
-            self: TU instance
             tags (str.): locus tags separated by commas
             genes_dict: dictionary of shape {locus tag : Gene object}
 
@@ -368,15 +324,13 @@ class TU:
         only one value is given in input, this value is directly added to the 
         attribute.
 
+        Creates or completes the "expression" attribute of the TU instance. 
+        This attribute is a dictionary of shape {condition:expression value}
+
         Args:
-            self: TU instance
             condition (str.): name of the condition
             TU_expr (float or list of float): expression value(s)
-
-        Output:
-            self.expression (dict.): New (or completed) attribute
-                                     of the TU instance with the shape
-                                     {condition:expression value}
+                             
         Example:
             >>> from TSS_TTS_TU import TU
             >>> tu = TU()
@@ -396,16 +350,13 @@ class TU:
 
     def add_TSS(self, TSS):
         """
-        add_TSS attributes potential TSS to the TU object.
+        add_TSS attributes potential TSS to the TU object. 
+        Creates or completes the 'TSS' attributes (list of tuples) of the 
+        TU instance. 
 
         Args:
-            self: TU instance
             TSS: tuple of shape (TSS position (int.),
                                  propotion of total starts (float))
-
-        Output:
-            self.TSS (list of tuples): New (or completed) attribute of the TU
-                    instance containing the TSS tuple given as argument.
 
         Example:
             >>> from TSS_TTS_TU import TU
@@ -425,15 +376,12 @@ class TU:
     def add_TTS(self, TTS):
         """
         add_TTS attributes potential TTS to the TU object.
+        Creates or completes the 'TTS' attributes (list of tuples) of the 
+        TU instance. 
 
         Args:
-            self: TU instance
             TTS: tuple of shape 
                     (TTS position (int.), propotion of total starts (float))
-
-        Output:
-            self.TTS (list of tuples): New (or completed) attribute of the TU
-                    instance containing the TTS tuple given as argument.
         """
         if not hasattr(self, 'TTS'):
             self.TTS = []

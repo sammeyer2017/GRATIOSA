@@ -9,25 +9,19 @@ from pathlib import Path
 from globvar import *
 from Genome import Genome
 
-'''
-The Chipseq class is mainly used to collect coverage data (Chipseq signals) 
-along a genome. The associated methods and functions allow the binning and 
-averaging of these signals. The enrichment peaks positions can also be loaded 
-as an attribute of this class. 
-'''
-
-
 class Chipseq:
+    '''
+    The Chipseq class is mainly used to collect coverage data (Chipseq signals) 
+    along a genome. The associated methods and functions allow the binning and 
+    averaging of these signals. The enrichment peaks positions can also be loaded 
+    as an attribute of this class. 
+
+    Each Chipseq instance has to be initialized with an organism name
+    
+        >>> ch = Chipseq.Chipseq("ecoli")
+    '''
 
     def __init__(self, name):
-        """ 
-        Called when an Chipseq instance is created,
-        initialize the attribute name.
-        Example:
-            >>> ch = Chipseq.Chipseq("ecoli")
-            >>> ch.name
-            ecoli
-        """
         self.name = name
 
 
@@ -35,29 +29,27 @@ class Chipseq:
         '''
         load_signal imports a 1D distribution along the chromosome (typically a 
         CHIPSeq distribution) from a data file (typically a .bedGraph obtained 
-        with bamCompare) containing:
-        (1) bin starting positions, (2) bin ending positions and (3) signal in 
-        each bin.
+        with bamCompare) containing: (1) bin starting positions, (2) bin ending 
+        positions and (3) signal in  each bin.
 
-        Requirements:
-        The data importation requires an signal.info file that contains the 
-        columns positions of each information in the data file, in the following 
-        order:
-        [0] condition, [1] filename, [2] separator used in the data file, 
-        [3] bin_start, [4] bin_end, [5] signal
+        Creates a new attribute of the Chipseq instance: 
+            * self.signal (dict.)
+                   Dictionary of shape {condition: array containing one signal
+                   value per genomic position}
 
         Args:
-            self (Chipseq instance)
             cond (list of str.): 
                     Selection of one or several conditions (1 condition 
                     corresponds to 1 data file). By default: cond ='all' ie all 
                     available signals are loaded. All selected conditions have to 
                     be listed in signal.info file.
 
-        Outputs: 
-            self.signal (dict.):
-                   Dictionary of shape {condition: array containing one signal
-                   value per genomic position}
+        Note:
+            The data importation requires an signal.info file that contains the 
+            columns positions of each information in the data file, in the following 
+            order:
+            [0] condition, [1] filename, [2] separator used in the data file, 
+            [3] bin_start, [4] bin_end, [5] signal
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
@@ -127,24 +119,25 @@ class Chipseq:
         useful_functions_Chipseq.binning
         3 - saves the binned data in a file 
 
-        See ChipSeq.load_signal method for the data requirements.
+        Creates or adds items to 2 Chipseq instance attributes:
+            * self.signal (dict.)
+                    Dictionary of shape {condition: array containing one signal
+                    value per genomic position (before binning)}
+            * self.binned_signal (dict.)
+                    Dictionary of shape {cond_bin: array containing one binned 
+                    signal value per genomic position} with cond_bin the condition 
+                    name merged with the bin size (example: WT_bin200b). 
 
         Args:
-            binsize (int.): bin size 
+            binsize (int.)
             cond (list of str.): 
                     Selection of one or several conditions (1 condition 
                     corresponds to 1 data file). By default: cond ='all' ie all 
                     available signals are loaded. All selected conditions have 
                     to be listed in signal.info file.
 
-        Outputs: creates or adds items to 2 Chipseq instance attributes
-            self.signal (dict.):
-                    Dictionary of shape {condition: array containing one signal
-                    value per genomic position (before binning)}
-            self.binned_signal (dict.):
-                    Dictionary of shape {cond_bin: array containing one binned 
-                    signal value per genomic position} with cond_bin the condition 
-                    name merged with the bin size (example: WT_bin200b). 
+        Note:
+            See ChipSeq.load_signal method for the data requirements.
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
@@ -224,8 +217,17 @@ class Chipseq:
         2 - performs the smoothing (moving average with the chosen 
         window size) using the useful_functions_Chipseq.smoothing
         3 - saves the smoothed data in a file 
+        
+        Creates or adds items to 2 Chipseq instance attributes:
+            * self.signal (dict.)
+                   Dictionary of shape {condition: array containing one signal
+                   value per genomic position (before smoothing)}
+            * self.smoothed_signal (dict.)
+                    Dictionary of shape {cond_smoo: array containing one binned 
+                    signal value per genomic position} with cond_smoo the 
+                    condition name merged with the smoothing window size 
+                    (example:  WT_smooth200b).
 
-        See Chipseq.load_signal method for the data requirements.
 
         Args:
             window (int.): window size. The value of the smoothed signal 
@@ -236,17 +238,9 @@ class Chipseq:
                     corresponds to 1 data file). By default: cond ='all' ie 
                     all available signals are loaded. All selected conditions 
                     have to be listed in signal.info file.
-
-
-        Outputs: creates or adds items to 2 Chipseq instance attributes
-            self.signal (dict.):
-                   Dictionary of shape {condition: array containing one signal
-                   value per genomic position (before smoothing)}
-            self.smoothed_signal (dict.):
-                    Dictionary of shape {cond_smoo: array containing one binned 
-                    signal value per genomic position} with cond_smoo the 
-                    condition name merged with the smoothing window size 
-                    (example:  WT_smooth200b).
+        
+        Note:
+            See Chipseq.load_signal method for the data requirements.
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
@@ -315,38 +309,36 @@ class Chipseq:
         method. It can then process the data using the load_binned_signal or 
         load_smoothed_signal methods. Finally, the average of these signals at 
         each genomic position of the genome is calculated. This average signal 
-        is assigned to the Chipseq instance as signals_average attribute. 
+        is assigned to the Chipseq instance as signals_average attribute:
+            * self.signals_average (dict.):
+                    Dictionary of shape {average_name: array containing one 
+                    averaged signal value per genomic position}. 
 
-        Required args.:
+        Args:
             list_cond (list of str.): 
                     Selection of conditions that will be averaged. All selected 
                     conditions have to be listed in signal.info file.
             average_name (str.): 
                     Name of the obtained signal
-
-        Optionnal args: 
-            data_treatment (str. "binning", "smoothing" or None):
+            data_treatment (Optionnal [str.] "binning", "smoothing" or None):
                     Treatment to be applied to the different signals 
                     before averaging them (None by default).
-            window (int.): 
+            window (Optionnal [int.]): 
                     window size used only if data_treatment = "smoothing"
                     The value of the smoothed signal of a position p is 
                     equal to the average of the signal between 
                     p - window/2 and p + window/2
-            binsize (int.): bin size used only if data_treatment = "binning"
+            binsize (Optionnal [int.]): bin size used only if data_treatment = "binning"
+        
+        Note:
+            See Chipseq.load_signal method for the data requirements
 
-        See Chipseq.load_signal method for the data requirements
-
-        Outputs: 
-            self.signals_average (dict.):
-                    Dictionary of shape {average_name: array containing one 
-                    averaged signal value per genomic position}.
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_signals_average(list_cond=["Signal1","Signal2"],
-                                        average_name="Mean_signal",
-                                        data_treatment = "smoothing",
-                                        window=500)
+            ...                         average_name="Mean_signal",
+            ...                         data_treatment = "smoothing",
+            ...                         window=500)
             >>> ch.signals_average["Mean_signal"]
             array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
         '''
@@ -425,13 +417,9 @@ class Chipseq:
 
     def get_all_signals(self):
         '''
-        get_all_signals groups all loaded signals into a single attribute. 
+        get_all_signals groups all loaded signals into a single attribute:
 
-        Args:
-            self (Chipseq instance)
-            
-        Outputs: 
-            self.all_signals (dict.): New Chipseq instance attribute
+            * self.all_signals (dict.): 
                    Dictionary of shape {condition: array containing one signal
                    value per genomic position}
         '''
@@ -450,8 +438,17 @@ class Chipseq:
         load_smoothed_signal or load_signals_average methods) before using 
         load_signal_per_genes.
 
-        Args: 
-            self (Chipseq instance)
+        Creates: 
+            * self.genes[locus].signal (float.): 
+                    new attribute of Gene instances 
+                    related to the Chipseq instance given as argument.Contains 
+                    the Gene mean signal. 
+            * self.signals_gene (dict. of dict.): 
+                    Dictionary containing one  subdictionary per condition given 
+                    in input. Each  subdictionary contains the signal (value) for 
+                    each gene (locus_tag as key). 
+
+        Args:
             cond (Optional [list of str.]): selection of one or several 
                     conditions (1 condition corresponds to 1 data file).
                     By default cond ='all' ie all available loaded signals are 
@@ -461,25 +458,17 @@ class Chipseq:
                     gene start - window and gene end + window.
                     By default, window = 0
 
-        Outputs: 
-            self.genes[locus].signal (float.): new attribute of Gene instances 
-                    related to the Chipseq instance given as argument.Contains 
-                    the Gene mean signal. 
-            self.signals_gene (dict. of dict.): Dictionary containing one 
-                    subdictionary per condition given in input. Each 
-                    subdictionary contains the signal (value) for each gene 
-                    (locus_tag as key).
-
-        N.B.: This method needs a genomic annotation. If no annotation is 
-        loaded, the load_annotation method with the default "sequence.gff3" 
-        file is computed. To use another annotation, please load an annotation 
-        to your Transcriptome instance with the following commands before using 
-        this method:
-            >>> import Genome, Chipseq
-            >>> ch = Chipseq.Chipseq("ecoli")
-            >>> g = Genome.Genome(ch.name)
-            >>> g.load_annotation(annot_file=chosen_file)
-            >>> ch.genes = g.genes    
+        Warning:
+            This method needs a genomic annotation. If no annotation is 
+            loaded, the load_annotation method with the default "sequence.gff3" 
+            file is computed. To use another annotation, please load an annotation 
+            to your Transcriptome instance with the following commands before using 
+            this method:
+                >>> import Genome, Chipseq
+                >>> ch = Chipseq.Chipseq("ecoli")
+                >>> g = Genome.Genome(ch.name)
+                >>> g.load_annotation(annot_file=chosen_file)
+                >>> ch.genes = g.genes    
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")
@@ -523,23 +512,20 @@ class Chipseq:
         a .BED file of peaks obtained with MACS2) containing, at least,
         the start and end positions of peaks.
 
-        Args: 
-            self (Chipseq instance)
-
-        Requirements:
-            The data importation requires a peaks.info file that contains the 
-                column indices of each information in the data file and some 
-                additional information, in the following order:
-                [0] Condition, [1] Filename, [2] Startline, 
-                [3] Separator, [4] StartCol, [5] StopCol
-            peaks.info and data file have to be in the /chipseq/peaks/ directory 
-
-        Output: 
-            self.peaks (dict.): new attribut of the Chipseq instance. 
+        Creates:
+            * self.peaks (dict.): new attribut of the Chipseq instance. 
                                 self.peaks is a dictionary of shape
                                 {cond:[(start,end)]}. It contains, for each 
                                 condition, a list of tuples of shape (start,end).
                                 One tuple represents one peak.
+
+        Note:
+            The data importation requires a peaks.info file that contains the
+            column indices of each information in the data file and some 
+            additional information, in the following order:
+            [0] Condition, [1] Filename, [2] Startline, 
+            [3] Separator, [4] StartCol, [5] StopCol
+            peaks.info and data file have to be in the /chipseq/peaks/ directory 
         """
 
         # gets the path to data and .info files

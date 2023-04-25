@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>statistical analysis &mdash; topo_package 1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="TSS_TTS_TU" href="TSS_TTS_TU.html" />
+    <link rel="prev" title="GO" href="GO.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            topo_package
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Presentation.html">Presentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Genome.html">Genome</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Transcriptome.html">Transcriptome</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Chipseq.html">Chipseq</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HiC.html">HiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_genome.html">plot_genome</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GO.html">GO</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">statistical analysis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-stat_analysis">statistical tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-plot_stat_analysis">graphical representation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="TSS_TTS_TU.html">TSS_TTS_TU</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">topo_package</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">statistical analysis</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/stat_analysis.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="statistical-analysis">
+<h1>statistical analysis<a class="headerlink" href="#statistical-analysis" title="Permalink to this heading"></a></h1>
+<section id="module-stat_analysis">
+<span id="statistical-tests"></span><h2>statistical tests<a class="headerlink" href="#module-stat_analysis" title="Permalink to this heading"></a></h2>
+<p>This module allows the classification and the statistical analysis
+(enrichment test, proportion test, student test) of omics and spatial data
+loaded on the different objects created, in particular with the Genome,
+Transcriptome, Chipseq and HiC classes.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="stat_analysis.data_classification">
+<span class="sig-prename descclassname"><span class="pre">stat_analysis.</span></span><span class="sig-name descname"><span class="pre">data_classification</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_nb</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stat_analysis.data_classification" title="Permalink to this definition"></a></dt>
+<dd><p>Classification of data into fractions according to defined thresholds
+(using the thresholds argument), according to class sizes (using the
+class_sizes argument) or into classes of equal size (if neither the
+thresholds argument nor the class_sizes argument is specified).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_x</strong> (<em>list</em>) – list of elements such as positions or gene names</p></li>
+<li><p><strong>data_y</strong> (<em>list</em>) – list of data associated with each element such as
+signal coverage or gene expression</p></li>
+<li><p><strong>class_nb</strong> (<em>int.</em>) – number of classes (fractions) to create</p></li>
+<li><p><strong>class_names</strong> (<em>Optionnal</em><em> [</em><em>list</em><em>]</em>) – list of names to give to each class
+By default, each class will be named by a number between 0
+and class_nb.</p></li>
+<li><p><strong>thresholds</strong> (<em>Optionnal</em><em> [</em><em>list of ints.</em><em>]</em>) – Thresholds used for the classification.
+If not given, the classification will distribute the data in
+fractions of equal sizes.</p></li>
+<li><p><strong>class_sizes</strong> (<em>Optionnal</em><em> [</em><em>list of ints.</em><em>]</em>) – Number of elements to put in each class.
+The total must be equal to the number of  elements in data_x
+and in data_y.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>2 dictionaries:</dt><dd><ul class="simple">
+<li><p>dict. of shape {class_name:list of elements}</p></li>
+<li><p>dict. of shape {class_name: list of data associated with each element}</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stat_analysis</span><span class="o">.</span><span class="n">data_classification</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;d&quot;</span><span class="p">,</span><span class="s2">&quot;c&quot;</span><span class="p">,</span><span class="s2">&quot;e&quot;</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span>
+<span class="gp">... </span>                                  <span class="n">class_nb</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="go">({0: [&#39;a&#39;], 1: [&#39;b&#39;, &#39;c&#39;, &#39;d&#39;], 2: []}, {0: [1], 1: [2, 3, 4], 2: []})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stat_analysis</span><span class="o">.</span><span class="n">data_classification</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;d&quot;</span><span class="p">,</span><span class="s2">&quot;c&quot;</span><span class="p">,</span><span class="s2">&quot;e&quot;</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span>
+<span class="gp">... </span>                                  <span class="n">class_nb</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">class_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="go">({0: [&#39;a&#39;], 1: [&#39;b&#39;], 2: [&#39;c&#39;, &#39;d&#39;, &#39;e&#39;]}, {0: [1], 1: [2], 2: [3, 4, 5]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stat_analysis</span><span class="o">.</span><span class="n">data_classification</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;d&quot;</span><span class="p">,</span><span class="s2">&quot;c&quot;</span><span class="p">,</span><span class="s2">&quot;e&quot;</span><span class="p">,</span><span class="s2">&quot;f&quot;</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">],</span>
+<span class="gp">... </span>                                  <span class="n">class_nb</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="go">({0: [&#39;a&#39;, &#39;b&#39;], 1: [&#39;c&#39;, &#39;d&#39;], 2: [&#39;e&#39;, &#39;f&#39;]}, {0: [1, 2], 1: [3, 4], 2: [5, 6]})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="stat_analysis.proportion_test">
+<span class="sig-prename descclassname"><span class="pre">stat_analysis.</span></span><span class="sig-name descname"><span class="pre">proportion_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_hyp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'one-sided'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/proportion_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'prop_test2023-04-25</span> <span class="pre">11:42:57.661363'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stat_analysis.proportion_test" title="Permalink to this definition"></a></dt>
+<dd><p>Compares the proportion of targ_features/all_features between categories.
+The proportion test is based on a normal test using the
+stats.proportion.proportions_ztest function from statsmodels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_cats</strong> (<em>dict.</em>) – classification of each element in a dictionary of
+shape {category:[elements]}</p></li>
+<li><p><strong>dict_features</strong> (<em>dict.</em>) – feature corresponding to each element in a
+dictionary of shape {feature:[elements]}</p></li>
+<li><p><strong>targ_features</strong> (<em>list</em><em> or </em><em>string</em>) – targeted feature(s)</p></li>
+<li><p><strong>all_features</strong> (<em>Optionnal</em><em> [</em><em>list</em><em> or </em><em>str.</em><em>]</em>) – features that will be used to
+calculate the proportion, including targ_features
+(default: all keys of the dict_features dictionary)</p></li>
+<li><p><strong>cats</strong> (<em>Optionnal</em><em> [</em><em>list</em><em>]</em>) – list of categories to compare
+(default: all keys of dict_cats)</p></li>
+<li><p><strong>alt_hyp</strong> (<em>Optionnal</em><em> [</em><em>&quot;two-sided&quot;</em><em> or </em><em>&quot;one-sided&quot;</em><em>]</em>) – alternative hypothesis.
+If “one-sided” is chosen, both one-sided tests will be
+performed with the statsmodels.stats.proportions_ztest
+function and the smaller p-value will be kept.
+See statsmodels documentation for more details.
+(default: “one-sided”)</p></li>
+<li><p><strong>output_dir</strong> (<em>Optionnal</em><em> [</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optionnal</em><em> [</em><em>str.</em><em>]</em>) – output filename</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict. of shape {“categories”:cats, “proportions”:prop,
+“confidence intervals”:(ci0,ci1), “p-values”:{(cat1,cat2):pval}</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Test results are saved in the output_file</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dict_cats</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;borders&quot;</span><span class="p">:[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;K&quot;</span><span class="p">,</span><span class="s2">&quot;L&quot;</span><span class="p">],</span>
+<span class="gp">... </span>             <span class="s2">&quot;loops&quot;</span><span class="p">:[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="s2">&quot;D&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="s2">&quot;H&quot;</span><span class="p">,</span><span class="s2">&quot;J&quot;</span><span class="p">],</span>
+<span class="gp">... </span>             <span class="s2">&quot;None&quot;</span><span class="p">:[</span><span class="s2">&quot;E&quot;</span><span class="p">,</span><span class="s2">&quot;I&quot;</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;act&quot;</span><span class="p">:[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="s2">&quot;H&quot;</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="s2">&quot;rep&quot;</span><span class="p">:[</span><span class="s2">&quot;D&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;L&quot;</span><span class="p">,</span><span class="s2">&quot;I&quot;</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="s2">&quot;None&quot;</span><span class="p">:[</span><span class="s2">&quot;J&quot;</span><span class="p">,</span><span class="s2">&quot;K&quot;</span><span class="p">],</span><span class="s2">&quot;NA&quot;</span><span class="p">:[</span><span class="s2">&quot;E&quot;</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">stat_analysis</span><span class="o">.</span><span class="n">proportion_test</span><span class="p">(</span><span class="n">dict_cats</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="s2">&quot;act&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                                    <span class="n">all_features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span><span class="s2">&quot;rep&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                                    <span class="n">alt_hyp</span><span class="o">=</span><span class="s2">&quot;two-sided&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;categories&quot;</span><span class="p">]</span>
+<span class="go">[&#39;borders&#39;, &#39;loops&#39;, &#39;None&#39;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;proportions&quot;</span><span class="p">]</span>
+<span class="go">[0.5, 0.75, 0.0]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;confidence intervals&quot;</span><span class="p">]</span>
+<span class="go">[(0.010009, 0.98999),(0.32565, 1.0),(0.0, 0.0)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;p-values&quot;</span><span class="p">]</span>
+<span class="go">{&#39;borders-loops&#39;: 0.4652088184521418,</span>
+<span class="go"> &#39;borders-None&#39;: 0.3613104285261787,</span>
+<span class="go"> &#39;loops-None&#39;: 0.17090352023079747}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="stat_analysis.enrichment_test">
+<span class="sig-prename descclassname"><span class="pre">stat_analysis.</span></span><span class="sig-name descname"><span class="pre">enrichment_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_nb_elements</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/enrichment_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'enrich_test2023-04-25</span> <span class="pre">11:42:57.661389'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stat_analysis.enrichment_test" title="Permalink to this definition"></a></dt>
+<dd><p>Computes enrichment tests (hypergeometric test) of a target in a
+category.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_cats</strong> (<em>dict.</em>) – classification of each element in a dictionary of
+shape {category:[elements]}
+N.B.: the same element can be associated to multiple features</p></li>
+<li><p><strong>dict_features</strong> (<em>dict.</em>) – feature corresponding to each element in a
+dictionary of shape {feature:[elements]}</p></li>
+<li><p><strong>targ_features</strong> (<em>list</em><em> or </em><em>string</em>) – targeted feature(s)</p></li>
+<li><p><strong>all_features</strong> (<em>Optional</em><em>[</em><em>list</em><em> or </em><em>str.</em><em>]</em>) – features that will be used to
+calculate the proportion, including targ_features
+(default: all keys of the dict_features dictionary)</p></li>
+<li><p><strong>targ_cats</strong> (<em>Optional</em><em>[</em><em>list</em><em>]</em>) – list of categories. The enrichment test is
+performed for each category. (default: all keys of dict_cats)</p></li>
+<li><p><strong>all_cats</strong> (<em>Optional</em><em>[</em><em>list</em><em>]</em>) – list of categories used to compute the global
+proportion and the expected number in the selection,
+including targ_cats.
+(default: all keys of dict_cats)</p></li>
+<li><p><strong>min_nb_elements</strong> (<em>Optional</em><em>[</em><em>int.</em><em>]</em>) – Number of elements used as thresholds
+for the feature selection. If there is strictly less than
+min_nb_elements corresponding to a feature, the result
+corresponding to this feature is not relevant and is
+therefore neither returned nor reported in the output file.
+By default, min_nb_elements is set to 4.</p></li>
+<li><p><strong>output_dir</strong> (<em>Optional</em><em>[</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optional</em><em>[</em><em>str.</em><em>]</em>) – output filename</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>DataFrame containing the following columns:</dt><dd><ul class="simple">
+<li><p>’Category’(str.): category</p></li>
+<li><p>’Selected_gene_nb’(int.): Nb of elements corresponding to this
+feature in the selection</p></li>
+<li><p>’Expected_selected_nb’ (int.): Expected nb of elements
+corresponding to this feature in the selection</p></li>
+<li><p>’Total_gene_nb’(int.): Nb of elements corresponding to this
+feature in the dict_features</p></li>
+<li><p>’Proportion’(float): ratio between Selected_gene_nb and
+Total_gene_nb</p></li>
+<li><p>’Prop_conf_int’ (np.array): 95% confidence interval with equal
+areas around the proportion.</p></li>
+<li><p>’p-value’ (float): p-value obtained with the enrichment test</p></li>
+<li><p>’Adj p-value (FDR)’ (float): p-value corrected for false
+discovery rate</p></li>
+<li><p>’Global_proportion’ (float): ratio between nb of elements in
+the selection and nb of elements in dict_features</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function performs a p-value correction for false discovery rate using
+statsmodels.stats.multitest.fdrcorrection</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The created DataFrame, ordered according to the adjusted pvalues,
+is reported in the output_file.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dict_features</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;act&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="s2">&quot;Q&quot;</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="s2">&quot;W&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                 <span class="s2">&quot;rep&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">],</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span> <span class="s2">&quot;NA&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;J&quot;</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dict_cats</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;GOterm1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="s2">&quot;Q&quot;</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">],</span>
+<span class="gp">... </span>             <span class="s2">&quot;GOterm2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;E&quot;</span><span class="p">],</span>
+<span class="gp">... </span>             <span class="s2">&quot;GOterm3&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">,</span> <span class="s2">&quot;V&quot;</span><span class="p">,</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">],</span>
+<span class="gp">... </span>             <span class="s2">&quot;GOterm4&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="s2">&quot;J&quot;</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stat_analysis</span><span class="o">.</span><span class="n">enrichment_test</span><span class="p">(</span><span class="n">dict_cats</span><span class="p">,</span>
+<span class="gp">... </span>                          <span class="n">dict_features</span><span class="p">,</span>
+<span class="gp">... </span>                          <span class="n">targ_features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span> <span class="s2">&quot;None&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                          <span class="n">all_features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span> <span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;rep&quot;</span><span class="p">,</span> <span class="s2">&quot;NA&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                          <span class="n">targ_cats</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GOterm1&quot;</span><span class="p">,</span> <span class="s2">&quot;GOterm2&quot;</span><span class="p">,</span> <span class="s2">&quot;GOterm3&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                          <span class="n">min_nb_elements</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>                          <span class="n">output_file</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+<span class="go">  Category  Selected_gene_nb  Total_gene_nb  Proportion  Prop_conf_int  p-value</span>
+<span class="go">0  GOterm1                9          11    0.818182  [0.4545, 1.0]  0.27206</span>
+<span class="go">1  GOterm3                6          10    0.600000     [0.2, 1.0]  0.97059</span>
+<span class="go">  Adj p-value (FDR)  Global_proportion  Expected_selected_nb</span>
+<span class="go">0           0.54412        0.722222        7.944444</span>
+<span class="go">1           0.97059        0.722222         7.22222</span>
+<span class="go">  Category  Selected_gene_nb  Total_gene_nb  Proportion     Prop_conf_int</span>
+<span class="go">0  GOterm1                9          11    0.818182  [0.6818, 0.9545]</span>
+<span class="go">1  GOterm3                6          10    0.600000        [0.4, 0.8]</span>
+<span class="go">  p-value  Adj p-value (FDR)  Global_proportion  Expected_selected_nb</span>
+<span class="go">0 0.16563            0.33126        0.684211        7.526316</span>
+<span class="go">1 0.90867            0.90867        0.684211        6.84210</span>
+<span class="go"># GOterm2 was ignored because its nb of elements is less than 3.</span>
+<span class="go"># GOterm4 was ignored because it was not selected in the &quot;features&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="stat_analysis.quantitative_data_student_test">
+<span class="sig-prename descclassname"><span class="pre">stat_analysis.</span></span><span class="sig-name descname"><span class="pre">quantitative_data_student_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_hyp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'one-sided'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/student_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'student_test2023-04-25</span> <span class="pre">11:42:57.661392'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stat_analysis.quantitative_data_student_test" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the T-test for the means of independants categories using the
+scipy.stats.ttest_ind.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_data</strong> (<em>dict.</em>) – datapoints corresponding to each category in a
+dictionary of shape {category:list of datapoints}</p></li>
+<li><p><strong>cats</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – list of categories to compare
+(default: all keys of dict_data)</p></li>
+<li><p><strong>alt_hyp</strong> (<em>Optional</em><em> [</em><em>&quot;two-sided&quot;</em><em> or </em><em>&quot;one-sided&quot;</em><em>]</em>) – alternative hypothesis.
+If “one-sided” is chosen, both one-sided tests will be
+performed with the scipy.stats.ttest_ind function and the
+smaller p-value will be kept. See scipy documentation for
+more details. (default: “one-sided”)</p></li>
+<li><p><strong>output_dir</strong> (<em>Optional</em><em>[</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optional</em><em>[</em><em>str.</em><em>]</em>) – output filename</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict. of shape
+{“categories”:cats, “means”:means,
+“confidence intervals”:(ci0,ci1), “p-values”:{(cat1,cat2):pval}</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Test results are also reported in the output_file.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dict_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">19</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">:[</span><span class="mi">10</span><span class="p">,</span><span class="mi">24</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">15</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stat_analysis</span><span class="o">.</span><span class="n">quantitative_data_student_test</span><span class="p">(</span><span class="n">dict_data</span><span class="p">)</span>
+<span class="go">{&#39;categories&#39;: [&#39;a&#39;, &#39;b&#39;],</span>
+<span class="go"> &#39;means&#39;: [6.6, 13.25],</span>
+<span class="go"> &#39;confidence intervals&#39;: [(0.2610995224360444, 12.938900477563955),</span>
+<span class="go">                          (4.958672795504613, 21.54132720449539)],</span>
+<span class="go"> &#39;p-values&#39;: {(&#39;a&#39;, &#39;b&#39;): 0.12169488735182109}}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="module-plot_stat_analysis">
+<span id="graphical-representation"></span><h2>graphical representation<a class="headerlink" href="#module-plot_stat_analysis" title="Permalink to this heading"></a></h2>
+<p>This module allows to graphically represent (barplots) the statistical
+analysis performed with the module stat_analysis.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="plot_stat_analysis.significance">
+<span class="sig-prename descclassname"><span class="pre">plot_stat_analysis.</span></span><span class="sig-name descname"><span class="pre">significance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pval</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#plot_stat_analysis.significance" title="Permalink to this definition"></a></dt>
+<dd><p>Converts p-values in stars annotation.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="plot_stat_analysis.barplot_annotate_brackets">
+<span class="sig-prename descclassname"><span class="pre">plot_stat_analysis.</span></span><span class="sig-name descname"><span class="pre">barplot_annotate_brackets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">categories</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_up</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_pval</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#plot_stat_analysis.barplot_annotate_brackets" title="Permalink to this definition"></a></dt>
+<dd><p>Annotates barplot with p-values, using the significance function to
+convert p-values in stars annotation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>categories</strong> (<em>list</em>) – list of the plotted categories, in the order of
+their position on the plot</p></li>
+<li><p><strong>y_up</strong> (<em>list</em>) – list of the maximal y position of each bar (taking into
+account the confidence intervals)</p></li>
+<li><p><strong>dict_pval</strong> (<em>dict.</em>) – dictionnary of shape {“cat1-cat2”:pvalue} with
+cat1 and cat2 contained in the categories list given as
+argument</p></li>
+<li><p><strong>linewidth</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Linewidth of the brackets. (default: 1.5)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="plot_stat_analysis.plot_proportion_test">
+<span class="sig-prename descclassname"><span class="pre">plot_stat_analysis.</span></span><span class="sig-name descname"><span class="pre">plot_proportion_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_hyp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'one-sided'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/proportion_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'prop_test2023-04-25</span> <span class="pre">11:42:58.999149'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_extension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.pdf'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Proportion'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annot_brackets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#plot_stat_analysis.plot_proportion_test" title="Permalink to this definition"></a></dt>
+<dd><p>Barplots of the proportion test: targ_features/all_features between
+categories. The proportion test, based on normal test, is computed with
+stat_analysis.proportion_test (see its documentation for more details)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_cats</strong> (<em>dict.</em>) – classification of each elements in a dictionary of
+shape {category:[elements]}
+Example: {“border”:[“GeneA”,”GeneB”],”None”:[“GeneC”,”GeneD”]}</p></li>
+<li><p><strong>dict_features</strong> (<em>dict.</em>) – feature corresponding to each element in a
+dictionary of shape {feature:[elements]}
+Example: {“act”: [“GeneA”,”GeneC”,”GeneD”], “rep”:[“GeneB”]}</p></li>
+<li><p><strong>targ_features</strong> (<em>list</em><em> or </em><em>string</em>) – targeted feature(s)</p></li>
+<li><p><strong>all_features</strong> (<em>Optional</em><em> [</em><em>list</em><em> or </em><em>string</em><em>]</em>) – features that will be used to calculate
+the proportion, including targ_features default: all keys of
+the dict_features dictionary)</p></li>
+<li><p><strong>cats</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – list of categories to compare (default: all keys of
+dict_cats)</p></li>
+<li><p><strong>alt_hyp</strong> (<em>Optional</em><em> [</em><em>&quot;two-sided&quot;</em><em> or </em><em>&quot;one-sided&quot;</em><em>]</em>) – alternative hypothesis.
+If “one-sided” is chosen, both one sided tests will be
+perform with the statsmodels.stats.proportions_ztest
+function and the smaller pvalue will be kept.
+See statsmodels documentation for more details.
+(default: “one-sided”)</p></li>
+<li><p><strong>output_dir</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output filename for the proportion test data
+(.txt) and the plot</p></li>
+<li><p><strong>file_extension</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – Graphic file extension type (.pdf by default)</p></li>
+<li><p><strong>xlabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the x-axis (default: empty)</p></li>
+<li><p><strong>ylabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the y-axis (default: “Proportion”)</p></li>
+<li><p><strong>title</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – general title for the figure</p></li>
+<li><p><strong>annot_brackets</strong> (<em>Optional</em><em> [</em><em>bool.</em><em>]</em>) – if True, the barplot will be annotated according
+to the p-values using stars annotaion (default: True)</p></li>
+<li><p><strong>brackets_linewidth</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Linewidth of the brackets. (default: 1.5)</p></li>
+<li><p><strong>ymin</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis bottom limit</p></li>
+<li><p><strong>ymax</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis top limit</p></li>
+<li><p><strong>figsize</strong> (<em>Optional</em><em> [</em><em>(</em><em>float</em><em>,</em><em>float</em><em>)</em><em>]</em>) – width and height in inches (by default: (w,2.2)
+with w dependent on the number of categories)</p></li>
+<li><p><strong>xticks_rotation</strong> (<em>Optional</em><em> [</em><em>int.</em><em>]</em>) – x-ticks labels rotation in degrees</p></li>
+<li><p><strong>xticks_labels</strong> (<em>Optional</em><em> [</em><em>list.</em><em>]</em>) – x-ticks labels (by default: cats)</p></li>
+<li><p><strong>err_capsize</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Length of the error bar caps in points</p></li>
+<li><p><strong>bar_linewidth</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Width of the bars edge. (default: 1.5)</p></li>
+<li><p><strong>bar_width</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Width of the bars. (default dependent on the number
+of categories. If less than 5 cats: 0.7)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dict_cat</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cat1&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="mi">154</span><span class="p">),</span><span class="s2">&quot;cat2&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span>
+<span class="gp">... </span>            <span class="s2">&quot;cat3&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">154</span><span class="p">,</span><span class="mi">180</span><span class="p">),</span><span class="s2">&quot;cat4&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">180</span><span class="p">,</span><span class="mi">230</span><span class="p">)}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dict_features</span> <span class="o">=</span><span class="p">{</span><span class="s2">&quot;act&quot;</span><span class="p">:</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">90</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="mi">120</span><span class="p">))</span>
+<span class="gp">... </span>               <span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">154</span><span class="p">,</span><span class="mi">158</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">180</span><span class="p">,</span><span class="mi">220</span><span class="p">)),</span>
+<span class="gp">... </span>       <span class="s2">&quot;rep&quot;</span><span class="p">:</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">90</span><span class="p">,</span><span class="mi">94</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">120</span><span class="p">,</span><span class="mi">150</span><span class="p">))</span>
+<span class="gp">... </span>               <span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">158</span><span class="p">,</span><span class="mi">177</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">220</span><span class="p">,</span><span class="mi">225</span><span class="p">)),</span>
+<span class="gp">... </span>       <span class="s2">&quot;None&quot;</span><span class="p">:</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">94</span><span class="p">,</span><span class="mi">100</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span><span class="mi">154</span><span class="p">))</span>
+<span class="gp">... </span>               <span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">177</span><span class="p">,</span><span class="mi">180</span><span class="p">))</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">225</span><span class="p">,</span><span class="mi">230</span><span class="p">))}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_stat_analysis</span><span class="o">.</span><span class="n">plot_proportion_test</span><span class="p">(</span><span class="n">dict_cat</span><span class="p">,</span><span class="n">dict_features</span><span class="p">,</span><span class="s2">&quot;act&quot;</span><span class="p">,</span>
+<span class="gp">... </span>               <span class="n">all_features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span><span class="s2">&quot;rep&quot;</span><span class="p">],</span><span class="n">alt_hyp</span><span class="o">=</span><span class="s2">&quot;two-sided&quot;</span><span class="p">,</span><span class="n">output_file</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="plot_stat_analysis.plot_enrichment_test">
+<span class="sig-prename descclassname"><span class="pre">plot_stat_analysis.</span></span><span class="sig-name descname"><span class="pre">plot_enrichment_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targ_cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_nb_elements</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/enrichment_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'enrich_test2023-04-25</span> <span class="pre">11:42:58.999164'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_extension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.pdf'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Proportion'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Global\nproportion'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend_loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'best'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annot_star</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#plot_stat_analysis.plot_enrichment_test" title="Permalink to this definition"></a></dt>
+<dd><p>Barplots of enrichment tests (hypergeometric test) of features in a
+sublist. The test is performed with stat_analysis.enrichment_test (see
+its documentation for more details)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_cats</strong> (<em>dict.</em>) – classification of each elements in a dictionary
+of shape {category:[elements]}
+N.B.: the same element can be associated to multiple features
+fcExample: {“GOterm1”:[“GeneA”,”GeneB”],”GOterm2:[“GeneA”,”GeneC”]}</p></li>
+<li><p><strong>dict_features</strong> (<em>dict.</em>) – feature corresponding to each element in a
+dictionary of shape {feature:[elements]}
+Example: {“act”: [“GeneA”,”GeneC”,”GeneD”], “rep”:[“GeneB”]}</p></li>
+<li><p><strong>targ_features</strong> (<em>list</em><em> or </em><em>string</em>) – targeted feature(s)</p></li>
+<li><p><strong>all_features</strong> (<em>Optional</em><em> [</em><em>list</em><em> or </em><em>str.</em><em>]</em>) – features that will be used to calculate
+the proportion, including targ_features
+(Default: all keys of the dict_features dictionary)</p></li>
+<li><p><strong>targ_cats</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – list of categories. The enrichment test is
+performed for each catergory. (default: all keys of dict_cats)</p></li>
+<li><p><strong>all_cats</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – list of categories used to compute the global
+proportion and the expected number in the selection.
+All_cats includes targ_cats. (default: all keys of dict_cats)</p></li>
+<li><p><strong>min_nb_elements</strong> (<em>Optional</em><em> [</em><em>int.</em><em>]</em>) – Number of elements used as thresholds for the
+feature selection. If there is stricly less than
+min_nb_elements corresponding to a feature, the result
+corresponding to this feature is not relevant and is
+therefore neither returned nor reported in the output file.
+By default, min_nb_elements is set to 4.</p></li>
+<li><p><strong>output_dir</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output filename for the proportion test data
+(.txt) and the plot</p></li>
+<li><p><strong>file_extension</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – Graphic file extension type (.pdf by default)</p></li>
+<li><p><strong>xlabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the x-axis (default: empty)</p></li>
+<li><p><strong>ylabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the y-axis (default: “Proportion”)</p></li>
+<li><p><strong>title</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – general title for the figure</p></li>
+<li><p><strong>annot_star</strong> (<em>Optional</em><em> [</em><em>bool.</em><em>]</em>) – if True, the barplot will be annotated according
+to the p-values using stars annotaion (default: True)</p></li>
+<li><p><strong>ymin</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis bottom limit</p></li>
+<li><p><strong>ymax</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis top limit</p></li>
+<li><p><strong>legend_text</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – Legend text (default: “Global proportion”)
+If set to None, no legend will be plotted.</p></li>
+<li><p><strong>legend_loc</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – Location of the legend such as ‘upper right’,
+‘lower right’, ‘lower left’, ‘lower left’ and ‘best’
+(default: ‘best’). See matplotlib.pyplot.legend for more
+options</p></li>
+<li><p><strong>figsize</strong> (<em>Optional</em><em> [</em><em>(</em><em>float</em><em>,</em><em>float</em><em>)</em><em>]</em>) – width and height in inches (by default: (w,2.2)
+with w dependent on the number of categories)</p></li>
+<li><p><strong>xticks_rotation</strong> (<em>Optional</em><em> [</em><em>int.</em><em>]</em>) – x-ticks labels rotation in degrees</p></li>
+<li><p><strong>xticks_labels</strong> (<em>Optional</em><em> [</em><em>list.</em><em>]</em>) – x-ticks labels (by default: targ_cats)</p></li>
+<li><p><strong>err_capsize</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Length of the error bar caps in points</p></li>
+<li><p><strong>bar_linewidth</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Width of the bars edge. (default: 1.5)</p></li>
+<li><p><strong>bar_width</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Width of the bars. (default dependent on the
+number of categories. If less than 5 cats: 0.7)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span> <span class="n">dataX</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;GOterm1&quot;</span><span class="p">:[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="s2">&quot;D&quot;</span><span class="p">,</span><span class="s2">&quot;E&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">],</span>
+<span class="gp">... </span>          <span class="s2">&quot;GOterm2&quot;</span><span class="p">:[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="s2">&quot;E&quot;</span><span class="p">],</span>
+<span class="gp">... </span>          <span class="s2">&quot;GOterm3&quot;</span><span class="p">:[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;H&quot;</span><span class="p">,</span><span class="s2">&quot;I&quot;</span><span class="p">,</span><span class="s2">&quot;M&quot;</span><span class="p">],</span>
+<span class="gp">... </span>          <span class="s2">&quot;GOterm4&quot;</span><span class="p">:[</span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;J&quot;</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span><span class="s2">&quot;E&quot;</span><span class="p">,</span><span class="s2">&quot;I&quot;</span><span class="p">,</span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;H&quot;</span><span class="p">,</span><span class="s2">&quot;J&quot;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_stat_analysis</span><span class="o">.</span><span class="n">plot_enrichment_test</span><span class="p">(</span>
+<span class="gp">... </span>                        <span class="n">dict_cats</span><span class="p">,</span><span class="n">dict_features</span><span class="p">,</span>
+<span class="gp">... </span>                        <span class="n">targ_feature</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span><span class="s2">&quot;None&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">all_features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;act&quot;</span><span class="p">,</span><span class="s2">&quot;None&quot;</span><span class="p">,</span><span class="s2">&quot;rep&quot;</span><span class="p">,</span><span class="s2">&quot;NA&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">targ_cats</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GOterm1&quot;</span><span class="p">,</span><span class="s2">&quot;GOterm2&quot;</span><span class="p">,</span><span class="s2">&quot;GOterm3&quot;</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">min_nb_elements</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">output_file</span><span class="o">=</span><span class="s2">&quot;test1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="plot_stat_analysis.plot_student_test">
+<span class="sig-prename descclassname"><span class="pre">plot_stat_analysis.</span></span><span class="sig-name descname"><span class="pre">plot_student_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_hyp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'one-sided'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/maiwenn/these/resdir/student_test/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'student_test2023-04-25</span> <span class="pre">11:42:58.999167'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_extension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.pdf'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Mean(data)'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annot_brackets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#plot_stat_analysis.plot_student_test" title="Permalink to this definition"></a></dt>
+<dd><p>Barplots of the student test computed with <a href="#id1"><span class="problematic" id="id2">stat_analysis.quantitative_</span></a>
+data_student_test (see its documentation for more details)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dict_data</strong> (<em>dict.</em>) – feature corresponding to each element in a
+dictionary of shape {category:list of datapoints}</p></li>
+<li><p><strong>cats</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – list of categories to compare
+(default: all keys of dict_data)</p></li>
+<li><p><strong>alt_hyp</strong> (<em>Optional</em><em> [</em><em>&quot;two-sided&quot;</em><em> or </em><em>&quot;one-sided&quot;</em><em>]</em>) – alternative hypothesis.
+If “one-sided” is chosen, both one-sided tests will be
+performed with the scipy.stats.ttest_ind function and the
+smaller p-value will be kept. See scipy documentation for
+more details. (default: “one-sided”)</p></li>
+<li><p><strong>output_dir</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output directory</p></li>
+<li><p><strong>output_file</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – output filename for the student test data (.txt)
+and the plot</p></li>
+<li><p><strong>file_extension</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – Graphic file extension type (.pdf by default)</p></li>
+<li><p><strong>xlabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the x-axis (default: empty)</p></li>
+<li><p><strong>ylabel</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – label for the y-axis (default: “Mean(data)”)</p></li>
+<li><p><strong>title</strong> (<em>Optional</em><em> [</em><em>str.</em><em>]</em>) – general title for the figure</p></li>
+<li><p><strong>annot_brackets</strong> (<em>Optional</em><em> [</em><em>bool.</em><em>]</em>) – if True, the barplot will be annotated
+according to the p-values using stars annotaion
+(default: True)</p></li>
+<li><p><strong>brackets_linewidth</strong> (<em>Optional</em><em> [</em><em>float.</em><em>]</em>) – Linewidth of the brackets.(default: 1.5)</p></li>
+<li><p><strong>ymin</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis bottom limit</p></li>
+<li><p><strong>ymax</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – y-axis top limit</p></li>
+<li><p><strong>figsize</strong> (<em>Optional</em><em> [</em><em>(</em><em>float</em><em>,</em><em>float</em><em>)</em><em>]</em>) – width and height in inches (by default: (w,2.2)
+with w dependent on the number of categories)</p></li>
+<li><p><strong>xticks_rotation</strong> (<em>Optional</em><em> [</em><em>int.</em><em>]</em>) – x-ticks labels rotation in degrees</p></li>
+<li><p><strong>xticks_labels</strong> (<em>Optional</em><em> [</em><em>list</em><em>]</em>) – x-ticks labels (by default: cats)</p></li>
+<li><p><strong>err_capsize</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Length of the error bar caps in points</p></li>
+<li><p><strong>bar_linewidth</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Width of the bars edge. (default: 2.0)</p></li>
+<li><p><strong>bar_width</strong> (<em>Optional</em><em> [</em><em>float</em><em>]</em>) – Width of the bars. (default: 0.6) (default
+dependent on the number of categories. If less than 5 cats: 0.7)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dict_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">19</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">:[</span><span class="mi">10</span><span class="p">,</span><span class="mi">24</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">15</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_stat_analysis</span><span class="o">.</span><span class="n">plot_student_test</span><span class="p">(</span><span class="n">dict_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="GO.html" class="btn btn-neutral float-left" title="GO" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="TSS_TTS_TU.html" class="btn btn-neutral float-right" title="TSS_TTS_TU" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Pineau, Forquet, Meyer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
