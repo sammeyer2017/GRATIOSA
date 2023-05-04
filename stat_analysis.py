@@ -110,7 +110,6 @@ def data_classification(data_x, data_y, class_nb, *args, **kwargs):
                       ] = data_y[prev_class_sums:nb_per_class[c] + prev_class_sums]
             classif_x[class_names[c]
                       ] = data_x[prev_class_sums:nb_per_class[c] + prev_class_sums]
-            print(c, prev_class_sums)
             prev_class_sums += nb_per_class[c]
 
     # Option 3: classification in equal-size fractions

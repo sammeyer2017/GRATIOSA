@@ -69,7 +69,7 @@ def smoothing(data, window):
     return s_data
 
 
-def load_sites_cond(path2file, startline, sep, start_col, end_col):
+def load_sites_cond(path2file, startline, sep, start_col, end_col, val_col=None):
     '''
     Called by load_peaks, allows the peaks data to be loaded by specifying
     files (typically a .BED file of peaks obtained with MACS2), and where 
@@ -83,6 +83,8 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col):
                 beginning of the peak
         end_col (int.): index of the column containing the position of the 
                 end of the peak
+        val_col (int.): index of the column containing the position of the 
+                value associated to the peak (default: None)
 
     Returns:
         List of tuples of shape (start,end). One tuple represents one peak.
@@ -90,7 +92,7 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col):
     Note: 
         Column numbering starts at 0.
     '''
-    peaks = []
+    peaks = {}
     if sep == '\\t':
         sep = '\t'
 
@@ -102,7 +104,10 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col):
         for line in f:
             line = line.strip('\n').split(sep)
             try:
-                peaks.append((int(line[start_col]), int(line[end_col])))
+                if val_col != None :
+                    peaks[(int(line[start_col]), int(line[end_col]))] = float(line[val_col])
+                else : 
+                    peaks[(int(line[start_col]), int(line[end_col]))] = None
             except Exception as e:
                 print(e)
     f.close()

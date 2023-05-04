@@ -422,21 +422,24 @@ def load_TTS_cond(filename,
 
 
 def load_TU_cond(filename, 
+                 IDcol,
                  startcol, 
                  endcol, 
                  strandcol,
                  genescol, 
                  startline, 
-                 separator):
+                 separator,
+                 exprcol):
     '''
     Called by load_TU, load_TU_cond allows TU data to be loaded from any file
     with one row per TU and the following columns: start position, end 
     position, strand and genes locus tags. For each TU of the annotation, one 
     TU object is created and intialized with the attributes start, end, 
-    strand and genes.
+    strand, genes and expression.
 
     Args:
         filename (str.): name of the annotation file
+        IDcol (int.): index of the column containing the TU ID
         startcol (int.): index of the column containing the TU start positions
         endcol (int.): index of the column containing the TU end positions
         strandcol (int.): index of the column containing the TU strands
@@ -445,6 +448,7 @@ def load_TU_cond(filename,
                 By default: None (ie not on file)
         start_line (int.): file start line
         separator (str.): file separator
+        exprcol (int.): index of the column containing the TU expression
 
     Returns:
         Dictionary: dict. of shape {TU start: TU object} with each TU object
@@ -478,8 +482,15 @@ def load_TU_cond(filename,
                     strand = True
                 else:
                     strand = None
-                TUs[int(line[startcol])] = TU(start=int(line[startcol]), end=int(
-                    line[endcol]), strand=strand, genes=line[genescol].split(","))
+                if exprcol != None:
+                    expr = float(line[exprcol])
+                else :
+                    expr = None
+                TUs[int(line[IDcol])] = TU(start=int(line[startcol]), 
+                                            end=int(line[endcol]), 
+                                            strand=strand, 
+                                            genes=line[genescol].split(","),
+                                            expression=expr)
             except Exception as e:
                 print(e)
     f.close()

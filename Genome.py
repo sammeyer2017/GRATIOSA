@@ -34,6 +34,7 @@ class Genome:
         main directory of the organism using useful_functions_genome.load_seq
         function. Adds this sequence, its complement, and its length to a
         Genome instance.
+        
         Creates 3 new attributes to the Genome instance
             * seq (str.): genomic sequence compose of A,T,G and C
             * seqcompl (str.): complement sequence to seq
@@ -310,6 +311,7 @@ class Genome:
             * self.genes[locus].orientation (str.) 
                     new attribute of Gene instances related to the Genome instance 
                     given as argument
+
         Args:
             couple (int.): number of genes to consider in a "couple". 
 
@@ -317,6 +319,7 @@ class Genome:
                   relative to its predecessor
                 * If couple = 3: computes the orientation of a gene 
                   relative to its two neighbors
+
                 Default: 3
 
             max_dist (Optional [int.]): maximal distance between 2 genes 
@@ -416,6 +419,7 @@ class Genome:
                     "isolated"]
             * self.orientation_per_pos (dict.)
                     dictionary of shape {position: orientation}.
+
         Args:
             max_dist (Optional [int.]): maximal distance between 2 genes 
                     start positions for seeking neighbor (Default: 5kb)            
@@ -649,15 +653,17 @@ class Genome:
                     One subdictionary is created for each condition listed 
                     in TU.info file. Each TU object is initialized with the 
                     following attributes:  start, stop, orientation, genes,
-                    left,right. See __init__ in the TU class for more details 
+                    left,right, expression. 
+                    See __init__ in the TU class for more details 
                     about each attribute.
 
         Note:
             The information importation requires a TU.info file,
             containing column indices of each information in the data file and 
             some additional information, in the following order:
-            [0] Condition [1] Filename [2] Start column [3] Stop column
-            [4] Strand column [5] Gene column [6] File start line [7] Separator
+            [0] Condition [1] Filename [2] TU ID [3] Start column [4] Stop column
+            [5] Strand column [6] Gene column [7] File start line [8] Separator
+            [9] Expression (optionnal)
             See the load_TU_cond function in useful_functions_genome for more
             details.
 
@@ -677,13 +683,21 @@ class Genome:
                 for line in f:
                     line = line.strip().split('\t')
                     try:
+                        exprcol = None
+                        if len(line) > 9 :
+                            try:
+                                exprcol = int(line[9])
+                            except:
+                                pass 
                         self.TUs[line[0]] = load_TU_cond(path2dir + line[1],
                                                          int(line[2]), 
                                                          int(line[3]),
                                                          int(line[4]), 
                                                          int(line[5]),
                                                          int(line[6]), 
-                                                         line[7])
+                                                         int(line[7]),
+                                                         line[8],
+                                                         exprcol)
                     except BaseException:
                         print("Error loading cond", line[0])
             f.close()
@@ -715,6 +729,7 @@ class Genome:
                 self.TTSs['all_TTSs']={TTSpos: [TTScond]}
                 with [TTScond] the list of TTS conditions where this TTS 
                 was found.
+
         Note: 
             The information importation requires a TTS.info file,
             containing column indices of each information in the data file and

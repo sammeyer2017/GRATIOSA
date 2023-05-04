@@ -98,16 +98,23 @@ class HiC:
                         binsize = int(line[5])
 
                         # loads column indices of each optional information
+                        print(line[0])
                         score_col, pval_col, qval_col = None, None, None
                         if len(line) > 6:
-                            if isinstance(line[6], int):
-                                score_col = line[6]
+                            try : 
+                                score_col = int(line[6])
+                            except :
+                                pass
                         if len(line) > 7:
-                            if isinstance(line[7], int):
-                                pval_col = line[7]
+                            try : 
+                                pval_col = int(line[7])
+                            except :
+                                pass
                         if len(line) > 8:
-                            if isinstance(line[8], int):
-                                qval = line[8]
+                            try : 
+                                qval_col = int(line[8])
+                            except :
+                                pass
 
                         # creates the new attribute using the load_HiC_site_cond function
                         # from useful_functions_HiC
@@ -231,14 +238,20 @@ class HiC:
                         # loads column indices of each optional information
                         score_col, pval_col, qval_col = None, None, None
                         if len(line) > 7:
-                            if isinstance(line[7], int):
-                                score_col = line[7]
+                            try : 
+                                score_col = int(line[7])
+                            except :
+                                pass
                         if len(line) > 8:
-                            if isinstance(line[8], int):
-                                pval_col = line[8]
+                            try : 
+                                pval_col = int(line[8])
+                            except :
+                                pass
                         if len(line) > 9:
-                            if isinstance(line[9], int):
-                                qval = line[9]
+                            try : 
+                                qval_col = int(line[9])
+                            except :
+                                pass
                         # creates the new attribute using the load_HiC_site_cond 
                         # function from useful_functions_HiC
 

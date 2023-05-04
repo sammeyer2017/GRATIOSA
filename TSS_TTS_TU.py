@@ -261,7 +261,7 @@ class TU:
 
     """
     def __init__(self, start=None, end=None, left=None,
-                 right=None, strand=None, genes=[]):
+                 right=None, strand=None, genes=[],expression=None):
         self.start = start
         self.end = end
         self.left = left
@@ -285,6 +285,7 @@ class TU:
                     self.right = self.start
                     self.left = self.end
         self.genes = genes
+        self.expression = expression
 
 
     def add_genes(self, tags, genes_dict):

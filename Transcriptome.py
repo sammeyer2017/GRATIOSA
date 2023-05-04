@@ -398,7 +398,9 @@ class Transcriptome:
             To use directly new coverages data, both forward and reverse coverage 
             data files are required. These files contain the coverage for each 
             genomic position (one line = one genomic position, no position can be 
-            ommited). The importation of these new data requires a cov_txt.info 
+            ommited), therefore if you use bedtools genomecov, please use the -d 
+            option.
+            The importation of these new data requires a cov_txt.info 
             file, in the /rnaseq_cov/ directory, containing the following 
             information:
             [0] Condition

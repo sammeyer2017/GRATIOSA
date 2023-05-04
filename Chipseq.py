@@ -513,11 +513,12 @@ class Chipseq:
         the start and end positions of peaks.
 
         Creates:
-            * self.peaks (dict.): new attribut of the Chipseq instance. 
-                                self.peaks is a dictionary of shape
-                                {cond:[(start,end)]}. It contains, for each 
-                                condition, a list of tuples of shape (start,end).
-                                One tuple represents one peak.
+            * self.peaks (dict. of dict.) : new attribut of the Chipseq instance. 
+                    dictionary containing one subdictionary per condition 
+                    with the shape {(start,end):value}. The key of each
+                    subdictionary is a tupe containing the start and end 
+                    positions of one peak. The value can for example be the 
+                    peak score or the peak height.
 
         Note:
             The data importation requires a peaks.info file that contains the
@@ -525,7 +526,17 @@ class Chipseq:
             additional information, in the following order:
             [0] Condition, [1] Filename, [2] Startline, 
             [3] Separator, [4] StartCol, [5] StopCol
+            [6] Peak value
             peaks.info and data file have to be in the /chipseq/peaks/ directory 
+
+        Example:
+            >>> ch = Chipseq.Chipseq("ecoli")
+            >>> ch.load_peaks()
+            >>> ch.peaks['test']
+            {(840081, 840400): 4.89872,
+            (919419, 919785): 5.85158,
+            (937220, 937483): 4.87632,
+            ...}
         """
 
         # gets the path to data and .info files
@@ -541,10 +552,16 @@ class Chipseq:
 
                     # loads data file information for this condition
                     cond = line[0]
+                    print(line[0])
                     path2file = f"{path2dir}{line[1]}"
                     startline, sep = int(line[2]), line[3]
                     start_col, end_col = int(line[4]), int(line[5])
-
+                    val_col = None
+                    if len(line) > 6:
+                        try : 
+                            val_col = int(line[6])
+                        except :
+                            pass
                     # creates the new attribute using the load_sites_cond function
                     # from useful_functions_Chipseq
                     if not hasattr(self, "peaks"):
@@ -553,6 +570,7 @@ class Chipseq:
                                                        startline, 
                                                        sep,
                                                        start_col, 
-                                                       end_col)
+                                                       end_col,
+                                                       val_col)
         else:
             print("No peaks.info, unable to load peaks")
