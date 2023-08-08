@@ -4,11 +4,11 @@ Genome
 class methods
 -------------
 
-.. autoclass:: Genome.Genome
+.. autoclass:: GRATIOSA.Genome.Genome
    :members:
    
 useful functions
 ----------------
 
-.. automodule:: useful_functions_genome
+.. automodule:: GRATIOSA.useful_functions_genome
    :members:

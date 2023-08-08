@@ -4,10 +4,10 @@ import sys
 import os
 import numpy as np
 import pandas as pd
-from useful_functions_Chipseq import *
 from pathlib import Path
-from globvar import *
-from Genome import Genome
+from GRATIOSA.useful_functions_Chipseq import *
+from GRATIOSA.globvar import *
+from GRATIOSA.Genome import Genome
 
 class Chipseq:
     '''

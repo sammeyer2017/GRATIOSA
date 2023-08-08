@@ -3,10 +3,12 @@ Transcriptome
 
 class methods
 -------------
-.. autoclass:: Transcriptome.Transcriptome
+
+.. autoclass:: GRATIOSA.Transcriptome.Transcriptome
    :members:
    
 useful functions
 ----------------
-.. automodule:: useful_functions_transcriptome
+
+.. automodule:: GRATIOSA.useful_functions_transcriptome
    :members:

@@ -4,10 +4,10 @@ import sys
 import os
 import numpy as np
 import pandas as pd
-from useful_functions_HiC import *
 from pathlib import Path
-from globvar import *
-import Genome
+from GRATIOSA.globvar import *
+from GRATIOSA.useful_functions_HiC import *
+import GRATIOSA.Genome
 
 class HiC:
     '''

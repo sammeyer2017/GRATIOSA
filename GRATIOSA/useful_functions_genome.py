@@ -5,9 +5,9 @@
 Functions called by Genome methods
 """
 import numpy as np
-from globvar import *
-from Gene import Gene
-from TSS_TTS_TU import TSS, TTS, TU
+from GRATIOSA.globvar import *
+from GRATIOSA.Gene import Gene
+from GRATIOSA.TSS_TTS_TU import TSS, TTS, TU
 
 
 def read_seq(filename):

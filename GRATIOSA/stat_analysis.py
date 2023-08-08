@@ -10,7 +10,7 @@ Transcriptome, Chipseq and HiC classes.
 import numpy as np
 from statsmodels.stats import proportion, multitest
 from scipy import stats
-from globvar import *
+from GRATIOSA.globvar import *
 from pathlib import Path
 from datetime import datetime
 import pandas as pd

@@ -7,10 +7,10 @@ analysis performed with the module stat_analysis.
 """
 
 import matplotlib.pyplot as plt
-import stat_analysis
-import numpy as np
-from globvar import *
 from datetime import datetime
+import numpy as np
+from GRATIOSA.globvar import *
+import GRATIOSA.stat_analysis
 
 plt.rcParams.update({'font.size': 9,
                      'font.family': "Arial",

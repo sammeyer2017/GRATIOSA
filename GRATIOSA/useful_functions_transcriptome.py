@@ -5,12 +5,11 @@
 Functions called by Transcriptome methods
 """
 import numpy as np
-from globvar import *
+from GRATIOSA.globvar import *
+import GRATIOSA.Genome
 import os
 import pysam
 import math
-import Genome
-
 
 def add_expression_to_genes(genes_dict, 
                             cond, 

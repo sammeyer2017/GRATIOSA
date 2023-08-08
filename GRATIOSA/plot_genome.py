@@ -1,11 +1,10 @@
-from globvar import *
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
-import Genome
 from datetime import datetime
 from pathlib import Path
-
+import GRATIOSA.Genome
+from GRATIOSA.globvar import *
 
 '''
 This module plots experimental information (one subplot per experiment) and 

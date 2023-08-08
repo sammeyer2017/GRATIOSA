@@ -1,5 +1,5 @@
 GO
 ==
 
-.. autoclass:: GO.GO
+.. autoclass:: GRATIOSA.GO.GO
    :members:

@@ -5,11 +5,11 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from useful_functions_transcriptome import *
-from globvar import *
 from scipy import stats
-from Genome import Genome
 from datetime import datetime
+from GRATIOSA.useful_functions_transcriptome import *
+from GRATIOSA.globvar import *
+from GRATIOSA.Genome import Genome
 
 class Transcriptome:
     '''

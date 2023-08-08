@@ -3,10 +3,10 @@ HiC
 
 class methods
 -------------
-.. autoclass:: HiC.HiC
+.. autoclass:: GRATIOSA.HiC.HiC
    :members:
    
 useful functions
 ----------------
-.. automodule:: useful_functions_HiC
+.. automodule:: GRATIOSA.useful_functions_HiC
    :members:

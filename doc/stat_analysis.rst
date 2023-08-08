@@ -3,10 +3,10 @@ statistical analysis
 
 statistical tests
 -----------------
-.. automodule:: stat_analysis
+.. automodule:: GRATIOSA.stat_analysis
    :members:
    
 graphical representation
 ------------------------
-.. automodule:: plot_stat_analysis
+.. automodule:: GRATIOSA.plot_stat_analysis
    :members:

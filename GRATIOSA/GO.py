@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-from globvar import *
+from GRATIOSA.globvar import *
 from datetime import datetime
-import stat_analysis
+import GRATIOSA.stat_analysis
 import os
 import re
 import pandas as pd

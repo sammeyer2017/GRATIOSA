@@ -4,11 +4,11 @@ Chipseq
 class methods
 -------------
 
-.. autoclass:: Chipseq.Chipseq
+.. autoclass:: GRATIOSA.Chipseq.Chipseq
    :members:
    
 useful functions
 ----------------
 
-.. automodule:: useful_functions_Chipseq
+.. automodule::GRATIOSA. useful_functions_Chipseq
    :members:

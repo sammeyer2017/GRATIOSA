@@ -65,7 +65,6 @@ def smoothing(data, window):
             list(data[i - w:]) + list(data[0:i + w - len(data) + 1]))
         s_data.append(window_average)
         i += 1
-
     return s_data
 
 

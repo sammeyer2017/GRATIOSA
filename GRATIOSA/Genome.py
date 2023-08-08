@@ -5,12 +5,13 @@ import sys
 import os
 import operator
 import numpy as np
-from useful_functions_genome import *
-from globvar import *
-from Gene import Gene
-from TSS_TTS_TU import TSS, TTS, TU
 from datetime import datetime
 from pathlib import Path
+from GRATIOSA.useful_functions_genome import *
+from GRATIOSA.globvar import *
+from GRATIOSA.Gene import Gene
+from GRATIOSA.TSS_TTS_TU import TSS, TTS, TU
+
 
 class Genome:
 
