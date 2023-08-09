@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from GRATIOSA.globvar import *
 from GRATIOSA.useful_functions_HiC import *
-import GRATIOSA.Genome
+from GRATIOSA import Genome
 
 class HiC:
     '''

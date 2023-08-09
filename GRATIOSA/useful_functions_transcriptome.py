@@ -6,7 +6,7 @@ Functions called by Transcriptome methods
 """
 import numpy as np
 from GRATIOSA.globvar import *
-import GRATIOSA.Genome
+from GRATIOSA import Genome
 import os
 import pysam
 import math

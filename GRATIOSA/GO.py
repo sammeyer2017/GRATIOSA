@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from GRATIOSA.globvar import *
 from datetime import datetime
-import GRATIOSA.stat_analysis
+from GRATIOSA import stat_analysis
 import os
 import re
 import pandas as pd

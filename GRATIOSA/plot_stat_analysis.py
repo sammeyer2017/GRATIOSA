@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import numpy as np
 from GRATIOSA.globvar import *
-import GRATIOSA.stat_analysis
+from GRATIOSA import stat_analysis
 
 plt.rcParams.update({'font.size': 9,
                      'font.family': "Arial",

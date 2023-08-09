@@ -3,7 +3,7 @@ from matplotlib import gridspec
 import numpy as np
 from datetime import datetime
 from pathlib import Path
-import GRATIOSA.Genome
+from GRATIOSA import Genome
 from GRATIOSA.globvar import *
 
 '''
