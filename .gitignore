@@ -1,12 +1,17 @@
 # ignore .pyc files
 *.pyc
-# ignore model files for the spacer project (Raphaël Forquet 2017-2021)
-modeling_spacer
-param
-# ignore code from Raphaël Forquet 2017-2021
-code_raphael_forquet_2017-2021
 # ignore files from SIST project
 SIST
+analyse_chipseq
+tests_analyses
 # ignore virtualenv and others
 venv
 dossier_maiwenn
+sauvegarde_mars23
+env_test_package
+MODIF_IMPORTANTE
+.ipynb_checkpoints
+.gitignore
+recap_description.ods
+dist
+GRATIOSA.egg-info
