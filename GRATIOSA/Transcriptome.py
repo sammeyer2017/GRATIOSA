@@ -52,7 +52,7 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> import Genome, Transcriptome
+                >>> from GRATIOSA import Genome, Transcriptome
                 >>> tr = Transcriptome.Transcriptome("ecoli")
                 >>> g = Genome.Genome(tr.name)
                 >>> g.load_annotation(annot_file=chosen_file)
@@ -127,7 +127,7 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> import Genome, Transcriptome
+                >>> from GRATIOSA import Genome, Transcriptome
                 >>> tr = Transcriptome.Transcriptome("ecoli")
                 >>> g = Genome.Genome(tr.name)
                 >>> g.load_annotation(annot_file=chosen_file)
@@ -197,7 +197,7 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> import Genome, Transcriptome
+                >>> from GRATIOSA import Genome, Transcriptome
                 >>> tr = Transcriptome.Transcriptome("ecoli")
                 >>> g = Genome.Genome(tr.name)
                 >>> g.load_annotation(annot_file=chosen_file)
@@ -307,7 +307,7 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> import Transcriptome, Genome
+                >>> from GRATIOSA import Transcriptome, Genome
                 >>> tr = Transcriptome.Transcriptome("ecoli")
                 >>> g = Genome.Genome(tr.name)
                 >>> g.load_annotation(annot_file=chosen_file)
@@ -632,7 +632,7 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> import Genome, Transcriptome
+                >>> from GRATIOSA import Genome, Transcriptome
                 >>> tr = Transcriptome.Transcriptome("ecoli")
                 >>> g = Genome.Genome(tr.name)
                 >>> g.load_annotation(annot_file=chosen_file)

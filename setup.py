@@ -5,12 +5,12 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="GRATIOSA",
-    version="0.0.2",
-    author="Forquet Raphaël, Pineau Maïwenn, Meyer Sam",
+    version="0.0.1",
+    author="Pineau Maïwenn, Forquet Raphaël, Meyer Sam",
     author_email="sam.meyer@insa-lyon.fr",
     description=" ",
     long_description=long_description,
-    url="https://github.com/sammeyer2017/topo_database.git",
+    url="https://github.com/sammeyer2017/GRATIOSA.git",
     packages=['GRATIOSA'],
     install_requires=[
     	'numpy',

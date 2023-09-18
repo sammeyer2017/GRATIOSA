@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.abspath('GRATIOSA'))
 
 
 project = 'GRATIOSA'
-copyright = '2023, Forquet, Pineau, Meyer'
-author = 'Forquet, Pineau, Meyer'
+copyright = '2023, Pineau, Forquet, Meyer'
+author = 'Pineau, Forquet, Meyer'
 release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------

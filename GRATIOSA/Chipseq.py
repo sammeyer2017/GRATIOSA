@@ -464,7 +464,7 @@ class Chipseq:
             file is computed. To use another annotation, please load an annotation 
             to your Transcriptome instance with the following commands before using 
             this method:
-                >>> import Genome, Chipseq
+                >>> from GRATIOSA import Genome, Chipseq
                 >>> ch = Chipseq.Chipseq("ecoli")
                 >>> g = Genome.Genome(ch.name)
                 >>> g.load_annotation(annot_file=chosen_file)

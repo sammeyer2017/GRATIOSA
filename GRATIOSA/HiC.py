@@ -362,8 +362,7 @@ class HiC:
             To use another annotation or sequence, please load them to your
             Transcriptome instance with the following commands before using this 
             method:
-                >>> import Genome
-                >>> import HiC
+                >>> from GRATIOSA import Genome, HiC
                 >>> HC = HiC.HiC("ecoli")
                 >>> g = Genome.Genome(HC.name)
                 >>> g.load_annotation(annot_file=chosen_file)
@@ -506,8 +505,7 @@ class HiC:
             To use another annotation or sequence, please load them to your 
             Transcriptome instance with the following commands before using this 
             method:
-                >>> import Genome
-                >>> import HiC
+                >>> from GRATIOSA import Genome, HiC
                 >>> HC = HiC.HiC("ecoli")
                 >>> g = Genome.Genome(HC.name)
                 >>> g.load_annotation(annot_file=chosen_file)

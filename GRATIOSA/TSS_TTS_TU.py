@@ -42,10 +42,10 @@ class TSS:
             genes_dict: dictionary of shape {locus tag : Gene object}
 
         Example:
-            >>> import Genome
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation()
-            >>> from TSS_TTS_TU import TSS
+            >>> from GRATIOSA.TSS_TTS_TU import TSS
             >>> tss = TSS()
             >>> tss.add_genes("Dda3937_00001,Dda3937_00002",g.genes)
         """
@@ -70,7 +70,7 @@ class TSS:
             genes_dict (Optional [dict.]): dictionary of shape {locus tag : Gene object}
 
         Example:
-            >>> from TSS_TTS_TU import TSS
+            >>> from GRATIOSA.TSS_TTS_TU import TSS
             >>> tss = TSS(pos=4707030,strand=False)
             >>> tss.add_promoter(sig = "sigma70", sites="4707037,4707046,4707062,4707068")
             >>> tss.promoter
@@ -126,10 +126,10 @@ class TSS:
             
 
         Example:
-            >>> import Genome
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_seq()
-            >>> from TSS_TTS_TU import TSS
+            >>> from GRATIOSA.TSS_TTS_TU import TSS
             >>> tss = TSS(pos=4707030,strand=False)
             >>> tss.add_promoter(sig = "sigma70", sites="4707037,4707046,4707062,4707068")
             >>> tss.add_prom_elements(g.seq,
@@ -231,10 +231,10 @@ class TTS:
             genes_dict: dictionary of shape {locus tag : Gene object}
 
         Example:
-            >>> import Genome
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation()
-            >>> from TSS_TTS_TU import TTS
+            >>> from GRATIOSA.TSS_TTS_TU import TTS
             >>> tts = TTS()
             >>> tts.add_genes("Dda3937_00001,Dda3937_00002",g.genes)
             >>> tts.genes
@@ -298,10 +298,10 @@ class TU:
             genes_dict: dictionary of shape {locus tag : Gene object}
 
         Example:
-            >>> import Genome
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation()
-            >>> from TSS_TTS_TU import TU
+            >>> from GRATIOSA.TSS_TTS_TU import TU
             >>> tu = TU()
             >>> tu.add_genes("Dda3937_00001,Dda3937_00002",g.genes)
             >>> tu.genes
@@ -333,7 +333,7 @@ class TU:
             TU_expr (float or list of float): expression value(s)
                              
         Example:
-            >>> from TSS_TTS_TU import TU
+            >>> from GRATIOSA.TSS_TTS_TU import TU
             >>> tu = TU()
             >>> tu.add_TU_expression("Control",0.24)
             >>> tu.add_TU_expression("test",[0.2,0.4])
@@ -360,7 +360,7 @@ class TU:
                                  propotion of total starts (float))
 
         Example:
-            >>> from TSS_TTS_TU import TU
+            >>> from GRATIOSA.TSS_TTS_TU import TU
             >>> tu = TU()
             >>> tu.add_TU_expression("Control",0.24)
             >>> tu.add_TU_expression("test",[0.2,0.4])
