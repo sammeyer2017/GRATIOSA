@@ -32,17 +32,17 @@ class HiC:
         score (pearson correlation coefficient between the border kernel and the 
         detected pattern), pvalue and qvalue.
         Creates 2 new attributes of the HiC instance:
-            * self.borders (dict. of dict.) 
-                    dictionary containing one subdictionary per condition 
-                    with the shape self.borders[cond]={bin_nb: {"score": 
-                    score, "pval": pvalue, "qval": qvalue,"binsize":binsize}}.
-                    N.B.: If data are binned at 2kb, the bin with number 10 
-                    corresponds to data between 20000 and 22000.    
-            * self.borders_pos (dict. of dict)
-                    dictionary containing one subdictionary per 
-                    condition, with the shape self.borders_pos[cond] =
-                    {'borders':list of positions that are in a border
-                    'no_borders':list of positions that are not in a border}
+        * self.borders (dict. of dict.) 
+                dictionary containing one subdictionary per condition 
+                with the shape self.borders[cond]={bin_nb: {"score": 
+                score, "pval": pvalue, "qval": qvalue,"binsize":binsize}}.
+                N.B.: If data are binned at 2kb, the bin with number 10 
+                corresponds to data between 20000 and 22000.    
+        * self.borders_pos (dict. of dict)
+                dictionary containing one subdictionary per 
+                condition, with the shape self.borders_pos[cond] =
+                {'borders':list of positions that are in a border
+                'no_borders':list of positions that are not in a border}
 
         Args:
             cond (Optional [list of str.]): selection of one or several
@@ -54,9 +54,11 @@ class HiC:
             The data importation requires a borders.info file that contains the
             column indices of each information in the data file and some
             additional information, in the following order:
-                * (required) [0] Condition, [1] Filename, [2] Startline,
-                  [3] Separator, [4] Bin, [5] Binsize (in b)
-                * (optional) [6] Score, [7] Pvalue,[8] Qvalue
+            * (required) [0] Condition, [1] Filename, [2] Startline,
+              [3] Separator, [4] Bin, [5] Binsize (in b)
+            * (optional) [6] Score, [7] Pvalue,[8] Qvalue
+
+        Note:    
             borders.info and data file have to be in the /HiC/Borders/ directory
 
         Note: 
@@ -187,9 +189,11 @@ class HiC:
             column indices of each information in the data file and some 
             additional information, in the following
             order:
-                * (required) [0] Condition, [1] Filename, [2] Startline,
+            * (required) [0] Condition, [1] Filename, [2] Startline,
                   [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
-                * (optional) [7] Score, [8] Pvalue,[9] Qvalue
+            * (optional) [7] Score, [8] Pvalue,[9] Qvalue
+        
+        Note: 
             loops.info and data file have to be in the /HiC/Loops/ directory
         
         Note: 
@@ -336,18 +340,20 @@ class HiC:
                     described below.
             window (Optional [int.]): window around the loop positions (ie
                     around the 2 bins) for the seeking of overlapping genes
-                    (Default: 0). All genes overlaping any position between:
-                        * loops_start_bin1 - window and loops_end_bin1 + window or 
-                        * loops_start_bin2 - window and loops_end_bin2 + window
-                    are considered "loops" genes.
+                    (Default: 0). Are considered "loops" genes, all genes
+                    overlaping any position between :
+                    * loops_start_bin1 - window and loops_end_bin1 + window or 
+                    * loops_start_bin2 - window and loops_end_bin2 + window
 
         Note:
             The data importation requires a loops.info file that contains 
             the column indices of each information in the data file and 
             some additional information, in the following order:
-                * (required) [0] Condition, [1] Filename, [2] Startline, 
-                  [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
-                * (optional) [7] Score, [8] Pvalue,[9] Qvalue
+            * (required) [0] Condition, [1] Filename, [2] Startline, 
+              [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
+            * (optional) [7] Score, [8] Pvalue,[9] Qvalue
+        
+        Note:    
             loops.info and data file have to be in the /HiC/Loops/ directory
         
         Note:    
@@ -362,13 +368,13 @@ class HiC:
             To use another annotation or sequence, please load them to your
             Transcriptome instance with the following commands before using this 
             method:
-                >>> from GRATIOSA import Genome, HiC
-                >>> HC = HiC.HiC("ecoli")
-                >>> g = Genome.Genome(HC.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> g.load_seq(filename=chosen_file2
-                >>> HC.genes = g.genes
-                >>> HC.length = g.length
+            >>> from GRATIOSA import Genome, HiC
+            >>> HC = HiC.HiC("ecoli")
+            >>> g = Genome.Genome(HC.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> g.load_seq(filename=chosen_file2
+            >>> HC.genes = g.genes
+            >>> HC.length = g.length
 
         Warning:
             Make sure that the version of the genome is the same as
@@ -488,9 +494,11 @@ class HiC:
             The data importation requires a borders.info file that contains 
             the column indices of each information in the data file and some
             additional information, in the following order:
-                * (required) [0] Condition, [1] Filename, [2] Startline,
-                  [3] Separator, [4] Bin, [5] Binsize (in b)
-                * (optional) [6] Score, [7] Pvalue,[8] Qvalue
+            * (required) [0] Condition, [1] Filename, [2] Startline,
+              [3] Separator, [4] Bin, [5] Binsize (in b)
+            * (optional) [6] Score, [7] Pvalue,[8] Qvalue
+        
+        Note:
             borders.info and data file have to be in the /HiC/Borders/ directory
 
         Note:
@@ -505,13 +513,13 @@ class HiC:
             To use another annotation or sequence, please load them to your 
             Transcriptome instance with the following commands before using this 
             method:
-                >>> from GRATIOSA import Genome, HiC
-                >>> HC = HiC.HiC("ecoli")
-                >>> g = Genome.Genome(HC.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> g.load_seq(filename=chosen_file2
-                >>> HC.genes = g.genes
-                >>> HC.length = g.length
+            >>> from GRATIOSA import Genome, HiC
+            >>> HC = HiC.HiC("ecoli")
+            >>> g = Genome.Genome(HC.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> g.load_seq(filename=chosen_file2
+            >>> HC.genes = g.genes
+            >>> HC.length = g.length
 
 
         Warning:

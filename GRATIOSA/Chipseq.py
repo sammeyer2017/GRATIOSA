@@ -310,9 +310,9 @@ class Chipseq:
         load_smoothed_signal methods. Finally, the average of these signals at 
         each genomic position of the genome is calculated. This average signal 
         is assigned to the Chipseq instance as signals_average attribute:
-            * self.signals_average (dict.):
-                    Dictionary of shape {average_name: array containing one 
-                    averaged signal value per genomic position}. 
+        * self.signals_average (dict.):
+                Dictionary of shape {average_name: array containing one 
+                averaged signal value per genomic position}. 
 
         Args:
             list_cond (list of str.): 
@@ -464,11 +464,11 @@ class Chipseq:
             file is computed. To use another annotation, please load an annotation 
             to your Transcriptome instance with the following commands before using 
             this method:
-                >>> from GRATIOSA import Genome, Chipseq
-                >>> ch = Chipseq.Chipseq("ecoli")
-                >>> g = Genome.Genome(ch.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> ch.genes = g.genes    
+            >>> from GRATIOSA import Genome, Chipseq
+            >>> ch = Chipseq.Chipseq("ecoli")
+            >>> g = Genome.Genome(ch.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> ch.genes = g.genes    
 
         Example:
             >>> ch = Chipseq.Chipseq("ecoli")

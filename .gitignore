@@ -1,2 +1,6 @@
 # ignore .pyc files
 *.pyc
+dist
+GRATIOSA.egg-info
+tutorials/.ipynb_checkpoints
+Article_Case_Study/.ipynb_checkpoints

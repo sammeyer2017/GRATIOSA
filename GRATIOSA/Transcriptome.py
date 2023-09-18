@@ -52,11 +52,11 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> from GRATIOSA import Genome, Transcriptome
-                >>> tr = Transcriptome.Transcriptome("ecoli")
-                >>> g = Genome.Genome(tr.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> tr.genes = g.genes
+            >>> from GRATIOSA import Genome, Transcriptome
+            >>> tr = Transcriptome.Transcriptome("ecoli")
+            >>> g = Genome.Genome(tr.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> tr.genes = g.genes
 
         Example:
             >>> tr = Transcriptome.Transcriptome("dickeya")
@@ -127,11 +127,11 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> from GRATIOSA import Genome, Transcriptome
-                >>> tr = Transcriptome.Transcriptome("ecoli")
-                >>> g = Genome.Genome(tr.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> tr.genes = g.genes
+            >>> from GRATIOSA import Genome, Transcriptome
+            >>> tr = Transcriptome.Transcriptome("ecoli")
+            >>> g = Genome.Genome(tr.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> tr.genes = g.genes
 
         Example:
             >>> tr = Transcriptome.Transcriptome("ecoli")
@@ -197,11 +197,11 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> from GRATIOSA import Genome, Transcriptome
-                >>> tr = Transcriptome.Transcriptome("ecoli")
-                >>> g = Genome.Genome(tr.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> tr.genes = g.genes
+            >>> from GRATIOSA import Genome, Transcriptome
+            >>> tr = Transcriptome.Transcriptome("ecoli")
+            >>> g = Genome.Genome(tr.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> tr.genes = g.genes
 
         Example:
             >>> tr = Transcriptome.Transcriptome("ecoli")
@@ -281,10 +281,10 @@ class Transcriptome:
                     new attribute of Gene instances
                     related to the Transcriptome instance given as argument.
                     Dictionary of shape {condition: state} with state either
-                        * `act` if the gene is activated
-                        * `rep` if the gene is repressed
-                        * `non` if the gene is not affected
-                        * `null` if the gene is not present in the data
+                    * `act` if the gene is activated
+                    * `rep` if the gene is repressed
+                    * `non` if the gene is not affected
+                    * `null` if the gene is not present in the data
 
 
         Args:
@@ -307,11 +307,11 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> from GRATIOSA import Transcriptome, Genome
-                >>> tr = Transcriptome.Transcriptome("ecoli")
-                >>> g = Genome.Genome(tr.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> tr.genes = g.genes
+            >>> from GRATIOSA import Transcriptome, Genome
+            >>> tr = Transcriptome.Transcriptome("ecoli")
+            >>> g = Genome.Genome(tr.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> tr.genes = g.genes
 
         Example:
             >>> tr = Transcriptome.Transcriptome("ecoli")
@@ -364,14 +364,14 @@ class Transcriptome:
         '''
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance
         either from:
-            * .npz files (described in a cov.info file and computed when new 
-              data are loaded for the first time)  which are in the /rnaseq_cov/ 
-              directory,
-            * coverage files which are in the /rnaseq_cov/ directory and are 
-              described in cov_txt.info file,
-            * paired-end .bam reads files which are in the /rnaseq_reads/ 
-              directory  and are treated with 
-              useful_functions_transcriptome.cov_from_reads function.
+        * .npz files (described in a cov.info file and computed when new 
+          data are loaded for the first time)  which are in the /rnaseq_cov/ 
+          directory,
+        * coverage files which are in the /rnaseq_cov/ directory and are 
+          described in cov_txt.info file,
+        * paired-end .bam reads files which are in the /rnaseq_reads/ 
+          directory  and are treated with 
+          useful_functions_transcriptome.cov_from_reads function.
 
         Creates 2 new attributes of the Transcriptome instance:
             * self.rnaseq_cov_pos: 
@@ -632,11 +632,11 @@ class Transcriptome:
             file is computed. To use another annotation, please load an 
             annotation to your Transcriptome instance with the following commands 
             before using this method:
-                >>> from GRATIOSA import Genome, Transcriptome
-                >>> tr = Transcriptome.Transcriptome("ecoli")
-                >>> g = Genome.Genome(tr.name)
-                >>> g.load_annotation(annot_file=chosen_file)
-                >>> .tr.genes = g.genes
+            >>> from GRATIOSA import Genome, Transcriptome
+            >>> tr = Transcriptome.Transcriptome("ecoli")
+            >>> g = Genome.Genome(tr.name)
+            >>> g.load_annotation(annot_file=chosen_file)
+            >>> .tr.genes = g.genes
 
         Example:
             >>> tr = Transcriptome.Transcriptome("ecoli")

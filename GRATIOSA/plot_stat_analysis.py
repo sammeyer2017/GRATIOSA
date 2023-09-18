@@ -404,8 +404,8 @@ def plot_student_test(dict_data, cats="all",
                       annot_brackets=True,
                       *args, **kwargs):
     '''
-    Barplots of the student test computed with stat_analysis.quantitative_
-    data_student_test (see its documentation for more details)
+    Barplots of the student test computed with 
+    stat_analysis.quantitative_data_student_test (see its documentation for more details)
 
     Args:
         dict_data (dict.): feature corresponding to each element in a
