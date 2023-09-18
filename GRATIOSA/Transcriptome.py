@@ -59,6 +59,7 @@ class Transcriptome:
             >>> tr.genes = g.genes
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("dickeya")
             >>> tr.load_expression()
             >>> tr.genes["Dda3937_00004"].expression
@@ -134,6 +135,7 @@ class Transcriptome:
             >>> tr.genes = g.genes
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             >>> tr.compute_fc_from_expr(["Ctrl1","Ctrl2"],
                                         ["Test1","Test2"],
@@ -204,6 +206,7 @@ class Transcriptome:
             >>> tr.genes = g.genes
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             >>> tr.load_fc_pval()
             >>> tr.genes["b0002"].fc_pval
@@ -314,6 +317,7 @@ class Transcriptome:
             >>> tr.genes = g.genes
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             >>> tr.compute_state_from_fc()
             >>> tr.genes['b0001'].state
@@ -430,6 +434,7 @@ class Transcriptome:
             loaded for the first time.
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             # To load only the coverage for one condition named "WT"
             # in the cov.info or cov_txt.info file
@@ -555,6 +560,7 @@ class Transcriptome:
             compute_from_bam works only with paired-end files
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             >>> tr.load_cov_start_end(compute_from_bam=True)
             >>> tr.cov_end["WT_paired"]
@@ -639,6 +645,7 @@ class Transcriptome:
             >>> .tr.genes = g.genes
 
         Example:
+            >>> from GRATIOSA import Transcriptome
             >>> tr = Transcriptome.Transcriptome("ecoli")
             >>> tr.compute_log2rpkm_from_cov(cond="WT")
             >>> tr.genes["b0002"].rpkm["WT"]

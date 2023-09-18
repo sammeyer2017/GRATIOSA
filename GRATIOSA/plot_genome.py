@@ -91,6 +91,7 @@ def plot_region(gen, beg, end,
         instance must be given as input with the argument "tr_object".
 
     Example:
+        >>> from GRATIOSA import Genome, Transcriptome, Chipseq, plot_genome
         >>> g = Genome.Genome("ecoli")
         >>> g.load_annotation()
         >>> tr = Transcriptome.Transcriptome("ecoli")

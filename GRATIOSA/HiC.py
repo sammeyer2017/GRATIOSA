@@ -18,6 +18,8 @@ class HiC:
 
     Each HiC instance has to be initialized with an organism name
     
+    Example:
+        >>> from GRATIOSA import HiC
         >>> hc = HiC.HiC("dickeya")
     '''
 
@@ -69,6 +71,7 @@ class HiC:
             the version used in the HiC analysis workflow
 
         Example:
+            >>> from GRATIOSA import HiC
             >>> hc = HiC.HiC("dickeya")
             >>> hc.load_hic_borders("WT")
             >>> hc.borders_pos['WT']['no_borders'][0:5]
@@ -204,6 +207,7 @@ class HiC:
             the version used in the HiC analysis workflow
 
         Example:
+            >>> from GRATIOSA import HiC
             >>> hc = HiC.HiC("dickeya")
             >>> hc.load_hic_loops()
             >>> hc.loops_pos['WT']['no_borders'][0:5]
@@ -381,14 +385,13 @@ class HiC:
             the version used in the HiC analysis workflow
 
         Example:
-            >>> g = Genome.Genome("dickeya")
-            >>> g.load_loops_genes()
-            >>> g.loops_pos['WT2kb_bin2000b']['loops']
+            >>> from GRATIOSA import HiC
+            >>> hc = HiC.HiC("dickeya")
+            >>> hc.load_loops_genes()
+            >>> hc.loops_pos['WT2kb_bin2000b']['loops']
             [254000,254001,254002,254003,...]
-            >>> g.loops_genes['WT2kb_bin2000b_w0b']['loops']
+            >>> hc.loops_genes['WT2kb_bin2000b_w0b']['loops']
             ['Dda3937_00221','Dda3937_04438','Dda3937_03673',...]
-            >>> g.genes['Dda3937_00221'].is_loop
-            {'acid2kb_bin2000b': False, 'WT2kb_bin2000b': True}
         """
         if not hasattr(self, "seq"):
             gen = Genome.Genome(self.name)
@@ -527,13 +530,14 @@ class HiC:
             the version used in the HiC analysis workflow
 
         Example:
-            >>> g = Genome.Genome("dickeya")
-            >>> g.load_borders_genes()
-            >>> g.borders_pos["WT2_2kb_bin2000b"]['borders']
+            >>> from GRATIOSA import HiC
+            >>> hc = HiC.HiC("dickeya")
+            >>> hc.load_borders_genes()
+            >>> hc.borders_pos["WT2_2kb_bin2000b"]['borders']
             [20000,20001,20002,20003,20004,...]
-            >>> g.borders_genes['acid1kb_bin1000b_w0b']['borders']
+            >>> hc.borders_genes['acid1kb_bin1000b_w0b']['borders']
             ['Dda3937_00158','Dda3937_01107','Dda3937_01108',...]
-            >>> g.genes['Dda3937_00221'].is_border
+            >>> hc.genes['Dda3937_00221'].is_border
             {'acid1kb_bin1000b': False,'WT2_2kb_bin2000b': False}
         """
 

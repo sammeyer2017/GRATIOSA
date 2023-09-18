@@ -22,7 +22,7 @@ class Genome:
     TSS, TU and TTS.
 
     Each Genome instance has to be initialized with an organism name
-    
+        >>> from GRATIOSA import Genome
         >>> g = Genome.Genome("ecoli")
     '''
 
@@ -46,6 +46,7 @@ class Genome:
                     sequence in FASTA format. Default: "sequence.fasta"
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_seq()
             >>> g.seq[100:151]
@@ -93,6 +94,7 @@ class Genome:
             [7] Right coordinate column [8] File start line
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation()
             >>> g.genes["Dda3937_00005"].name
@@ -153,6 +155,7 @@ class Genome:
             annotation before using the load_genes_per_pos method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation(annot_file="sequence.gff3")
             >>> g.load_genes_per_pos(window=1000)
@@ -216,6 +219,7 @@ class Genome:
             annotation before using the load_neighbor_all method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation(annot_file="sequence.gff3")
             >>> g.load_neighbor_all()
@@ -333,6 +337,7 @@ class Genome:
             annotation before using the load_neighbor_all method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation(annot_file="sequence.gff3")
             >>> g.load_gene_orientation()
@@ -432,6 +437,7 @@ class Genome:
             annotation before using this method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_annotation(annot_file="sequence.gff3")
             >>> g.load_pos_orientation()
@@ -537,6 +543,7 @@ class Genome:
             annotation before using this method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_TSS()
             >>> g.TSSs["dickeya-btss"][4707030].promoter
@@ -613,6 +620,7 @@ class Genome:
             annotation before using this method.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_prom_elements()
             >>> g.TSSs["dickeya-btss"][4707030].promoter
@@ -669,6 +677,7 @@ class Genome:
             details.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_TU()
             >>> g.TUs["TU_Forquet"][2336702].right
@@ -746,6 +755,7 @@ class Genome:
             details.
 
         Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_TTS()
             >>> g.TTSs["RhoTerm"][2791688].left
@@ -811,7 +821,8 @@ class Genome:
             file is computed. To use another annotation, please load an
             annotation before using this method.
 
-        Example
+        Example:
+            >>> from GRATIOSA import Genome
             >>> g = Genome.Genome("dickeya")
             >>> g.load_GO()
             >>> g.GO['GO']['GO:0000100']

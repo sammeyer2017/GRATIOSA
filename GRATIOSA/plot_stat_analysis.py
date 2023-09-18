@@ -159,6 +159,7 @@ def plot_proportion_test(dict_cats,
 
     Example:
         >>> import numpy as np
+        >>> from GRATIOSA import plot_stat_analysis
         >>> dict_cat = {"cat1":np.arange(100,154),"cat2":np.arange(1,100),
         ...             "cat3":np.arange(154,180),"cat4":np.arange(180,230)}
         >>> dict_features ={"act":list(np.arange(1,90))+list(np.arange(100,120))
@@ -255,7 +256,7 @@ def plot_enrichment_test(dict_cats,
         dict_cats (dict.): classification of each elements in a dictionary 
                 of shape {category:[elements]}
                 N.B.: the same element can be associated to multiple features
-                fcExample: {"GOterm1":["GeneA","GeneB"],"GOterm2:["GeneA","GeneC"]}
+                Example: {"GOterm1":["GeneA","GeneB"],"GOterm2:["GeneA","GeneC"]}
         dict_features (dict.): feature corresponding to each element in a
                 dictionary of shape {feature:[elements]}
                 Example: {"act": ["GeneA","GeneC","GeneD"], "rep":["GeneB"]}
@@ -301,7 +302,8 @@ def plot_enrichment_test(dict_cats,
                 number of categories. If less than 5 cats: 0.7)
 
     Example:
-        >>>  dataX = {"GOterm1":["A","B","D","E","F"],
+        >>> from GRATIOSA import plot_stat_analysis
+        >>> dataX = {"GOterm1":["A","B","D","E","F"],
         ...           "GOterm2":["C","E"],
         ...           "GOterm3":["A","B","F","G","H","I","M"],
         ...           "GOterm4":["C","F","G","J"]}
@@ -440,6 +442,7 @@ def plot_student_test(dict_data, cats="all",
                 dependent on the number of categories. If less than 5 cats: 0.7)
 
     Example:
+        >>> from GRATIOSA import plot_stat_analysis
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}
         >>> plot_stat_analysis.plot_student_test(dict_data)
     '''

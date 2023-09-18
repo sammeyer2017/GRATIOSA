@@ -17,7 +17,8 @@ class Chipseq:
     as an attribute of this class. 
 
     Each Chipseq instance has to be initialized with an organism name
-    
+    Example:
+        >>> from GRATIOSA import Chipseq
         >>> ch = Chipseq.Chipseq("ecoli")
     '''
 
@@ -52,6 +53,7 @@ class Chipseq:
             [3] bin_start, [4] bin_end, [5] signal
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_signal()
             >>> ch.signal['Signal_Test']
@@ -140,6 +142,7 @@ class Chipseq:
             See ChipSeq.load_signal method for the data requirements.
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_binned_signal(binsize=100,cond='Signal_Test')
             >>> ch.binned_signal["Signal_Test_bin100b"]
@@ -243,6 +246,7 @@ class Chipseq:
             See Chipseq.load_signal method for the data requirements.
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_smoothed_signal(window=100,cond='Signal_Test')
             >>> ch.smoothed_signal["Signal_Test_smooth100b"]
@@ -334,6 +338,7 @@ class Chipseq:
             See Chipseq.load_signal method for the data requirements
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_signals_average(list_cond=["Signal1","Signal2"],
             ...                         average_name="Mean_signal",
@@ -471,6 +476,7 @@ class Chipseq:
             >>> ch.genes = g.genes    
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_signal()
             >>> ch.load_signal_per_genes()
@@ -530,6 +536,7 @@ class Chipseq:
             peaks.info and data file have to be in the /chipseq/peaks/ directory 
 
         Example:
+            >>> from GRATIOSA import Chipseq
             >>> ch = Chipseq.Chipseq("ecoli")
             >>> ch.load_peaks()
             >>> ch.peaks['test']

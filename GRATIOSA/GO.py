@@ -48,6 +48,7 @@ class GO:
                     idem for the GOterms from "biological_process" namespace
 
         Example:
+            >>> from GRATIOSA import GO
             >>> go = GO.GO()
             >>> go.dict_GOc['GO:0000015']
             {'Name': 'phosphopyruvate hydratase complex',
@@ -171,6 +172,7 @@ def GO_enrichment_test(dict_GOterms,
         1 common file containing the significantly enriched GO terms
 
     Example:
+        >>> from GRATIOSA import Genome, GO
         >>> g = Genome.Genome("ecoli")
         >>> g.load_GO()
         >>> g.load_state_from_FC()
@@ -261,7 +263,8 @@ def gaf2annot(path2file, startline, regexp_locus):
     Output:
         .annot file saved in the folder of the initial .gaf file.
     Example:
-    >>> GO_analysis.gaf2annot("path2file/ecocyc.gaf",35,"b\\d\\d\\d\\d")
+    >>> from GRATIOSA import GO
+    >>> GO.gaf2annot("path2file/ecocyc.gaf",35,"b\\d\\d\\d\\d")
     '''
     if ".gaf" in path2file:
         path2file = path2file[:-4]

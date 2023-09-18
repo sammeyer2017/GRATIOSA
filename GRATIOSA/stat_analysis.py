@@ -44,6 +44,7 @@ def data_classification(data_x, data_y, class_nb, *args, **kwargs):
             * dict. of shape {class_name: list of data associated with each element}
 
     Example:
+        >>> from GRATIOSA import stat_analysis
         >>> stat_analysis.data_classification(["a","b","d","c","e"],[1,2,4,3,5], 
         ...                                   class_nb=3,thresholds = [1,5])
         ({0: ['a'], 1: ['b', 'c', 'd'], 2: []}, {0: [1], 1: [2, 3, 4], 2: []})
@@ -173,6 +174,7 @@ def proportion_test(dict_cats,
         Test results are saved in the output_file
 
     Example:
+        >>> from GRATIOSA import stat_analysis
         >>> dict_cats = {"borders":["A","B","G","K","L"],
         ...              "loops":["C","D","F","H","J"],
         ...              "None":["E","I"]}
@@ -364,6 +366,7 @@ def enrichment_test(dict_cats,
         is reported in the output_file.
 
     Example:
+        >>> from GRATIOSA import stat_analysis
         >>> dict_features = {"act": ["B", "D", "E", "H", "I", "M", "P", "Q", "R", "S", "T", "W"], 
         ...                  "rep": ["C", "F", "G", "U", "X"], "None": ["A"], "NA": ["J"]}                
         >>> dict_cats = {"GOterm1": ["A", "B", "D", "E", "F", "P", "Q", "R", "S", "T", "U"], 
@@ -527,6 +530,7 @@ def quantitative_data_student_test(dict_data, cats="all",
         Test results are also reported in the output_file.
 
     Example:
+        >>> from GRATIOSA import stat_analysis
         >>> dict_data = {'a':[1,2,5,6,19], 'b':[10,24,4,15]}
         >>> stat_analysis.quantitative_data_student_test(dict_data)
         {'categories': ['a', 'b'],
