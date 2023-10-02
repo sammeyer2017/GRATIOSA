@@ -229,7 +229,7 @@ class Transcriptome:
                     header = header.strip()
                     header = header.split('\t')
                     print(f"Loading condition: {header[0]}")
-                    try:  # if p-value column specified works
+                    if len(header) > 6:  # if p-value column specified works
                         self.genes_valid_fc[header[0]] = load_fc_pval_cond(
                             genes_dict=self.genes,
                             filename=path2dir + header[1],
@@ -238,8 +238,9 @@ class Transcriptome:
                             fc_col=int(header[3]),
                             separator=header[4],
                             start_line=int(header[5]),
-                            p_value=int(header[6]))
-                    except BaseException:  # otherwise, set pvalue = 0
+                            p_val_col=int(header[6]))
+                    else :
+                        print("No p-value column found in fc.info file")
                         self.genes_valid_fc[header[0]] = load_fc_pval_cond(
                             genes_dict=self.genes,
                             filename=path2dir + header[1],

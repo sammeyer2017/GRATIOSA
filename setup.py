@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="GRATIOSA",
-    version="0.0.1",
+    version="0.0.3",
     author="Pineau Maïwenn, Forquet Raphaël, Meyer Sam",
     author_email="sam.meyer@insa-lyon.fr",
     description=" ",

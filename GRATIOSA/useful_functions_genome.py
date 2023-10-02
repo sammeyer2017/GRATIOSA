@@ -76,8 +76,13 @@ def load_gff(annotations_filename):
                 line = line.split('\t')
                 gene_info = {}
                 for x in line[8].split(';'):
-                    x = x.strip().split('=')
-                    gene_info[x[0]] = x[1]
+                    try : 
+                        x = x.strip().split('=')
+                        gene_info[x[0]] = x[1]
+                    except Exception as e: 
+                        if  x != ['']:
+                            print(f"Error {e} in '{line[8]}'")
+
                 if ('locus_tag' in gene_info):
                     locus = gene_info['locus_tag']
                     if "ID" in gene_info.keys():
