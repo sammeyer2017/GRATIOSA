@@ -1,0 +1,2 @@
+System	Filename	Tag_type (ASAP or locus_tag) 	TagColumn	GOcol	Separator	Startline
+GO	ecocyc.annot	locus_tag	0	1	\t	0

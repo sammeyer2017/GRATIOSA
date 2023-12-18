@@ -16,7 +16,7 @@ GRATIOSA is written in Python, and is targeted to computational biologists. The 
 
 How to use the package ? 
 ------------------------
-Before using, please set the environment variable \$GRATIOSA_PATH in order to have \$GRATIOSA_PATH + data/organisms (e.g. \$GRATIOSA_PATH = /home/usr/documents/GRATIOSA/). The most convenient way to run GRATIOSA is probably to install a virtual environment.
+Before using, please set the environment variable \$GRATIOSA_DB_PATH in order to have \$GRATIOSA_DB_PATH + data/organisms (e.g. export GRATIOSA_DB_PATH = /home/usr/documents/GRATIOSA/). The most convenient way to run GRATIOSA is probably to install a virtual environment.
 
 Before using the package, the user needs to prepare and organize their data and database. For each new organism, the user must create a folder with the organism's name. Inside this folder, a subfolder named "annotation" should be created and the user should add the sequence data in fasta format and an annotation file in gff format in this folder. The pre-processed and formatted experimental data, should also be placed in an appropriate folder, named according to the data type. These experimental data files should be accompanied by an info file that the user needs to complete with information about the file organization, following the info file template for that data type.
 

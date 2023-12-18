@@ -1,0 +1,17 @@
+cond	file	start	stop	cover
+Sutormin_TopoI_R1	Sutormin2022_TopoI_E1M1_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_R2	Sutormin2022_TopoI_E2M2_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_R3	Sutormin2022_TopoI_E3M3_bin100b.bedgraph	\t	1	2	3
+Sutormin_Gyrase_R1	Sutormin2019_T1M1_Gyrase_CFX_bin100b.bedgraph	\t	1	2	3
+Sutormin_Gyrase_R2	Sutormin2019_T2M2_Gyrase_CFX_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_R1_bin10b	Sutormin2022_TopoI_E1M1_bin10b.bedgraph	\t	1	2	3
+Sutormin_TopoI_R2_bin10b	Sutormin2022_TopoI_E2M2_bin10b.bedgraph	\t	1	2	3
+Sutormin_TopoI_R3_bin10b	Sutormin2022_TopoI_E3M3_bin10b.bedgraph	\t	1	2	3
+Sutormin_Gyrase_R1_bin10b	Sutormin2019_T1M1_Gyrase_CFX_bin10b.bedgraph	\t	1	2	3
+Sutormin_Gyrase_R2_bin10b	Sutormin2019_T2M2_Gyrase_CFX_bin10b.bedgraph	\t	1	2	3
+Sutormin_CFX_Rif_Gyrase_R1	Sutormin2019_rif_Gyr_T1M1_bin100b.bedgraph	\t	1	2	3
+Sutormin_CFX_Rif_Gyrase_R2	Sutormin2019_rif_Gyr_T2M2_bin100b.bedgraph	\t	1	2	3
+Sutormin_CFX_Rif_Gyrase_R3	Sutormin2019_rif_Gyr_T3M3_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_Rif_R1	Sutormin2022_TopoI_rif_E1M1_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_Rif_R2	Sutormin2022_TopoI_rif_E2M2_bin100b.bedgraph	\t	1	2	3
+Sutormin_TopoI_Rif_R3	Sutormin2022_TopoI_rif_E3M3_bin100b.bedgraph	\t	1	2	3
