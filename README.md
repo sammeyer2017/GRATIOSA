@@ -6,6 +6,10 @@ GRATIOSA facilitates the integration, comparison and combined statistical analys
 
 GRATIOSA is written in Python, and is targeted to computational biologists. The automated import of data and standardized statistical tests and procedures are combined with the flexibility of Python for developing custom subsequent analyses, depending on the particular regulatory mechanism under investigation. It is primarily designed to treat expression data (RNA-Seq or microarrays), and ChIP-Seq data, but can be used with any type of continuous signals along the genome (other binding signals, mutation rates, binding prediction profiles…) or lists of discrete features (annotated or predicted protein binding sites, Hi-C topological domain borders, …). 
 
+How to install the package ? 
+----------------------------
+To install this package, the recommended method is to execute the following command in your terminal 
+pip install GRATIOSA
 
 How to use the package ? 
 ------------------------

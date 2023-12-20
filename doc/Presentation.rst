@@ -13,6 +13,10 @@ GRATIOSA is written in Python, and is targeted to computational biologists. The 
    :width: 1000
    :align: center
 
+How to install the package ? 
+------------------------
+To install this package, the recommended method is to execute the following command in your terminal 
+pip install GRATIOSA
 
 How to use the package ? 
 ------------------------
