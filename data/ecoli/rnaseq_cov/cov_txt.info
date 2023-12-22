@@ -1,0 +1,3 @@
+Condition	FileReverse	FileForward	Startline UseCol
+WT	GSM2771003_mRNA_wt_37C_rev_treated.wig	GSM2771003_mRNA_wt_37C_for_treated.wig	1	1
+cold_shock_10mn	GSM2771004_mRNA_wt_10min_rev_treated.wig	GSM2771004_mRNA_wt_10min_for_treated.wig	1	1

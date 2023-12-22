@@ -1,0 +1,7 @@
+Condition	Filename	TagColumn	FCcolumn	ColumnSeparator	Startline	P-valueColumn
+Blot	relax_blot.csv	0	1	\t	2	2
+Peter	relax_peter.csv	0	4	\t	2	1
+osmotic	barth_clean.csv	6	4	\t	2
+heat	barth_clean.csv	6	1	\t	2
+cold_shock_table10	cold_shock_rnaseq_clean.csv	5	0	\t	2
+cold_shock_table30	cold_shock_rnaseq_clean.csv	5	1	\t	2
