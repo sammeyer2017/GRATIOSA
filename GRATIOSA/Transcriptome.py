@@ -374,7 +374,7 @@ class Transcriptome:
           directory,
         * coverage files which are in the /rnaseq_cov/ directory and are 
           described in cov_txt.info file,
-        * paired-end .bam reads files which are in the /rnaseq_reads/ 
+        * .bam reads files which are in the /rnaseq_reads/ 
           directory  and are treated with 
           useful_functions_transcriptome.cov_from_reads function.
 
@@ -395,9 +395,8 @@ class Transcriptome:
                     loaded.
             compute_from_bam (Boolean.): if True, computes, using 
                     useful_functions_transcriptome.cov_from_reads, coverage 
-                    from paired-end .bam reads files that are, with a 
+                    from .bam reads files that are, with a 
                     bam_files.info file, in the /rnaseq_reads/ directory.
-                    WARNING: Works only with paired-end files
 
         Note:
             To use directly new coverages data, both forward and reverse coverage 
@@ -465,7 +464,7 @@ class Transcriptome:
         path2dir = f"{basedir}data/{self.name}/rnaseq_cov/"
 
         if compute_from_bam:
-            process_bam_paired_end(self)
+            process_bam(self)
             cov_from_reads(self)
 
         if os.path.exists(f"{path2dir}cov_txt.info"):
@@ -543,11 +542,11 @@ class Transcriptome:
         Args:
             compute_from_bam (Boolean): if True, computes, using 
                     useful_functions_transcriptome.cov_start_stop_from_reads,
-                    coverage from paired-end .bam reads files that are, with 
+                    coverage from .bam reads files that are, with 
                     a bam_files.info file, in the /rnaseq_reads/ directory.
 
         Note:
-            To compute new coverages data from paired-end .bam reads files, the 
+            To compute new coverages data from .bam reads files, the 
             data files and a bam_files.info file have to be in the /rnaseq_reads/ 
             directory and the input argument "compute_from_bam" has to be set to 
             "True".The bam_files.info files contains:
@@ -558,7 +557,12 @@ class Transcriptome:
             the cov_start_stop.info will be loaded, thus allowing faster loading.
 
         Warning:
-            compute_from_bam works only with paired-end files
+            compute_from_bam works with paired-end or single-end .bam files, 
+            but the first read of each file is used to determine if PE or SE. 
+            i.e., if you are using PE sequencing, please ensure that the first read
+            of each file is paired, through prior filtering of unpaired reads. 
+            For single-end reads, the coverage is computed from sequenced reads, without
+            extension of fragments (i.e., it is the read rather than fragment coverage). 
 
         Example:
             >>> from GRATIOSA import Transcriptome
@@ -570,7 +574,7 @@ class Transcriptome:
         '''
 
         if compute_from_bam:
-            process_bam_paired_end(self)
+            process_bam(self)
             cov_start_stop_from_reads(self)
 
         self.cov_start = {}
