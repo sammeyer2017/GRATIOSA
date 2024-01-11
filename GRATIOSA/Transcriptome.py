@@ -602,13 +602,13 @@ class Transcriptome:
         else:
             print('cov_start_stop.info not available please check /rnaseq_cov/ folder')
 
-    def compute_log2rpkm_from_cov(self, cond='all', before=100):
+    def compute_rpkm_from_cov(self, cond='all', before=100):
         '''
-        Compute_log2rpkm_from_cov method:
+        Compute_rpkm_from_cov method:
             * loads the RNASeq coverage (using load_rnaseq_cov method)
             * computes and loads RPKM value on the Gene instances
               (using Gene.add_single_rpkm )
-            * saves the log2(RPKM) data in a new .csv file
+            * saves the RPKM data in a new .csv file
               (1 file for all conditions, with 1 column per condition)
             * adds the new .csv file informations in the expression.info file 
               in the /expression/ directory
@@ -671,14 +671,15 @@ class Transcriptome:
             cond = [cond]
         if cond == ["all"]:
             cond = self.rnaseq_cov_pos.keys()
+            condpb=set([])
         else:
             condpb = set(cond) - set(self.rnaseq_cov_pos.keys())
-        if condpb:
+        if condpb != set([]):
             print(f"Following conditions are not in cov.info: {condpb}")
 
         if os.path.exists(f"{path2dir}expression.info"):
             existing_cond = []
-            with open(f"{path2dir}expression.info", 'r')as f:
+            with open(f"{path2dir}expression.info", 'r') as f:
                 header = next(f)
                 for line in f:
                     line = line.strip('\n').split('\t')
@@ -690,39 +691,39 @@ class Transcriptome:
         if ignoredcond:
             print(f"Following conditions are already in expression.info: {ignoredcond})")
 
+
+        print("Computing the RPKM for conditions: %s"%str(cond2convert))
         # Computing the RPKM
         if cond2convert:
+            totalcov={}
+
+            # compute total coverage for condition
+            for c in cond2convert:
+                totalcov[c]=(np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))/10**6
+            
             for g in self.genes.keys():  # for each gene
-                try:
                     if self.genes[g].strand:
                         # gene in + strand
                         for c in cond2convert:  # for each condition of cov
-                            self.genes[g].add_single_rpkm(c, np.mean(self.rnaseq_cov_pos[c][(
-                                self.genes[g].left - before):self.genes[g].right]), np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))
+                            self.genes[g].add_expression(c,np.mean(self.rnaseq_cov_pos[c][(
+                                self.genes[g].left - before):self.genes[g].right])*1000/totalcov[c])
                     elif not self.genes[g].strand:
                         # gene in - strand
-                        for c in cond2convert:
-                            self.genes[g].add_single_rpkm(c, np.mean(self.rnaseq_cov_neg[c][self.genes[g].left:(
-                                self.genes[g].right + before)]), np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))
-                except Exception as e:
-                    print(f'WARNING: {g} , {cond}, {e}')
-                    pass
-
+                        for c in cond2convert:                          
+                            self.genes[g].add_expression(c, np.mean(self.rnaseq_cov_neg[c][self.genes[g].left:(
+                                self.genes[g].right + before)])*1000/totalcov[c])
         # Saving log2RPKM in a .csv file and completing the expression.info
         # file
             file = []
             for g in self.genes.keys():
-                g_log2rpkm = []
+                g_rpkm = []
                 for c in cond2convert:
-                    if self.genes[g].rpkm[c] != 0:
-                        g_log2rpkm.append(np.log2(self.genes[g].rpkm[c]))
-                    else:
-                        g_log2rpkm.append(1)
-                file.append(g_log2rpkm)
+                    g_rpkm.append(self.genes[g].expression[c])
+                file.append(g_rpkm)
             df = pd.DataFrame(data=file, columns=cond2convert,
                               index=self.genes.keys())
             date = str(datetime.now())[:-10].replace(" ", "_")
-            filename = f"log2rpkm_from_cov_{date}.csv"
+            filename = f"rpkm_from_cov_{date}.csv"
             df.to_csv(path2dir + filename, sep=',', index=True)
 
             if not os.path.exists(f"{path2dir}expression.info"):

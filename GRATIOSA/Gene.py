@@ -26,9 +26,10 @@ class Gene:
             self.end = int(left)
         self.ASAP = ASAP_name
 
-    def add_single_rpkm(self, condition, expression_value, factor):
-        if not hasattr(self, 'rpkm'):
-            self.rpkm = {}
+    # def add_single_rpkm(self, condition, expression_value):
+    #     if not hasattr(self, 'rpkm'):
+    #         self.rpkm = {}
+    #     self.rpkm[c]=expression_value
 
     def add_id_TSS(self, id_TSS):
         if not hasattr(self, 'id_TSS'):
