@@ -130,7 +130,7 @@ def load_fc_pval_cond(genes_dict,
     except_fc = 0
     with open(filename, 'r') as f:
         i = 0
-        while i < start_line:
+        while i < start_line-1: #caution, here the line numbering is 1-indexed
             header = next(f)
             i += 1
         for line in f:
@@ -280,7 +280,7 @@ def process_bam(tr):
                          Rneg=Rneg)
 
 
-def cov_from_reads(tr):
+def cov_from_reads(tr,rev=False):
     """
     Called by load_rnaseq_cov, cov_from_reads computes the coverage from 
     reads previously converted to .npz format (containing one .npy 
@@ -301,6 +301,7 @@ def cov_from_reads(tr):
 
     Args:
         tr: Transcriptome instance
+        rev (False): for special cases where the reads were mapped on reverse strand (equivalent to -s reverse in htseq-count). All reads are strand-reversed before computing the coverage. This is never called by the main functions, but can be called "by hand" after deleting the previous coverage files that were on the wrong strand.  
 
     Note: 
         The .npz files have to be, with a reads.info file (also created 
@@ -334,8 +335,12 @@ def cov_from_reads(tr):
                 print('Converting reads in coverage for:', line[0])
                 # load npz file corresponding to condition
                 npzfile = np.load(path2reads + line[1])
-                Rpos = npzfile["Rpos"]
-                Rneg = npzfile["Rneg"]
+                if rev:
+                    Rneg = npzfile["Rpos"]
+                    Rpos = npzfile["Rneg"]
+                else:
+                    Rpos = npzfile["Rpos"]
+                    Rneg = npzfile["Rneg"]
                 # init cov
                 cov_pos = np.zeros(genome_length, dtype=int)
                 cov_neg = np.zeros(genome_length, dtype=int)

@@ -4,6 +4,7 @@
 """
 Functions called by Genome methods
 """
+import os
 import numpy as np
 from GRATIOSA.globvar import *
 from GRATIOSA.Gene import Gene
@@ -33,6 +34,21 @@ def read_seq(filename):
     seq_file.close
     return seq
 
+def update_NCBI_genomes():
+    """
+    Tries to download the current list of NCBI complete bacterial genomes, and store it in the file "accession_number_complete.txt" in the base directory. This is useful if you want to create a new organism and download the annotation automatically from NCBI, and you do not have the NCBI command-line tool installed... Caution, this requires to download a large file (~ 600 Mb). The stored file contains only the complete genomes and is much lighter (~ 20 Mb). 
+    """
+    print("Downloading the current version of the NCBI complete genome list to accession_number_complete.txt file in the base directory")
+    print("It may take a while, the complete file is ~600 Mb to download")
+    print("Check the large temporary file at location %s/assembly_summary.txt"%os.getcwd())
+    os.system("wget -nv ftp://ftp.ncbi.nih.gov/genomes/genbank/bacteria/assembly_summary.txt >/dev/null 2>&1")
+    if not os.path.exists("assembly_summary.txt"):
+        print("Error downloading the file!!")
+        return 1
+    else:
+        os.system(f"grep Complete assembly_summary.txt >  {basedir}data/accession_number_complete.txt")
+        os.system("rm assembly_summary.txt")
+        return 0
 
 def load_gff(annotations_filename):
     '''

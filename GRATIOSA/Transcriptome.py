@@ -237,7 +237,7 @@ class Transcriptome:
                             tag_col=int(header[2]),
                             fc_col=int(header[3]),
                             separator=header[4],
-                            start_line=int(header[5]),
+                            start_line=int(header[5]),  #1-indexed 
                             p_val_col=int(header[6]))
                     else :
                         print("No p-value column found in fc.info file")

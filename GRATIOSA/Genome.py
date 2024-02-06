@@ -29,6 +29,86 @@ class Genome:
     def __init__(self, name):
         self.name = name
 
+    def create_database(self, NCBI_accession=None):
+        """
+        Creates the hierarchy of directories for the genome. 
+        If a NCBI GenBank accession number is given (e.g., GCA_000147055.1), we try getting the reference sequence and genomic annotation from the NCBI database, using two methods: (1) try fetching the NCBI server using the "datasets" command from the NCBI command-line tool (if previously installed); (2) otherwise, try downloading the right files from the NCBI server. 
+        The user can then add data manually in the directories. 
+
+        Args: 
+            NCBI_accession (Optional [str.]): name of the NCBI GenBank accession number of the requested genome. Example: GCA_000147055.1
+
+        Note: 
+            If the NCBI command line tool is not installed, the software tries to open/download the "accession_number_complete.txt" file in the base directory. This is the list of all NCBI complete genomes (~ 20 Mb). If it is already present, the software does not try to update it. For an update of this file from the NCBI server, please run update_NCBI_genomes(). 
+
+        """
+        if os.path.exists(f"{basedir}data/{self.name}"):
+            print("CAUTION: the directory/organism %s already exists"%self.name)
+            print("Please delete the directory from the GRATIOSA base directory if you wish to create this organism in the database")
+            return 1
+        else:
+            os.system(f"cp -r {basedir}data/model {basedir}data/%s"%self.name)
+            print("Created directory %s with standard file hierarchy"%self.name)
+        # ------------
+        # If an accession number is given (string), try fetching it in NCBI
+        if isinstance(NCBI_accession,str):
+            # Best option: try to use the NCBI command-line tool, if previously installed.
+            try_manual=True
+            if len(os.popen("which datasets").read())!=0:
+                # the command dataset exists on this computer
+                # we assume it is the one from NCBI!!
+                os.system("datasets download genome accession %s --include genome,gff3"%NCBI_accession)
+                # test if the content was properly downloaded
+                if len(os.popen("ls ncbi_dataset.zip").read())==0:
+                    print("The attempt to fetch the annotation using the NCBI command-line tool failed.")
+                else:
+                    os.system("unzip ncbi_dataset.zip >/dev/null 2>&1")
+                    os.system('rm -rf ncbi_dataset.zip')
+                    fnafiles=os.popen("ls ncbi_dataset/data/%s/*.fna"%NCBI_accession).read().split("\n")
+                    if len(fnafiles)!=0:
+                        fnafile=fnafiles[0]
+                        print(fnafile)
+                        os.system(f"cp %s {basedir}data/%s/sequence.fasta"%(fnafile,self.name))
+                        os.system(f"cp ncbi_dataset/data/%s/genomic.gff {basedir}data/%s/annotation/sequence.gff3"%(NCBI_accession,self.name))
+                        if os.path.exists(f"{basedir}data/%s/sequence.fasta"%self.name) and os.path.exists(f"{basedir}data/%s/annotation/sequence.gff3"%self.name):
+                            print("Successful import of the annotation files from NCBI using CLI tools!")
+                            try_manual=False
+                    os.system('rm -rf ncbi_dataset')
+            # --------------
+            if try_manual:
+                # the attempt to fetch NCBI using CLI tool did not work
+                print("The attempt to fetch the annotation using the NCBI command-line tool failed. Trying to directly download from NCBI.")
+                # check if the list of NCBI genomes is present. Otherwise create it.
+                if not os.path.exists(f"{basedir}data/assembly_summary_complete.txt"):
+                    update_NCBI_genomes()
+                genome_line=os.popen(f"grep %s {basedir}data/assembly_summary_complete.txt"%NCBI_accession).read()
+                if len(genome_line)==0:
+                    print("Genome %s not found in the NCBI file (or no file)"%NCBI_accession)
+                    print("Impossible to download annotation from NCBI, sorry.")
+                else:
+                    lines=genome_line.strip().split("\n")
+                    if len(lines)!=1:
+                        print("Caution, there are several lines in assembly_summary_complete.txt corresponding to the string %s"%NCBI_accession)
+                    gline=lines[0].split("\t")
+                    print("Trying to get annotation for organism %s based on the reference genome of bacterium %s, %s, with genomic data taken from dataset %s"%(self.name,gline[7],gline[8],gline[19]))
+                    adr=gline[19]
+                    nam=adr.split("/")[-1]
+                    fil="%s_genomic.fna.gz"%(nam)
+                    os.system("wget -nv %s/%s"%(adr,fil))
+                    if os.path.exists(fil):
+                        print("Error in retrieving the sequence reference file from location %s/%s"%(adr,fil))
+                    else:                        
+                        os.system("gunzip %s"%fil)
+                        os.system(f"mv %s {basedir}data/%s/sequence.fasta"%(fil[:-3],self.name))
+                        fil="%s_genomic.gff.gz"%(nam)
+                        os.system("wget -nv %s/%s"%(adr,fil))
+                        os.system("gunzip %s"%fil)
+                        os.system(f"mv %s {basedir}data/%s/annotation/sequence.gff3"%(fil[:-3],self.name))
+                        if os.path.exists(f"{basedir}data/%s/annotation/sequence.gff3"):
+                            print("Import of NCBI annotation for organism %s successful"%self.name)
+                        else:
+                            print("Error in import of NCBI annotation for organism %s"%self.name)
+        
     def load_seq(self, filename="sequence.fasta"):
         """
         Load_seq loads DNA sequence from a .fasta file present in the
@@ -87,7 +167,7 @@ class Genome:
             If the file is a .gff3 or .gff information will be loaded using
             useful_functions_genome.load_gff.
             Else, the information importation requires an annotation.info file,
-            containing column indices of each information in the data file and 
+           containing column indices of each information in the data file and 
             some additional information, in the following order:
             [0] Filename [1] Separator [2] Locus_tag column [3] Name column
             [4] ID column [5] Strand column [6] Left coordinate column
