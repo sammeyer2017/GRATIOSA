@@ -28,7 +28,7 @@ class Genome:
 
     def __init__(self, name):
         self.name = name
-
+        
     def create_database(self, NCBI_accession=None):
         """
         Creates the hierarchy of directories for the genome. 
@@ -108,7 +108,8 @@ class Genome:
                             print("Import of NCBI annotation for organism %s successful"%self.name)
                         else:
                             print("Error in import of NCBI annotation for organism %s"%self.name)
-        
+
+                            
     def load_seq(self, filename="sequence.fasta"):
         """
         Load_seq loads DNA sequence from a .fasta file present in the
@@ -134,19 +135,40 @@ class Genome:
             >>> g.seqcompl[100:151]
             'TTACAGCTAGAAGTTGTATAGCGGCTAGGCTGCCCGTGGGTCTAGGACGTC'
         """
-        seq_dir = f"{basedir}data/{self.name}/sequence.fasta"
-        self.seq = read_seq(seq_dir).upper()
-        self.seqcompl = ''
-        self.length = len(self.seq)
-        l = self.seq
-        l = l.replace('A', 't').replace('T', 'a')
-        l = l.replace('C', 'g').replace('G', 'c')
-        l = l.replace('a', 'A').replace('t', 'T')
-        l = l.replace('c', 'C').replace('g', 'G')
-        self.seqcompl = l
+        seq_file = f"{basedir}data/{self.name}/sequence.fasta"
+        chrom_names,sequences=read_seq(seq_file)
+        if len(chrom_names)==1:
+            line=chrom_names[0]
+            self.chromosome_name=line.split(" ")[0]
+            self.chromosome_description=line
+            self.seq=sequences[0].upper()
+            self.seqcompl = seq_compl(self.seq)
+            self.length = len(self.seq)
+            self.genome_dict={self.chromosome_name: self}
+            print("Detected a genome with 1 chromosome")
+            print("Chromosome %s of length %d"%(self.chromosome_name,self.length))
+        elif len(chrom_names)==0:
+            print("ERROR in importing the reference sequence!")
+            print("Check file %s"%seq_file)
+        else:
+            print("Detected a genome with %d chromosomes"%len(chrom_names))
+            self.chromosome_name=[x.split(" ")[0] for x in chrom_names]
+            self.chromosome_description=chrom_names
+            self.genomes=[]
+            for i,c in enumerate(sequences):
+                gi=Genome(self.chromosome_name[i])
+                gi.chromosome_name=self.chromosome_name[i]
+                gi.chromosome_description=self.chromosome_description[i]
+                gi.seq=sequences[i].upper()
+                gi.seqcompl=seq_compl(gi.seq)
+                gi.length=len(gi.seq)
+                self.genomes.append(gi)
+                gi.genome_dict={gi.chromosome_name: gi}
+                print("Chromosome/plasmid %s of length %d"%(gi.chromosome_name,gi.length))
+            self.genome_dict={name: self.genomes[i] for i,name in enumerate(self.chromosome_name)}
+            self.length=[ge.length for ge in self.genomes]
 
-
-    def load_annotation(self, annot_file="sequence.gff3"):
+    def load_annotation(self, annot_file="sequence.gff3", features=["gene"]):
         """
         load_annotation loads a gene annotation (coordinates, length,
         name...) from a file present in the /annotation/ directory.
@@ -156,8 +178,8 @@ class Genome:
                 self.genes is a dictionary of shape 
                 {locus_tags: Gene object}. Each Gene object is 
                 initialized with the following attributes:
-                locus_tag, ID, name,strand, left, right, start, end, 
-                middle, length and ASAP. 
+                locus_tag, ID, name, strand, left, right, start, end, 
+                middle, length, ASAP. 
 
         Args:
             filename (Optional [str.]): name of the file containing the 
@@ -184,9 +206,16 @@ class Genome:
         path2file = f"{path2dir}{annot_file}"
         file_type = Path(path2file).suffix
 
+        if not hasattr(self,"chromosome_name"):
+            self.load_seq()
+
         print(f"Trying to load annotation from: {path2file}")
         if file_type in [".gff", ".gff3"]:
-            self.genes = load_gff(path2file)
+            self.genes = load_gff(path2file, self.genome_dict, features=features)
+            # if several chromosomes, add also its genes to each chromosome separately
+            if isinstance(self.chromosome_name,list):
+                for ige,ge in enumerate(self.genomes):
+                    ge.genes={gene: self.genes[gene] for gene in self.genes.keys() if self.genes[gene].genome==ge}
             load = True
         else:
             load = False
@@ -208,6 +237,7 @@ class Genome:
                       "Please add information in annotation.info or use gff3 or gff format.")
         if load == True:
             print("Annotation loaded")
+            print("Number of genes: %d"%len(self.genes.keys()))
 
 
     def load_genes_per_pos(self, window=0):
