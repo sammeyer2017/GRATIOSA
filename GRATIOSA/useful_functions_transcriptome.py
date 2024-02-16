@@ -190,6 +190,11 @@ def process_bam(tr):
         The first read of the .bam file is used to determine if paired-end or single-end. 
         For paired-end files, the real fragment coverage is computed. 
         For single-end files, the READ coverage is computed (i.e., without fragment extension). 
+        CAUTION for multi-chromosome species: the file is generated with chromosome
+        coordinates stacked behind each other. This is then propagated for the 
+        computation of coverage files. So, for a species with one 2-Mb chromosome and 
+        one 1-Mb chromosome, the files will have a 3-Mb long array. If the chromosome 
+        length or ordering is changed, re-compute all files. 
     """
 
     exist_cond = []
@@ -203,6 +208,20 @@ def process_bam(tr):
         for line in file:
             exist_cond.append(line.split("\t")[0])
     file.close()
+
+    # Coordinates for several chromosomes stacked together
+    gen=tr.genome
+    if gen.contig:
+        # single-chromosome:
+        coord={gen.chromosome_name: 0}
+    else:
+        # several chromosomes: shift coordinates of successive chromosomes:
+        coo=0
+        coord={}
+        for ic,c in enumerate(gen.chromosome_name):
+            coord[c]=coo
+            coo+=gen.length[ic]
+    
     with open(path2dir + "bam_files.info", "r") as f:
         header = next(f)
         for line in f:  # for each condition
@@ -239,22 +258,22 @@ def process_bam(tr):
                         if read.is_read1 and read.is_paired and not read.mate_is_unmapped and read.is_reverse != read.mate_is_reverse and abs(
                                 read.template_length) < 1000:
                             if read.is_reverse:
-                                Rneg_start.append(read.reference_end)
+                                Rneg_start.append(read.reference_end + coord[read.reference_name])
                                 Rneg_end.append(
-                                    read.reference_end + abs(read.template_length))
+                                    read.reference_end + abs(read.template_length) + coord[read.reference_name])
                             elif not read.is_reverse:
-                                Rpos_start.append(read.reference_start)
+                                Rpos_start.append(read.reference_start++coord[read.reference_name])
                                 Rpos_end.append(
-                                    read.reference_start + read.template_length)
+                                    read.reference_start + read.template_length + +coord[read.reference_name])
                     # Single-end
                     # We do not extend the reads! directly compute coverage from reads
                     else:
                         if read.is_reverse:
-                            Rneg_start.append(read.reference_start)
-                            Rneg_end.append(read.reference_end)
+                            Rneg_start.append(read.reference_start + +coord[read.reference_name])
+                            Rneg_end.append(read.reference_end + +coord[read.reference_name])
                         else:
-                            Rpos_start.append(read.reference_start)
-                            Rpos_end.append(read.reference_end)
+                            Rpos_start.append(read.reference_start + +coord[read.reference_name])
+                            Rpos_end.append(read.reference_end + +coord[read.reference_name])
                         
                 bamfile.close()
 
@@ -308,6 +327,11 @@ def cov_from_reads(tr,rev=False):
         by the process_bam function), in the /rnaseq_reads/ directory. 
         This reads.info file contains at least the following information: 
         [0] Condition [1] Reads filename
+
+        CAUTION for multi-chromosome species: the file is generated with chromosome
+        coordinates stacked behind each other. E.g., for a species with one 
+        2-Mb chromosome and one 1-Mb chromosome, the files will have a 3-Mb 
+        long array. If the chromosome length or ordering is changed, re-compute all files. 
     """
     # load npz file
     gen = Genome.Genome(tr.name)
@@ -447,3 +471,8 @@ def cov_start_stop_from_reads(tr):
                          cov_end_pos=cov_end[1],
                          cov_start_neg=cov_start[0],
                          cov_end_neg=cov_end[0])
+
+
+
+
+

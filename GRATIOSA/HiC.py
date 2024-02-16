@@ -20,10 +20,14 @@ class HiC:
     
     Example:
         >>> from GRATIOSA import HiC
-        >>> hc = HiC.HiC("dickeya")
+        >>> gen = Genome.Genome("dickeya")
+        >>> hc = HiC.HiC(gen)
     '''
 
     def __init__(self, name):
+        if not gen.contig:
+            print("ERROR: handling of ChIP-Seq signal only implemented for single-contig/chromosome genome object. Please consider working with a single chromosome")
+            return 1
         self.name = name
 
     def load_hic_borders(self, cond="all"):

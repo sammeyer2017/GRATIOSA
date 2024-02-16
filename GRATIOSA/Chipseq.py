@@ -15,15 +15,29 @@ class Chipseq:
     along a genome. The associated methods and functions allow the binning and 
     averaging of these signals. The enrichment peaks positions can also be loaded 
     as an attribute of this class. 
+    Note: this class is only implemented for single-chromosome genomes. 
 
     Each Chipseq instance has to be initialized with an organism name
     Example:
         >>> from GRATIOSA import Chipseq
-        >>> ch = Chipseq.Chipseq("ecoli")
+        >>> gen = Genome.Genome("dickeya")
+        >>> ch = Chipseq.Chipseq(gen)
     '''
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, gen):
+
+        self.genome = gen
+        self.name = gen.name
+        # for multiple chromosomes,
+        # create one chipseq object for each chromosomes
+        # accessed through self.chipseqs
+        if gen.contig:
+            self.chipseqs = self
+        else:
+            self.chipseqs = []
+            for ge in gen.genomes:
+                ch = Chipseq(ge)
+                self.chipseqs.append(ch)
 
 
     def load_signal(self, cond="all"):
@@ -50,7 +64,8 @@ class Chipseq:
             columns positions of each information in the data file, in the following 
             order:
             [0] condition, [1] filename, [2] separator used in the data file, 
-            [3] bin_start, [4] bin_end, [5] signal
+            [3] bin_start, [4] bin_end, [5] signal, 
+            [6] chromosome name (def 0, not used for single-chromosome genome)
 
         Example:
             >>> from GRATIOSA import Chipseq
@@ -87,17 +102,33 @@ class Chipseq:
                             separator = '\t'
                         data = pd.read_csv(
                             path2dir + line[1], sep=separator, header=None)
-                        signal = data.iloc[:, int(line[5])]
+  
+                        if len(line) == 7:
+                            chrom = int(line[6])
+                        else:
+                            chrom = 0
+                        chromosomes = data.iloc[:, chrom][0]
 
-                        # computes binsize of each bin in the file
-                        bs = data.iloc[:, int(line[4])] - \
-                            data.iloc[:, int(line[3])]
+                        # Separate chromosomes
+                        if self.genome.contig:
+                            datas=[data]
+                            objs=[self]
+                        else:
+                            datas=[data[chromosomes==x] for x in self.genome.chromosome_name]
+                            objs=self.chipseqs
 
-                        # creates a new attribute to the Chipseq instance:
-                        # signal[cond]= signal per pos
-                        if not hasattr(self, "signal"):
-                            self.signal = {}
-                        self.signal[line[0]] = np.array(np.repeat(signal, bs))
+                        # attribute values to the relevant chipseq object
+                        for id,d in datas:
+                            # computes binsize of each bin in the file
+                            signal = d.iloc[:, int(line[5])]
+                            bs = d.iloc[:, int(line[4])] - \
+                                d.iloc[:, int(line[3])]
+                            # creates a new attribute to the Chipseq instance:
+                            # signal[cond]= signal per pos
+                            ch = objs[id]
+                            if not hasattr(ch, "signal"):
+                                ch.signal = {}
+                            ch.signal[line[0]] = np.array(np.repeat(signal, bs))
             f.close()
 
         else:
@@ -148,6 +179,10 @@ class Chipseq:
             >>> ch.binned_signal["Signal_Test_bin100b"]
             array([100,   100,   100, ..., 10, 10, 10])
         '''
+        if not self.genome.contig:
+            print("Error: only implemented for single-chromosome genome objects.")
+            return 1
+        
         if not hasattr(self, "length"):
             gen = Genome(self.name)
             gen.load_seq()
@@ -252,6 +287,11 @@ class Chipseq:
             >>> ch.smoothed_signal["Signal_Test_smooth100b"]
             array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
         '''
+
+        if not self.genome.contig:
+            print("Error: only implemented for single-chromosome genome objects.")
+            return 1
+
         # gets the path to data and .info files
         path2files = f"{basedir}data/{self.name}/chipseq/signals/"
         f_path = f"{path2files}/smoothed_data/"
@@ -348,6 +388,11 @@ class Chipseq:
             array([100.1,   99.8,   98.8, ..., 10.1, 11.1, 10.8])
         '''
 
+        if not self.genome.contig:
+            print("Error: only implemented for single-chromosome genome objects.")
+            return 1
+
+        
         f_path = f"{basedir}data/{self.name}/chipseq/signals/average_data/"
         data_treatment = kwargs.get('data_treatment', None)
         if not hasattr(self, "signals_average"):
@@ -428,6 +473,10 @@ class Chipseq:
                    Dictionary of shape {condition: array containing one signal
                    value per genomic position}
         '''
+        if not self.genome.contig:
+            print("Error: only implemented for single-chromosome genome objects.")
+            return 1
+
         d = {}
         for attr in ("signal","binned_signal","smoothed_signal","signals_average"):
             if hasattr(self, attr):
@@ -487,12 +536,12 @@ class Chipseq:
              'Signal_Test': 0.210505235030067}
         """
         self.get_all_signals()
-        if not hasattr(self, "signals_gene"):
-            self.signals_gene = {}
-        if not hasattr(self, "genes"):
-            gen = Genome(self.name)
-            gen.load_annotation()
-            self.genes = gen.genes
+        #if not hasattr(self, "signals_gene"):
+        #    self.signals_gene = {}
+        #if not hasattr(self, "genes"):
+        #    gen = Genome(self.name)
+        #    gen.load_annotation()
+        #    self.genes = gen.genes
 
         if not hasattr(self, "signals_gene"):
             self.signals_gene = {cond_name: {}}
@@ -515,8 +564,7 @@ class Chipseq:
     def load_peaks(self):
         """ 
         load_peaks imports a list of peaks from a data file (typically 
-        a .BED file of peaks obtained with MACS2) containing, at least,
-        the start and end positions of peaks.
+        a .BED file of peaks obtained with MACS2).
 
         Creates:
             * self.peaks (dict. of dict.) : new attribut of the Chipseq instance. 
@@ -532,7 +580,7 @@ class Chipseq:
             additional information, in the following order:
             [0] Condition, [1] Filename, [2] Startline, 
             [3] Separator, [4] StartCol, [5] StopCol
-            [6] Peak value
+            [6] Peak value, [7] Chromosome name (def 0)
             peaks.info and data file have to be in the /chipseq/peaks/ directory 
 
         Example:
@@ -545,7 +593,8 @@ class Chipseq:
             (937220, 937483): 4.87632,
             ...}
         """
-
+        gen = self.genome
+        
         # gets the path to data and .info files
         path2dir = f"{basedir}data/{self.name}/chipseq/peaks/"
 
@@ -559,25 +608,34 @@ class Chipseq:
 
                     # loads data file information for this condition
                     cond = line[0]
-                    print(line[0])
                     path2file = f"{path2dir}{line[1]}"
                     startline, sep = int(line[2]), line[3]
                     start_col, end_col = int(line[4]), int(line[5])
-                    val_col = None
-                    if len(line) > 6:
-                        try : 
-                            val_col = int(line[6])
-                        except :
-                            pass
+                    val_col = int(line[6])
+                    if len(line) == 8:
+                        chrom = int(line[6])
+                    else:
+                        chrom = 0
                     # creates the new attribute using the load_sites_cond function
                     # from useful_functions_Chipseq
-                    if not hasattr(self, "peaks"):
-                        self.peaks = {}  # creates the new attribute
-                    self.peaks[cond] = load_sites_cond(path2file, 
-                                                       startline, 
+                    peaks = load_sites_cond(gen.chromosome_name, path2file, 
+                                                       startline, # starting with 1!
                                                        sep,
                                                        start_col, 
                                                        end_col,
-                                                       val_col)
+                                                       val_col,
+                                                       chrom)
+                    if gen.contig:
+                        # one chromosome
+                        # dont even check if the name is right!
+                        if not hasattr(self, "peaks"):
+                            self.peaks = {}  # creates the new attribute
+                        self.peaks[cond] = peaks[gen.chromosome_name]
+                    else:
+                        for ich,ch in enumerate(self.chipseqs):
+                            if not hasattr(ch, "peaks"):
+                                ch.peaks={}
+                            ch.peaks[cond] = peaks[gen.chromosome_name[ich]]
+                    print("Condition %s loaded successfully"%cond)
         else:
             print("No peaks.info, unable to load peaks")

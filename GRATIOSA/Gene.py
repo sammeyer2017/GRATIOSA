@@ -27,6 +27,7 @@ class Gene:
             self.end = int(left)
         self.ASAP = ASAP_name
         self.genome = genome
+        self.chromosome = genome.chromosome_name
         self.product = product
         self.notes = notes
 

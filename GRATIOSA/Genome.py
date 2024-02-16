@@ -116,11 +116,17 @@ class Genome:
         main directory of the organism using useful_functions_genome.load_seq
         function. Adds this sequence, its complement, and its length to a
         Genome instance.
-        
-        Creates 3 new attributes to the Genome instance
+        Note: if the fasta file indicates a multi-chromosome/plasmid genome,
+        the sequence is a list, and several genome objects are created (one per
+        chromosome), each associated to a sequence (string). 
+
+        For a single-chromosome species, creates 3 new attributes to the Genome instance
             * seq (str.): genomic sequence compose of A,T,G and C
             * seqcompl (str.): complement sequence to seq
             * length (int.): length of the genomic sequence
+
+        For a multi-chromosome (or plasmid) species, the attribute seq is a list, 
+        and the genome object of each chromosome has previous attributes. 
 
         Args:
             filename (Optional [str.}): name of the file containing the DNA
@@ -139,6 +145,7 @@ class Genome:
         chrom_names,sequences=read_seq(seq_file)
         if len(chrom_names)==1:
             line=chrom_names[0]
+            self.contig=True
             self.chromosome_name=line.split(" ")[0]
             self.chromosome_description=line
             self.seq=sequences[0].upper()
@@ -155,10 +162,12 @@ class Genome:
             self.chromosome_name=[x.split(" ")[0] for x in chrom_names]
             self.chromosome_description=chrom_names
             self.genomes=[]
+            self.contig=False
             for i,c in enumerate(sequences):
                 gi=Genome(self.chromosome_name[i])
                 gi.chromosome_name=self.chromosome_name[i]
                 gi.chromosome_description=self.chromosome_description[i]
+                gi.contig=True
                 gi.seq=sequences[i].upper()
                 gi.seqcompl=seq_compl(gi.seq)
                 gi.length=len(gi.seq)
@@ -167,11 +176,14 @@ class Genome:
                 print("Chromosome/plasmid %s of length %d"%(gi.chromosome_name,gi.length))
             self.genome_dict={name: self.genomes[i] for i,name in enumerate(self.chromosome_name)}
             self.length=[ge.length for ge in self.genomes]
+        print("Sequence of organism %s loaded"%self.name)
 
     def load_annotation(self, annot_file="sequence.gff3", features=["gene"]):
         """
         load_annotation loads a gene annotation (coordinates, length,
         name...) from a file present in the /annotation/ directory.
+        If the genome is multi-chromosome, the genes are associated both to the main
+        genome object and the genome object of each chromosome. 
 
         Creates a new attribute of the Genome instance: 
             * self.genes (dict.) 
@@ -193,7 +205,7 @@ class Genome:
             some additional information, in the following order:
             [0] Filename [1] Separator [2] Locus_tag column [3] Name column
             [4] ID column [5] Strand column [6] Left coordinate column
-            [7] Right coordinate column [8] File start line
+            [7] Right coordinate column [8] File start line [9] chromosome name
 
         Example:
             >>> from GRATIOSA import Genome
@@ -211,14 +223,19 @@ class Genome:
 
         print(f"Trying to load annotation from: {path2file}")
         if file_type in [".gff", ".gff3"]:
-            self.genes = load_gff(path2file, self.genome_dict, features=features)
-            # if several chromosomes, add also its genes to each chromosome separately
-            if isinstance(self.chromosome_name,list):
+            if isinstance(self.chromosome_name,str):
+                # if single chromosome, load genes as dictionary
+                self.genes = load_gff(path2file, self.genome_dict, features=features)
+            elif isinstance(self.chromosome_name,list):
+                # if several chromosomes, add its genes also to each chromosome separately
+                allgenes = load_gff(path2file, self.genome_dict, features=features)
+                self.genes = allgenes
                 for ige,ge in enumerate(self.genomes):
                     ge.genes={gene: self.genes[gene] for gene in self.genes.keys() if self.genes[gene].genome==ge}
             load = True
         else:
             load = False
+            print("Obsolete method using a non-gff format") 
             with open(f"{path2dir}annotation.info", "r") as f:
                 skiphead = next(f)
                 for line in f:
@@ -236,7 +253,7 @@ class Genome:
                 print(f"Unable to load annotation from: {path2file}."
                       "Please add information in annotation.info or use gff3 or gff format.")
         if load == True:
-            print("Annotation loaded")
+            print("Annotation of %s loaded"%self.name)
             print("Number of genes: %d"%len(self.genes.keys()))
 
 
@@ -252,6 +269,8 @@ class Genome:
                     genes}. It contains, for each position p, the list of
                     genes overlapping any position between p-window/2 and 
                     p+window/2 (inclusive)
+        Note: if the genome object has multiple chromosome/plasmids, the attribute is
+        created only for each individual genome object of each chromosome!
 
         Args:
             window (Optional [int.]): window size in b. load_genes_per_pos 
@@ -277,6 +296,12 @@ class Genome:
         if not hasattr(self, "seq"):
             self.load_seq()
 
+        if not self.contig:
+            print("Warning: this function is operating on the genome objects associated to each chromosome/contig.")
+            for gi in self.genomes:
+                gi.load_genes_per_pos(window=window)
+            return 1
+
         self.genes_per_pos = {}
 
         for locus in self.genes.keys():
@@ -295,6 +320,7 @@ class Genome:
         for pos in np.arange(self.length):
             if pos not in self.genes_per_pos.keys():
                 self.genes_per_pos[pos] = [None]
+        print("Operation genes_per_pos completed for genome %s"%self.name)
 
 
     def load_neighbor_all(self):
@@ -307,6 +333,8 @@ class Genome:
                 locus of the nearest left-side neighbor gene
             * self.genes[locus].right_neighbor 
                 locus of the nearest right-side neighbor gene
+        Note: if the genome object has multiple chromosome/plasmids, the attributes are
+        created only for each individual genome object of each chromosome!
 
         and 4 new attributes of Genome instance:
             * self.genomic_situation (dict.) 
@@ -346,10 +374,17 @@ class Genome:
             >>> g.right_neighbor[569]
             'Dda3937_00157'
         """
+
         if not hasattr(self, "genes"):
             self.load_annotation()
         if not hasattr(self, "length"):
             self.load_seq()
+
+        if not self.contig:
+            print("Warning: this function is operating on the genome objects associated to each chromosome/contig.")
+            for gi in self.genomes:
+                gi.load_neighbor_all()
+            return 1
 
         # Sorts genes according to their position.
         list_start = []
@@ -399,7 +434,8 @@ class Genome:
                 for p in np.arange(0, self.genes[genes_order[0]].left):
                     self.left_neighbor[p] = genes_order[i]
                     self.right_neighbor[p] = genes_order[0]
-
+        print("Operation load_neighbor_all completed for genome %s"%self.name)
+                
 
     def load_gene_orientation(self, couple=3, max_dist=5000):
         """
@@ -426,6 +462,8 @@ class Genome:
             * self.genes[locus].orientation (str.) 
                     new attribute of Gene instances related to the Genome instance 
                     given as argument
+        Note: if the genome object has multiple chromosome/plasmids, the first 
+        attribute is created only for each individual genome object of each chromosome!
 
         Args:
             couple (int.): number of genes to consider in a "couple". 
@@ -460,6 +498,13 @@ class Genome:
             'Dda3937_02126', 'Dda3937_01530', 'Dda3937_04419', 'Dda3937_02081']
         """
         self.load_neighbor_all()
+
+        if not self.contig:
+            print("Warning: this function is operating on the genome objects associated to each chromosome/contig.")
+            for gi in self.genomes:
+                gi.load_gene_orientation(couple=couple, max_dist=max_dist)
+            return 1
+
         res = {"tandem": [], "divergent": [], "convergent": [], "isolated": []}
         for gene in self.genes:
             orient = ""
@@ -512,11 +557,12 @@ class Genome:
             except BaseException as e:
                 print(f"Warning with locus {gene}: {e}")
         self.orientation = res
-
+        print("Operation load_gene_orientation completed for genome %s"%self.name)
+        
 
     def load_pos_orientation(self, max_dist=5000):
         """
-        Computes gene orientation with the following criteria:
+        Computes gene orientation for each position with the following criteria:
 
             * `divergent` if left neighbor on - strand and right neighbor on + strand,
             * `convergent` if left neighbor on + strand and right neighbor on - strand,
@@ -535,6 +581,8 @@ class Genome:
                     "isolated"]
             * self.orientation_per_pos (dict.)
                     dictionary of shape {position: orientation}.
+        Note: if the genome object has multiple chromosome/plasmids, the attributes are
+        created only for each individual genome object of each chromosome!
 
         Args:
             max_dist (Optional [int.]): maximal distance between 2 genes 
@@ -557,6 +605,13 @@ class Genome:
             [11534,11535,11536,11537,11538,11539,11540,11541,11542,11543,...]
         """
         self.load_neighbor_all()
+
+        if not self.contig:
+            print("Warning: this function is operating on the genome objects associated to each chromosome/contig.")
+            for gi in self.genomes:
+                gi.load_pos_orientation(max_dist=max_dist)
+            return 1
+        
         res_inter = {
             "tandem": [],
             "divergent": [],
@@ -607,12 +662,12 @@ class Genome:
         self.pos_orientation = {
             "intragenic": res_intra,
             "intergenic": res_inter}
-
+        print("Operation load_pos_orientation completed for genome %s"%self.name)
 
     def load_TSS(self):
         """
         load_TSS loads a TSS annotation from a file present in the /TSS/
-        directory.
+        directory. 
 
         Creates:
             * self.TSSs (dict. of dict.)
@@ -635,6 +690,7 @@ class Genome:
                     the list of TSS conditions where this TSS was found.        
 
         Note:
+            This function is designed for single-chromosome genomes only. 
             The information importation requires a TSS.info file,
             containing column indices of each information in the data file and 
             some additional information, in the following order:
@@ -662,6 +718,10 @@ class Genome:
             >>> g.TSSs["dickeya-btss"][4707030].strand
             False
         """
+        if not self.contig:
+            print("Error: this function was only written for single-contig/chromosome genome objects.")
+            return 1
+        
         self.TSSs = {}
         self.TSSs['all_TSS'] = {}
         if not hasattr(self, "genes"):
@@ -745,6 +805,9 @@ class Genome:
                          'minus35': 'CCGTACC',
                          'discriminator': 'ATAACC'}}
         """
+        if not self.contig:
+            print("Error: this function was only written for single-contig/chromosome genome objects.")
+            return 1
         if not hasattr(self, 'TSSs'):
             self.load_TSS()
         if not hasattr(self, 'seq'):
@@ -795,6 +858,10 @@ class Genome:
             >>> g.TUs["TU_Forquet"][2336702].strand
             True
         """
+        if not self.contig:
+            print("Error: this function was only written for single-contig/chromosome genome objects.")
+            return 1
+
         self.TUs = {}
         path2dir = f"{basedir}data/{self.name}/TU/"
         if Path(f"{path2dir}TU.info").exists():
@@ -871,6 +938,10 @@ class Genome:
             >>> g.TTSs["RhoTerm"][2791688].left
             2791688
         """
+        if not self.contig:
+            print("Error: this function was only written for single-contig/chromosome genome objects.")
+            return 1
+
         self.TTSs = {}
 
         path2dir = f"{basedir}data/{self.name}/TTS/"
