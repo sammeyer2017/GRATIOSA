@@ -502,18 +502,20 @@ def enrichment_test(dict_cats,
 
 
 def quantitative_data_student_test(dict_data, cats="all",
+                                   method="student",
                                    alt_hyp="one-sided",
                                    output_dir=f"{resdir}student_test/",
                                    output_file=f"student_test{datetime.now()}"):
     '''
-    Computes the T-test for the means of independants categories using the
-    scipy.stats.ttest_ind.
+    Computes the T-test (or Wilcoxon-Mann-Whitney's non parametric test)  for the means of independants categories. 
 
     Args:
         dict_data (dict.): datapoints corresponding to each category in a
                 dictionary of shape {category:list of datapoints}
         cats (Optional [list]): list of categories to compare
                 (default: all keys of dict_data)
+        method-(Optional ["student" or "wilcoxon"]): type of test to be carried, 
+                Student's t-test (assumes normal data) or Wilcoxon's rank test. 
         alt_hyp (Optional ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one-sided tests will be 
                 performed with the scipy.stats.ttest_ind function and the 
@@ -524,7 +526,7 @@ def quantitative_data_student_test(dict_data, cats="all",
 
     Returns:
         Dictionary: dict. of shape 
-        {"categories":cats, "means":means,
+        {"categories":cats, "means":means, "size": number of values, 
         "confidence intervals":(ci0,ci1), "p-values":{(cat1,cat2):pval}
     Note:
         Test results are also reported in the output_file.
@@ -547,15 +549,17 @@ def quantitative_data_student_test(dict_data, cats="all",
     # Saves the results in a .txt file.
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     results = open(f'{output_dir}{output_file}.txt', 'w')
-    results.write(f"Category\tMean\tConfidence interval\n")
+    results.write(f"Category\tSize\tMean\tConfidence interval\n")
     means, cim = [], []
     for c in cats:
+        si = len(dict_data[c])
+                
         m = np.mean(dict_data[c])
         means.append(m)
         ci = stats.norm.interval(alpha=0.95, loc=m,
                                  scale=stats.sem(dict_data[c]))
         cim.append((ci[0], ci[1]))
-        results.write(f"{c}\t{m}\t{(ci[0],ci[1])}\n")
+        results.write(f"{c}\t{si}\t{m}\t{(ci[0],ci[1])}\n")
     results.write("\n")
 
     # Tests pairwise if the means between categories are significantly
@@ -569,9 +573,15 @@ def quantitative_data_student_test(dict_data, cats="all",
     for cat1, cat2 in comp:
         stats.ttest_ind(dict_data[cat1], dict_data[cat2])
         if alt_hyp == "one-sided":
-            stat1, pval1 = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
+            if method == "student": 
+                stat1, pval1 = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
                                            alternative='greater')
-            stat2, pval2 = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
+                stat2, pval2 = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
+                                           alternative='less')
+            else:
+                stat1, pval1 = stats.mannwhitneyu(dict_data[cat1], dict_data[cat2],
+                                           alternative='greater')
+                stat2, pval2 = stats.mannwhitneyu(dict_data[cat1], dict_data[cat2],
                                            alternative='less')
             pval = min(pval1, pval2)
             results.write(
@@ -579,7 +589,12 @@ def quantitative_data_student_test(dict_data, cats="all",
             results.write(f"Larger\t{str(pval1)}\n")
             results.write(f"Smaller\t{str(pval2)}\n")
         elif alt_hyp == "two-sided":
-            stat, pval = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
+            if method == "student": 
+                stat, pval = stats.ttest_ind(dict_data[cat1], dict_data[cat2],
+                                         alternative='two-sided')
+            else:
+                print(len(dict_data[cat2]),len(dict_data[cat1]))
+                stat, pval = stats.mannwhitneyu(dict_data[cat1], dict_data[cat2],
                                          alternative='two-sided')
             results.write(f"Two-sided test p-value between {cat1} and {cat2}\t"
                           f"{str(pval)}\n")

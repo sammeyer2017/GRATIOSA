@@ -1,4 +1,4 @@
-! /usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -125,15 +125,18 @@ def load_gff(annotations_filename, genome_dict, features=["gene"]):
                         except Exception as e: 
                             if  x != ['']:
                                 print(f"Error {e} in '{line[8]}'")
-                                
+
                     if ('locus_tag' in gene_info.keys()):
                         locus = gene_info['locus_tag']
                     elif ("gene" in gene_info.keys()):
                         locus = gene_info["gene"]
                     else:
-                        del locus
+                        try:
+                            del locus
+                        except:
+                            pass
 
-                    if isinstance(locus,str):
+                    if "locus" in locals():# isinstance(locus,str):
                         # the gene will be recorded
                         try:
                             ge=genome_dict[line[0]]
@@ -146,6 +149,8 @@ def load_gff(annotations_filename, genome_dict, features=["gene"]):
                             ID = locus
                         if "gene" in gene_info.keys():
                             name = gene_info["gene"]
+                        elif "gene_synonym" in gene_info.keys():
+                            name = gene_info["gene_synonym"]
                         else:
                             name = locus
                         if "product" in gene_info.keys():
@@ -494,10 +499,12 @@ def load_TU_cond(filename,
                  startcol, 
                  endcol, 
                  strandcol,
-                 genescol, 
                  startline, 
                  separator,
-                 exprcol):
+                 genescol=None, 
+                 exprcol=None,
+                 TSScol=None,
+                 TTScol=None):
     '''
     Called by load_TU, load_TU_cond allows TU data to be loaded from any file
     with one row per TU and the following columns: start position, end 
@@ -511,12 +518,14 @@ def load_TU_cond(filename,
         startcol (int.): index of the column containing the TU start positions
         endcol (int.): index of the column containing the TU end positions
         strandcol (int.): index of the column containing the TU strands
-        genescol (int.): index of the column containing the locus tags of the
-                genes associated to each TU in the file.
-                By default: None (ie not on file)
         start_line (int.): file start line
         separator (str.): file separator
-        exprcol (int.): index of the column containing the TU expression
+        genescol (int.): index of the column containing the locus tags of the 
+                genes associated to each TU in the file, separated by commas. 
+                By default: None (ie not on file)
+        exprcol (int.): index of the column containing the TU expression (def. None)
+        TSScol (int.): index of the column with TSS position
+        TTScol (int.): index of the column with TTS position
 
     Returns:
         Dictionary: dict. of shape {TU start: TU object} with each TU object
@@ -550,15 +559,32 @@ def load_TU_cond(filename,
                     strand = True
                 else:
                     strand = None
+                if genescol != None:
+                    genesnames=line[genescol].split(",")
+                else:
+                    genesnames = None
                 if exprcol != None:
                     expr = float(line[exprcol])
                 else :
                     expr = None
+                if TSScol != None:
+                    # we take out everything that is not a number
+                    TSSpos = int("".join([ele for ele in line[TSScol] if ele.isdigit()]))
+                    #TSSpos = int(line[TSS])
+                else:
+                    TSSpos = None
+                if TTScol != None:
+                    TTSpos = int("".join([ele for ele in line[TTScol] if ele.isdigit()]))
+                    #TTSpos = int(line[TTS])
+                else:
+                    TTSpos = None
                 TUs[int(line[IDcol])] = TU(start=int(line[startcol]), 
                                             end=int(line[endcol]), 
                                             strand=strand, 
-                                            genes=line[genescol].split(","),
-                                            expression=expr)
+                                            genes=genesnames,
+                                            expression=expr,
+                                            TSS=TSSpos,
+                                            TTS=TTSpos)
             except Exception as e:
                 print(e)
     f.close()

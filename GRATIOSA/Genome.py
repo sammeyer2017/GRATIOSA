@@ -240,6 +240,7 @@ class Genome:
                 skiphead = next(f)
                 for line in f:
                     line = line.strip().split('\t')
+                    print(line)
                     if line[0] == annot_file:
                         self.genes = load_annot_general(
                             f"{path2dir}{line[0]}",
@@ -844,8 +845,8 @@ class Genome:
             containing column indices of each information in the data file and 
             some additional information, in the following order:
             [0] Condition [1] Filename [2] TU ID [3] Start column [4] Stop column
-            [5] Strand column [6] Gene column [7] File start line [8] Separator
-            [9] Expression (optionnal)
+            [5] Strand column [6] File start line [7] Separator
+            [6] Gene column (optional) [9] Expression (optional)
             See the load_TU_cond function in useful_functions_genome for more
             details.
 
@@ -871,23 +872,51 @@ class Genome:
                     line = line.strip().split('\t')
                     try:
                         exprcol = None
-                        if len(line) > 9 :
-                            try:
-                                exprcol = int(line[9])
-                            except:
-                                pass 
+                        try:
+                            exprcol = int(line[9])
+                        except:
+                            pass
+                        genecol = None
+                        try:
+                            genecol = int(line[8])
+                        except:
+                            pass
+                        TSS=None
+                        try:
+                            TSS = int(line[10])
+                        except:
+                            pass
+                        TTS=None
+                        try:
+                            TTS = int(line[11])
+                        except:
+                            pass
                         self.TUs[line[0]] = load_TU_cond(path2dir + line[1],
-                                                         int(line[2]), 
+                                                         int(line[2]),
                                                          int(line[3]),
                                                          int(line[4]), 
                                                          int(line[5]),
                                                          int(line[6]), 
-                                                         int(line[7]),
-                                                         line[8],
-                                                         exprcol)
+                                                         line[7],
+                                                         genescol=genecol,
+                                                         exprcol=exprcol,
+                                                         TSScol=TSS,
+                                                         TTScol=TTS)
                     except BaseException:
                         print("Error loading cond", line[0])
             f.close()
+            # Attribute each TU to each gene
+            for ge in self.genes.keys():
+                self.genes[ge].TU = {}
+            for cond in self.TUs.keys():
+                TUs=self.TUs[cond]
+                # add attribute TU to genes, if exist
+                if TUs[list(TUs.keys())[0]].genes != None:
+                    for TU in TUs.keys():
+                        for ge in TUs[TU].genes:
+                            if ge:
+                                self.genes[ge].TU[cond]=TU
+            print("TUs loaded")
         else:
             print("No TU.info file, please create one")
 
@@ -988,8 +1017,8 @@ class Genome:
             The information importation requires a GO.info file,
             containing column indices of each information in the data file and
             some additional information, in the following order:
-            [0] Annotation system [1] Filename [2] Locus tag column
-            [3] GOterm column [4] Separator
+            [0] Annotation system [1] Filename [2] Tag Type (locus tag (default), ASAP tag, gene name...)
+            [3] Locus tag column  [4] GOterm column [5] Separator [6] Start line
             GO.info and the data files have to be in the /GO/ directory
 
         Note:
@@ -1067,6 +1096,8 @@ class Genome:
                         try:
                             if tagtype == "ASAP":
                                 name = g.ASAP
+                            elif tagtype == "name":
+                                name = g.name
                             elif tagtype == "locus_tag":
                                 name = locus
                             else:
@@ -1091,3 +1122,88 @@ class Genome:
             info_file.close()
         else:
             print("No GO.info file, please create one")
+
+
+    def load_sites(self, cond="all"):
+        """
+        load_sites imports a list of sites from a csv data file containing,
+        for each site, its chromosome start and end, and optionally a 
+        score and chromosome name. 
+        Creates a new attribute of the genome instance:
+        * self.sites (dict. of numpy arrays): self.sites[cond] is a list of 
+                (start, end) tuples
+        * self.sites_scores (if scores are provided): list of scores of the same size
+
+        Args:
+            cond (Optional [list of str.]): selection of one or several
+                    conditions (1 condition corresponds to 1 data file and 
+                    each condition has to be listed in the sites.info file).
+                    By default: cond ='all' ie all available conditions are 
+                    loaded.
+        Note:
+            The data importation requires a sites.info file that contains the
+            column indices of each information in the data file and some
+            additional information, in the following order:
+            * (required) [0] Condition, [1] Filename, [2] Startline,
+              [3] Separator, [4] Start, [5] End
+            * (optional) [6] Score
+
+        Note:    
+            sites.info and data file have to be in the /sites/ directory
+
+        Warning:
+            The function is designed only for genomes with a single chromosome. 
+
+        Example:
+            >>> g.load_sites("borders_SRR10394904")
+            >>> g.sites['borders_SRR10394904'][0:5]
+        """
+
+        # gets the path to data and .info files
+        path2dir = f"{basedir}data/{self.name}/sites/"
+
+        if not self.contig:
+            print("Error: this function only works for single-chromosome genomes")
+            return 1
+        
+        if isinstance(cond, str):
+            cond = [cond]
+
+        # tries to open sites.info file
+        if Path(f"{path2dir}sites.info").exists():
+            with open(f"{path2dir}sites.info", "r") as f:
+                skiphead = next(f)
+                # 1 line in sites.info corresponds to 1 condition (1 data file)
+                for line in f:
+                    line = line.strip().split('\t')
+                    # loads data file information for this condition
+                    if cond == ["all"] or line[0] in cond:
+
+                        print("Loading condition %s"%cond)
+
+                        path2file = f"{basedir}data/{self.name}/sites/{line[1]}"
+                        startline, sep = int(line[2]), line[3]
+                        start_col, stop_col = int(line[4]), int(line[5])
+
+                        # loads column indices of each optional information
+                        score_col = None
+                        if len(line) > 6:
+                            try : 
+                                score_col = int(line[6])
+                            except :
+                                pass
+
+                        # creates the new attribute 
+                        if not hasattr(self, "sites"):
+                            self.sites = {}  # creates the new attribute
+                        try:
+                            if sep=="\\t":
+                                sep="\t"
+                            self.sites[line[0]] = np.loadtxt(path2file, skiprows=startline-1, usecols=[start_col, stop_col], delimiter=sep, dtype="int")
+                            if score_col:
+                                self.sites_scores[line[0]] = np.loadtxt(path2file, skiprows=startline-1, usecols=score_col, delimiter=sep)
+                        except:
+                            print("Error in loading the file %s for condition %s"%(path2file, line[0]))
+                print("Successful loading of sites")
+        else:
+            print("No sites.info, unable to load sites")

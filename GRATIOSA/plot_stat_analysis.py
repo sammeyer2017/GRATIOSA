@@ -48,7 +48,7 @@ def barplot_annotate_brackets(categories, y_up, dict_pval, *args, **kwargs):
         dict_pval (dict.): dictionnary of shape {"cat1-cat2":pvalue} with 
                 cat1 and cat2 contained in the categories list given as
                 argument
-        linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.5)
+        linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.)
     """
     # gets the position of each category on the barplot
     pos = {}
@@ -77,7 +77,7 @@ def barplot_annotate_brackets(categories, y_up, dict_pval, *args, **kwargs):
 
     # plots the brackets without overlay
     h = 0
-    linewidth = kwargs.get("linewidth", 1.5)
+    linewidth = kwargs.get("linewidth", 1.)
     while dict_br:
         h += dh
         pre_x1 = -1
@@ -144,7 +144,7 @@ def plot_proportion_test(dict_cats,
         title (Optional [str.]): general title for the figure
         annot_brackets (Optional [bool.]): if True, the barplot will be annotated according
                 to the p-values using stars annotaion (default: True)
-        brackets_linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.5)
+        brackets_linewidth (Optional [float.]): Linewidth of the brackets. (default: 1.)
         ymin (Optional [float]): y-axis bottom limit
         ymax (Optional [float]): y-axis top limit
         figsize (Optional [(float,float)]): width and height in inches (by default: (w,2.2)
@@ -152,7 +152,7 @@ def plot_proportion_test(dict_cats,
         xticks_rotation (Optional [int.]): x-ticks labels rotation in degrees
         xticks_labels (Optional [list.]): x-ticks labels (by default: cats)
         err_capsize (Optional [float.]): Length of the error bar caps in points
-        bar_linewidth (Optional [float.]): Width of the bars edge. (default: 1.5)
+        bar_linewidth (Optional [float.]): Width of the bars edge. (default: 1.)
         bar_width (Optional [float.]): Width of the bars. (default dependent on the number 
                 of categories. If less than 5 cats: 0.7)
 
@@ -202,7 +202,7 @@ def plot_proportion_test(dict_cats,
     error_max = np.amax(res['confidence intervals'], axis=1)
 
     if annot_brackets:
-        brackets_linewidth = kwargs.get("brackets_linewidth", 1.5)
+        brackets_linewidth = kwargs.get("brackets_linewidth", 1.)
         barplot_annotate_brackets(
             cats,
             error_max,
@@ -396,6 +396,8 @@ def plot_enrichment_test(dict_cats,
 
 
 def plot_student_test(dict_data, cats="all",
+                      style="bar",
+                      method="student",
                       alt_hyp="one-sided",
                       output_dir=f"{resdir}student_test/",
                       output_file=f"student_test{datetime.now()}",
@@ -414,6 +416,8 @@ def plot_student_test(dict_data, cats="all",
                 dictionary of shape {category:list of datapoints}
         cats (Optional [list]): list of categories to compare
                 (default: all keys of dict_data)
+        method (Optional ["student" or "wilcoxon"]): uses the t test 
+                or the wilcoxon non parametric test for p-values. 
         alt_hyp (Optional ["two-sided" or "one-sided"]): alternative hypothesis.
                 If "one-sided" is chosen, both one-sided tests will be 
                 performed with the scipy.stats.ttest_ind function and the 
@@ -429,7 +433,7 @@ def plot_student_test(dict_data, cats="all",
         annot_brackets (Optional [bool.]): if True, the barplot will be annotated 
                 according to the p-values using stars annotaion
                 (default: True)
-        brackets_linewidth (Optional [float.]): Linewidth of the brackets.(default: 1.5)
+        brackets_linewidth (Optional [float.]): Linewidth of the brackets.(default: 1.)
         ymin (Optional [float]): y-axis bottom limit
         ymax (Optional [float]): y-axis top limit
         figsize (Optional [(float,float)]): width and height in inches (by default: (w,2.2)
@@ -447,7 +451,7 @@ def plot_student_test(dict_data, cats="all",
         >>> plot_stat_analysis.plot_student_test(dict_data)
     '''
     res = stat_analysis.quantitative_data_student_test(dict_data, cats=cats,
-                                                       alt_hyp=alt_hyp,
+                                                       method=method, alt_hyp=alt_hyp,
                                                        output_dir=output_dir,
                                                        output_file=output_file)
 
@@ -471,13 +475,25 @@ def plot_student_test(dict_data, cats="all",
     bar_width = kwargs.get("bar_width", wb)
     bar_linewidth = kwargs.get("bar_linewidth", 1.5)
     err_capsize = kwargs.get("err_capsize", bar_width*5)
-    plt.bar([str(c) for c in cats], means, yerr=ci,
+
+    if style=="bar":
+        plt.bar([str(c) for c in cats], means, yerr=ci,
             color='white', edgecolor='black', ecolor='black',
             width=bar_width, linewidth=bar_linewidth, capsize=err_capsize)
-    error_max = np.amax(res['confidence intervals'], axis=1)
+        
+    else:
+        # violin plot
+        c=plt.violinplot([dict_data[k] for k in cats], positions=np.arange(len(cats)), showextrema=False,showmeans=True)
+        plt.xlabel(cats)
+        plt.errorbar(np.arange(len(cats)), means, yerr=ci, ls="",
+            color='white', ecolor='black',
+            elinewidth=bar_linewidth, capsize=err_capsize)
+        
 
+    error_max = np.amax(res['confidence intervals'], axis=1)
+        
     if annot_brackets:
-        brackets_linewidth = kwargs.get("brackets_linewidth", 1.5)
+        brackets_linewidth = kwargs.get("brackets_linewidth", 1.)
         barplot_annotate_brackets(
             cats,
             error_max,
@@ -496,7 +512,10 @@ def plot_student_test(dict_data, cats="all",
                rotation=xticks_rotation)
     plt.xticks(rotation=xticks_rotation)
     plt.ylim(ymin, ymax)
-    plt.axhline(0, color="black")
+    if style=="bar":
+        plt.axhline(0, color="black")
+    else:
+        plt.axhline(0, color="black",lw=.5)
     plt.title(title)
     plt.tight_layout()
     plt.savefig(

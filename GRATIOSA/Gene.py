@@ -17,7 +17,7 @@ class Gene:
         self.left = int(left)
         self.right = int(right)
         self.strand = strand
-        self.middle = float(left + right) / 2
+        self.middle = int(float(left + right) / 2)
         self.length = int(right) - int(left) + 1
         if self.strand:
             self.start = int(left)

@@ -72,7 +72,7 @@ class TSS:
         Example:
             >>> from GRATIOSA.TSS_TTS_TU import TSS
             >>> tss = TSS(pos=4707030,strand=False)
-            >>> tss.add_promoter(sig = "sigma70", sites="4707037,4707046,4707062,4707068")
+           >>> tss.add_promoter(sig = "sigma70", sites="4707037,4707046,4707062,4707068")
             >>> tss.promoter
             {'sigma70': {'sites': (4707037, 4707046, 4707062, 4707068)}}
         """
@@ -261,7 +261,8 @@ class TU:
 
     """
     def __init__(self, start=None, end=None, left=None,
-                 right=None, strand=None, genes=[],expression=None):
+                 right=None, strand=None, genes=[],expression=None,
+                 TSS=None, TTS=None):
         self.start = start
         self.end = end
         self.left = left
@@ -286,6 +287,8 @@ class TU:
                     self.left = self.end
         self.genes = genes
         self.expression = expression
+        self.TSS=TSS
+        self.TTS=TTS
 
 
     def add_genes(self, tags, genes_dict):

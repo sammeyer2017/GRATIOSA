@@ -15,7 +15,7 @@ class Chipseq:
     along a genome. The associated methods and functions allow the binning and 
     averaging of these signals. The enrichment peaks positions can also be loaded 
     as an attribute of this class. 
-    Note: this class is only implemented for single-chromosome genomes. 
+    Note: this class is only implemented for single-chromosome genomes with an annotation. 
 
     Each Chipseq instance has to be initialized with an organism name
     Example:
@@ -26,11 +26,18 @@ class Chipseq:
 
     def __init__(self, gen):
 
+        if not hasattr(gen, "genes"):
+            print("Initializing a Chipseq object requires an annotated genome. Trying to load annotation.")
+            gen.load_annotation()
+        
         self.genome = gen
         self.name = gen.name
+        self.genes = gen.genes
         # for multiple chromosomes,
         # create one chipseq object for each chromosomes
         # accessed through self.chipseqs
+        if not hasattr(gen,"contig"):
+            print("ERROR: a sequence and annotation must be loaded before loading chipseq")
         if gen.contig:
             self.chipseqs = self
         else:
@@ -118,7 +125,7 @@ class Chipseq:
                             objs=self.chipseqs
 
                         # attribute values to the relevant chipseq object
-                        for id,d in datas:
+                        for id,d in enumerate(datas):
                             # computes binsize of each bin in the file
                             signal = d.iloc[:, int(line[5])]
                             bs = d.iloc[:, int(line[4])] - \
@@ -519,14 +526,13 @@ class Chipseq:
             to your Transcriptome instance with the following commands before using 
             this method:
             >>> from GRATIOSA import Genome, Chipseq
-            >>> ch = Chipseq.Chipseq("ecoli")
             >>> g = Genome.Genome(ch.name)
             >>> g.load_annotation(annot_file=chosen_file)
-            >>> ch.genes = g.genes    
+            >>> ch = Chipseq.Chipseq(g)
 
         Example:
             >>> from GRATIOSA import Chipseq
-            >>> ch = Chipseq.Chipseq("ecoli")
+            >>> ch = Chipseq.Chipseq(g)
             >>> ch.load_signal()
             >>> ch.load_signal_per_genes()
             >>> ch.signals_gene["WT"]["b0984"]
@@ -542,15 +548,16 @@ class Chipseq:
         #    gen = Genome(self.name)
         #    gen.load_annotation()
         #    self.genes = gen.genes
-
-        if not hasattr(self, "signals_gene"):
-            self.signals_gene = {cond_name: {}}
-
         if cond == "all":
             cond = list(self.all_signals.keys())
         elif isinstance(cond, str):
             cond = [cond]
-
+        
+        if not hasattr(self, "signals_gene"):
+            self.signals_gene = {}
+            for cond_name in cond:
+                self.signals_gene[cond_name]={}
+            
         for c in cond:
             self.signals_gene[c] = {}
             for locus in self.genes.keys():

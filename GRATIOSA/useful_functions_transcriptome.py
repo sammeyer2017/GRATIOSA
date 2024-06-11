@@ -54,7 +54,7 @@ def add_expression_to_genes(genes_dict,
         header = next(f)
         header = header.strip().split(separator)
         header = header[expr_col:]
-        genes_valid["conditions"] = header
+        #genes_valid["conditions"] = header
         for line in f:
             line = line.strip().split(separator)
             try:
@@ -150,6 +150,14 @@ def load_fc_pval_cond(genes_dict,
                     else:
                         except_fc += 1
     f.close()
+    # add NaN values for other genes
+    for ge in genes_dict.keys():
+        if not hasattr(genes_dict[ge], "fc_pval"):
+            genes_dict[ge].add_fc_pval_cond(
+                        float("nan"), condition, float("nan"))
+        elif condition not in genes_dict[ge].fc_pval.keys():
+            genes_dict[ge].add_fc_pval_cond(
+                        float("nan"), condition, float("nan"))
     if except_locus:
         if len(except_locus) > 20:
             print(f"\t{len(except_locus)} locus are not in annotation")

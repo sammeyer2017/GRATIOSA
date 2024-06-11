@@ -24,11 +24,12 @@ class HiC:
         >>> hc = HiC.HiC(gen)
     '''
 
-    def __init__(self, name):
+    def __init__(self, gen):
         if not gen.contig:
             print("ERROR: handling of ChIP-Seq signal only implemented for single-contig/chromosome genome object. Please consider working with a single chromosome")
             return 1
-        self.name = name
+        self.genome = gen
+        self.name = gen.name
 
     def load_hic_borders(self, cond="all"):
         """

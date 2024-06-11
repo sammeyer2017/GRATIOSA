@@ -27,9 +27,11 @@ class Transcriptome:
     def __init__(self, gen):
         self.genome = gen
         self.name = gen.name
+        if not hasattr(gen,"genes"):
+            print("ERROR: must load sequence and annotation before transcriptome")
         self.genes = gen.genes
         if gen.contig:
-            self.transcriptimes=self
+            self.transcriptomes=self
         else:
             # create transcriptome object for each chromosome too
             self.transcriptomes=[]
@@ -109,8 +111,8 @@ class Transcriptome:
                     if not gen.contig:
                         # several chromosomes: load expression into each chromosome too
                         for tr in self.transcriptomes:
-                            tr.genes_valid_expr[header[0]] = add_expression_to_genes(
-                                genes_dict=tr.genes,
+                            self.genes_valid_expr[header[0]] = add_expression_to_genes(
+                                genes_dict=self.genes,
                                 cond=header[0],
                                 filename=path2file,
                                 tag_col=int(header[2]),
@@ -267,11 +269,11 @@ class Transcriptome:
                             separator=header[4],
                             start_line=int(header[5]),  #1-indexed 
                             p_val_col=int(header[6]))
-                        if not gen.contig:
+                        if not self.genome.contig:
                             # several chromosomes: load expression into each chromosome too
                             for tr in self.transcriptomes:
-                                tr.genes_valid_fc[header[0]] = load_fc_pval_cond(
-                                    genes_dict=tr.genes,
+                                self.genes_valid_fc[header[0]] = load_fc_pval_cond(
+                                    genes_dict=self.genes,
                                     filename=path2dir + header[1],
                                     condition=header[0],
                                     tag_col=int(header[2]),
@@ -289,11 +291,11 @@ class Transcriptome:
                             fc_col=int(header[3]),
                             separator=header[4],
                             start_line=int(header[5]))
-                        if not gen.contig:
+                        if not self.genome.contig:
                             # several chromosomes: load expression into each chromosome too
                             for tr in self.transcriptomes:
-                                tr.genes_valid_fc[header[0]] = load_fc_pval_cond(
-                                    genes_dict=tr.genes,
+                                self.genes_valid_fc[header[0]] = load_fc_pval_cond(
+                                    genes_dict=self.genes,
                                     filename=path2dir + header[1],
                                     condition=header[0],
                                     tag_col=int(header[2]),
@@ -505,7 +507,7 @@ class Transcriptome:
             array([0., 0., 0., ..., 20., 20., 20.])
         '''
 
-        gen=tr.genome
+        gen=self.genome
 
         # Handling of several chromosomes
         # ---------------
@@ -519,9 +521,9 @@ class Transcriptome:
             # several chromosomes: shift coordinates of successive chromosomes:
             coo = 0
             coord = {}
-        for ic,c in enumerate(gen.chromosome_name):
-            coord[c] = coo
-            coo += gen.length[ic]
+            for ic,c in enumerate(gen.chromosome_name):
+                coord[c] = coo
+                coo += gen.length[ic]
         # ---------------
         
         if not hasattr(self, "rnaseq_cov_pos"):
@@ -614,7 +616,7 @@ class Transcriptome:
                                 trg.rnaseq_cov_neg[line[0]] = cn[count_coord:(count_coord+geno.length)]
                                 trg.rnaseq_cov_pos[line[0]] = cp[count_coord:(count_coord+geno.length)]
                                 count_coord += geno.length
-                                tr.append(trg)
+                                self.append(trg)
                 if cond != ["all"]:
                     unloaded = set(loaded_cond) ^ set(cond)
                     if len(unloaded) != 0:
@@ -679,7 +681,7 @@ class Transcriptome:
              1: array([0, 0, 0, ..., 0, 0, 0])}
         '''
 
-        if not tr.genome.contig:
+        if not self.genome.contig:
             print("Error: Handling of RNA-Seq coverage is only implemented for single contig/chromosome genomes. Consider working with a single chromosome.")
             return 1
         
@@ -767,7 +769,7 @@ class Transcriptome:
             142
         '''
 
-        if not tr.genome.contig:
+        if not self.genome.contig:
             print("Error: Handling of RNA-Seq coverage is only implemented for single contig/chromosome genome. If you work on a species with multiple chromosomes, please apply sequentially to each chromosome!")
             return 1
         
