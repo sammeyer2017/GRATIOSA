@@ -416,7 +416,7 @@ class Transcriptome:
                     g.add_state_cond(cond_fc, 'null')
 
                     
-    def load_rnaseq_cov(self, cond="all", compute_from_bam=False):
+    def load_rnaseq_cov(self, cond="all", compute_from_bam=False, rev=False):
         '''
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance
         either from:
@@ -447,6 +447,9 @@ class Transcriptome:
                     useful_functions_transcriptome.cov_from_reads, coverage 
                     from .bam reads files that are, with a 
                     bam_files.info file, in the /rnaseq_reads/ directory.
+            rev (Boolean): reverses the + and - strands when computing the coverage. 
+                    This applies to stranded sequencing on the opposite strand. 
+                    Only applied when compute_from_bam is True. 
 
         Note:
             To use directly new coverages data, both forward and reverse coverage 
@@ -538,10 +541,10 @@ class Transcriptome:
 
         if compute_from_bam:
             process_bam(self)
-            cov_from_reads(self)
+            cov_from_reads(self, rev=rev)
 
         if os.path.exists(f"{path2dir}cov_txt.info"):
-            print("Reading the coverage data from text file {path2dir}cov_txt.info")
+            print(f"Reading the coverage data from text file {path2dir}cov_txt.info")
             if not os.path.exists(f"{path2dir}cov.info"):
                 file = open(f"{path2dir}cov.info", 'w')
                 file.write('Condition\tCov file\n')
@@ -561,7 +564,8 @@ class Transcriptome:
                     # take chromosome name and convert to coordinates
                     # we shift the coordinates of each chromosome to stack them
                     if len(line) == 5:
-                        ind = int(line[4])
+                        ccp=0
+                        ccn=0
                     else:
                         ind = 0  # default value for bedgraph file
                         cn = list(pd.read_csv(path2dir + line[1],sep="\t", usecols=[0], skiprows=int(line[3])-1, header=None)[0])

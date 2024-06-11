@@ -1,0 +1,2 @@
+Condition	Filename	TagColumn	FirstExprCol	Islog(yes/no)	ColumnSeparator
+Ctl	sino_2015_s3_levels.csv	0	1	yes	\t	
