@@ -1,9 +1,10 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
 Functions called by Genome methods
 """
+import os
 import numpy as np
 from GRATIOSA.globvar import *
 from GRATIOSA.Gene import Gene
@@ -12,7 +13,7 @@ from GRATIOSA.TSS_TTS_TU import TSS, TTS, TU
 
 def read_seq(filename):
     '''
-    Called by load_seq, read_seq allows genomic sequence to be loaded from a
+    Called by load_seq, read_seq allows name(s) and genomic sequence(s) to be loaded from a
     .fasta file
 
     Args:
@@ -20,30 +21,68 @@ def read_seq(filename):
                          FASTA format.
 
     Returns:
-        genomic sequence (str.)
+        tuple with list of names (str.) and list of genomic sequences (str.)
 
     '''
-    seq = str()
+    names=[]
+    seqs=[]
     seq_file = open(filename, "r")
+    seq=''
     for i in seq_file.readlines():
         line = i.strip()  # Removes \n
         if line != '':  # Inspect if empty line
-            if line[0] != ">":
+            if line[0] == ">":
+                names.append(line[1:])
+                seqs.append(seq)
+                seq=""
+            else:
                 seq += line
     seq_file.close
-    return seq
+    seqs.append(seq)
+    return names,seqs[1:]
 
+def seq_compl(seq):
+    l=seq
+    l = l.replace('A', 't').replace('T', 'a')
+    l = l.replace('C', 'g').replace('G', 'c')
+    l = l.replace('a', 'A').replace('t', 'T')
+    l = l.replace('c', 'C').replace('g', 'G')
+    return l
 
-def load_gff(annotations_filename):
+    
+def update_NCBI_genomes():
+    """
+    Tries to download the current list of NCBI complete bacterial genomes, and store it in the file "accession_number_complete.txt" in the base directory. This is useful if you want to create a new organism and download the annotation automatically from NCBI, and you do not have the NCBI command-line tool installed... Caution, this requires to download a large file (~ 600 Mb). The stored file contains only the complete genomes and is much lighter (~ 20 Mb). 
+    """
+    print("Downloading the current version of the NCBI complete genome list to accession_number_complete.txt file in the base directory")
+    print("It may take a while, the complete file is ~600 Mb to download")
+    print("Check the large temporary file at location %s/assembly_summary.txt"%os.getcwd())
+    os.system("wget -nv ftp://ftp.ncbi.nih.gov/genomes/genbank/bacteria/assembly_summary.txt >/dev/null 2>&1")
+    if not os.path.exists("assembly_summary.txt"):
+        print("Error downloading the file!!")
+        return 1
+    else:
+        os.system(f"grep Complete assembly_summary.txt >  {basedir}data/accession_number_complete.txt")
+        os.system("rm assembly_summary.txt")
+        return 0
+
+def load_gff(annotations_filename, genome_dict, features=["gene"]):
     '''
-    Called by load annotation, load_gff allows genes to be loaded from .gff 
-    or .gff3 annotation file. For each gene of the annotation, onne Gene 
-    object is created and intialized with the following attributes: 
+    Called by load_annotation, load_gff allows genes to be loaded from .gff 
+    or .gff3 annotation file, using the defined list of features and using 
+    the "locus_tag" as primary field to name the genes, with "gene" being the 
+    secondary field if locus_tag does not exist. For each gene of the
+    annotation, one Gene object is created and intialized with the following attributes: 
     locus_tag, ID, name, left (left coordinate), right (right coordinate), 
-    middle, length, strand, start, end and ASAP.
+    middle, length, strand, start, end, ASAP ID (legacy), and genome.
 
     Args:
         filename (str.): name of the annotation file.
+        genome_dict (dict.): dictionary giving the genome object associated to 
+        each chromosome name found in the gff file
+        features (list of str.): list of attributes (column 3) to be imported: 
+        usually ["gene"] (default), but can be adapted, e.g., for "exon", "rRNA", 
+    etc. A feature will be retained if it contains a 
 
     Returns:
         Dictionary: Dictionary of shape {locus: Gene object} with each Gene 
@@ -61,11 +100,13 @@ def load_gff(annotations_filename):
             * start, end, middle: positions of the beginning, the middle and
               the end of the gene
             * length: gene length (=right-left)
-
+            * genome: genome object where this gene belongs (useful only for 
+              genomes with multiple chromosomes)
 
     Warnings: 
         ASAP name  is found only if it is noted on the same line as the
-        "name" line or the line next to it
+        "name" line or the line next to it (legacy of an annotation file 
+        of Dickeya dadantii)
     '''
     genes_dict = {}
     annot_file = open(annotations_filename, "r")
@@ -74,45 +115,48 @@ def load_gff(annotations_filename):
         if line[0] != '#':
             if line != '\n':
                 line = line.split('\t')
-                gene_info = {}
-                for x in line[8].split(';'):
-                    try : 
-                        x = x.strip().split('=')
-                        gene_info[x[0]] = x[1]
-                    except Exception as e: 
-                        if  x != ['']:
-                            print(f"Error {e} in '{line[8]}'")
 
-                if ('locus_tag' in gene_info):
-                    locus = gene_info['locus_tag']
-                    if "ID" in gene_info.keys():
-                        ID = gene_info["ID"]
-                    else:
-                        ID = locus
-                    if "gene" in gene_info.keys():
-                        name = gene_info["gene"]
-                    else:
-                        name = locus
+                if line[2] in features:
+                    gene_info = {}
+                    for x in line[8].split(';'):
+                        try : 
+                            x = x.strip().split('=')
+                            gene_info[x[0]] = x[1]
+                        except Exception as e: 
+                            if  x != ['']:
+                                print(f"Error {e} in '{line[8]}'")
 
-                    if "Dbxref" in gene_info.keys():
-                        db_ref = "Dbxref"
-                    elif "db_xref" in gene_info.keys():
-                        db_ref = "db_xref"
+                    if ('locus_tag' in gene_info.keys()):
+                        locus = gene_info['locus_tag']
+                    elif ("gene" in gene_info.keys()):
+                        locus = gene_info["gene"]
                     else:
-                        db_ref = None
-                    if db_ref is not None:
-                        dbxref = gene_info[db_ref].split(",")
-                        for db in dbxref:
-                            if "ASAP" in db:
-                                ASAP_name = db.split(":")[1]
-                    left, right = map(int, line[3:5])
-                    strand = True if line[6] == "+" else False
-                    genes_dict[locus] = Gene(
-                        locus, name, ID, left, right, strand, ASAP_name)
+                        try:
+                            del locus
+                        except:
+                            pass
 
-                elif line[2] == "CDS" and ASAP_name == '':
-                    tleft, tright = map(int, line[3:5])
-                    if tleft == left and tright == right:
+                    if "locus" in locals():# isinstance(locus,str):
+                        # the gene will be recorded
+                        try:
+                            ge=genome_dict[line[0]]
+                        except:
+                            print("problem with gene %s: chromosome name (column 1) does not match any known chromosome name for the organism. Check consistency between the reference sequence and annotation file"%locus)
+                            return 1
+                        if "ID" in gene_info.keys():
+                            ID = gene_info["ID"]
+                        else:
+                            ID = locus
+                        if "gene" in gene_info.keys():
+                            name = gene_info["gene"]
+                        elif "gene_synonym" in gene_info.keys():
+                            name = gene_info["gene_synonym"]
+                        else:
+                            name = locus
+                        if "product" in gene_info.keys():
+                            product = gene_info["product"]
+                        else:
+                            product = ""
                         if "Dbxref" in gene_info.keys():
                             db_ref = "Dbxref"
                         elif "db_xref" in gene_info.keys():
@@ -124,8 +168,29 @@ def load_gff(annotations_filename):
                             for db in dbxref:
                                 if "ASAP" in db:
                                     ASAP_name = db.split(":")[1]
-                        genes_dict[locus] = Gene(
-                            locus, name, ID, left, right, strand, ASAP_name)
+                        left, right = map(int, line[3:5])
+                        strand = True if line[6] == "+" else False
+                        notes = line[8]
+                        feature=line[2]
+                        genes_dict[locus] = Gene(locus, feature, name, ID, ge, left, right, strand, ASAP_name, product, notes)
+                    """
+                    elif line[2] == "CDS" and ASAP_name == '':
+                        tleft, tright = map(int, line[3:5])
+                        if tleft == left and tright == right:
+                            if "Dbxref" in gene_info.keys():
+                                db_ref = "Dbxref"
+                            elif "db_xref" in gene_info.keys():
+                                db_ref = "db_xref"
+                            else:
+                                db_ref = None
+                            if db_ref is not None:
+                                dbxref = gene_info[db_ref].split(",")
+                                for db in dbxref:
+                                    if "ASAP" in db:
+                                        ASAP_name = db.split(":")[1]
+                            genes_dict[locus] = Gene(
+                                locus, name, ID, ge, left, right, strand, ASAP_name)
+                    """
     return genes_dict
 
 
@@ -133,15 +198,18 @@ def load_annot_general(annotations_filename,
                        separator, 
                        tag_column, 
                        name_column,
-                       ID_column, 
+                       ID_column,
+                       genome_column,
                        strand_column, 
                        left_column, 
                        right_column, 
                        ASAP_column, 
-                       start_line):
+                       start_line,
+                       features=["gene"]):
     '''
-    Called by load annotation, load_annot_general allows genes to be loaded
-    from any annotation file, although most of the time, annotation is loaded
+    Legacy function, not very useful. Called by load annotation, load_annot_general 
+    allows genes to be loaded from any csv annotation file, not following gff format. 
+    This is almost never useful, as annotation is usually loaded
     from gff files (using the load_gff function). The annotation file has to
     contains one row per genes and the following columns: locus_tag, ID, 
     name, ASAP, left coordinate, right coordinate and strand.
@@ -431,10 +499,12 @@ def load_TU_cond(filename,
                  startcol, 
                  endcol, 
                  strandcol,
-                 genescol, 
                  startline, 
                  separator,
-                 exprcol):
+                 genescol=None, 
+                 exprcol=None,
+                 TSScol=None,
+                 TTScol=None):
     '''
     Called by load_TU, load_TU_cond allows TU data to be loaded from any file
     with one row per TU and the following columns: start position, end 
@@ -448,12 +518,14 @@ def load_TU_cond(filename,
         startcol (int.): index of the column containing the TU start positions
         endcol (int.): index of the column containing the TU end positions
         strandcol (int.): index of the column containing the TU strands
-        genescol (int.): index of the column containing the locus tags of the
-                genes associated to each TU in the file.
-                By default: None (ie not on file)
         start_line (int.): file start line
         separator (str.): file separator
-        exprcol (int.): index of the column containing the TU expression
+        genescol (int.): index of the column containing the locus tags of the 
+                genes associated to each TU in the file, separated by commas. 
+                By default: None (ie not on file)
+        exprcol (int.): index of the column containing the TU expression (def. None)
+        TSScol (int.): index of the column with TSS position
+        TTScol (int.): index of the column with TTS position
 
     Returns:
         Dictionary: dict. of shape {TU start: TU object} with each TU object
@@ -487,15 +559,32 @@ def load_TU_cond(filename,
                     strand = True
                 else:
                     strand = None
+                if genescol != None:
+                    genesnames=line[genescol].split(",")
+                else:
+                    genesnames = None
                 if exprcol != None:
                     expr = float(line[exprcol])
                 else :
                     expr = None
+                if TSScol != None:
+                    # we take out everything that is not a number
+                    TSSpos = int("".join([ele for ele in line[TSScol] if ele.isdigit()]))
+                    #TSSpos = int(line[TSS])
+                else:
+                    TSSpos = None
+                if TTScol != None:
+                    TTSpos = int("".join([ele for ele in line[TTScol] if ele.isdigit()]))
+                    #TTSpos = int(line[TTS])
+                else:
+                    TTSpos = None
                 TUs[int(line[IDcol])] = TU(start=int(line[startcol]), 
                                             end=int(line[endcol]), 
                                             strand=strand, 
-                                            genes=line[genescol].split(","),
-                                            expression=expr)
+                                            genes=genesnames,
+                                            expression=expr,
+                                            TSS=TSSpos,
+                                            TTS=TTSpos)
             except Exception as e:
                 print(e)
     f.close()

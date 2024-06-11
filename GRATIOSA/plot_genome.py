@@ -262,8 +262,9 @@ def subplot_genes(ax, gen, beg, end, xticks=None, gene_names=True):
                     ax.text(
                         (g.start + g.end) / 2,
                         1,
-                        "$\\it{%s}$" % (g.name),
-                        size=8,
+                        #"$\\it{%s}$" % (g.name),
+                        (g.name),
+                        size=7,
                         horizontalalignment='center',
                         verticalalignment='center',
                         color="white")
@@ -272,8 +273,9 @@ def subplot_genes(ax, gen, beg, end, xticks=None, gene_names=True):
                     ax.text(
                         (g.start + g.end) / 2,
                         2.5,
-                        "$\\it{%s}$" % (g.name),
-                        size=8,
+                        #"$\\it{%s}$" % (g.name),
+                        g.name,
+                        size=7,
                         horizontalalignment='center',
                         verticalalignment='center',
                         color="black")
@@ -298,12 +300,14 @@ def subplot_genes(ax, gen, beg, end, xticks=None, gene_names=True):
                 minlength=0)
             if gene_names and beg < (g.end + g.start) / 2 < end:
                 if g.start - g.end > length / 10:
-                    ax.text((g.start + g.end) / 2, -2, "$\\it{%s}$" %
-                            (g.name), size=8, horizontalalignment='center', 
+                    #ax.text((g.start + g.end) / 2, -2, "$\\it{%s}$" %
+                    ax.text((g.start + g.end) / 2, -2, 
+                            (g.name), size=7, horizontalalignment='center', 
                              verticalalignment='center', color="w")
                 else:
-                    ax.text((g.start + g.end) / 2, -0.5, "$\\it{%s}$" %
-                            (g.name), size=8, horizontalalignment='center', 
+                    #ax.text((g.start + g.end) / 2, -0.5, "$\\it{%s}$" %
+                    ax.text((g.start + g.end) / 2, -0.5,
+                            (g.name), size=7, horizontalalignment='center', 
                             verticalalignment='center', color="black")
 
     ax.set_yticks([])

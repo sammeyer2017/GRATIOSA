@@ -68,13 +68,14 @@ def smoothing(data, window):
     return s_data
 
 
-def load_sites_cond(path2file, startline, sep, start_col, end_col, val_col=None):
+def load_sites_cond(chrom_list, path2file, startline, sep, start_col, end_col, val_col, chrom):
     '''
     Called by load_peaks, allows the peaks data to be loaded by specifying
     files (typically a .BED file of peaks obtained with MACS2), and where 
     each information is (one column for each type of information).
 
     Args:
+        chrom_list (list of str.): list of chromosome names
         path2file (str.): path to the file containing the data
         startline (int.): file start line
         sep (str.): file separator
@@ -91,7 +92,11 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col, val_col=None)
     Note: 
         Column numbering starts at 0.
     '''
-    peaks = {}
+    if isinstance(chrom_list, list):
+        peaks = dict([(x, {}) for x in chrom_list])
+    elif isinstance(chrom_list, str):
+        peaks = {chrom_list: {}}
+    
     if sep == '\\t':
         sep = '\t'
 
@@ -103,12 +108,9 @@ def load_sites_cond(path2file, startline, sep, start_col, end_col, val_col=None)
         for line in f:
             line = line.strip('\n').split(sep)
             try:
-                if val_col != None :
-                    peaks[(int(line[start_col]), int(line[end_col]))] = float(line[val_col])
-                else : 
-                    peaks[(int(line[start_col]), int(line[end_col]))] = None
-            except Exception as e:
-                print(e)
-    f.close()
+                peaks[line[chrom]][(int(line[start_col]), int(line[end_col]))] = float(line[val_col])
+            except:
+                print("Problem: the chromosome name %s in file %s does not match the annotation name %s"%(line[chrom],path2file,str(chrom_list)))
+        f.close()
 
     return peaks

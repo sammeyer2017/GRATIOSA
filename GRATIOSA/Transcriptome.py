@@ -18,17 +18,30 @@ class Transcriptome:
     data obtained with high throughput methods such as RNASeq and processed with
     common tools such as DeSeq2.
 
-    Each Transcriptome instance has to be initialized with an organism name
+    Each Transcriptome instance has to be initialized with a genome object
     
-        >>> tr = Transcriptome.Transcriptome("dickeya")
+        >>> gen = Genome.Genome("dickeya")
+        >>> tr = Transcriptome.Transcriptome(gen)
     '''
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, gen):
+        self.genome = gen
+        self.name = gen.name
+        if not hasattr(gen,"genes"):
+            print("ERROR: must load sequence and annotation before transcriptome")
+        self.genes = gen.genes
+        if gen.contig:
+            self.transcriptomes=self
+        else:
+            # create transcriptome object for each chromosome too
+            self.transcriptomes=[]
+            for ge in gen.genomes:
+                tr=Transcriptome(ge)
+                self.transcriptomes.append(tr)
 
     def load_expression(self):
         '''
-        loads expression data (such as log2rpkm) from files that are in the
+        loads gene-wise expression data (such as log2rpkm) from files that are in the
         /expression/ directory.
 
         Creates:
@@ -45,6 +58,9 @@ class Transcriptome:
             additional information, in the following order:
             [0] Condition [1] Filename [2] Locus_tag column
             [3] Expression column [4] is Log ? (boolean) [5] Separator
+            In the case of a multi-chromosome genome, the main genome object as well
+            as each single-chromosome genome objects get the "genes" attribute. Each
+            gene is primarily assigned to the genome object of their chromosome/plasmid. 
 
         Warning:
             This method needs a genomic annotation. If no annotation is
@@ -67,12 +83,14 @@ class Transcriptome:
             'WT_stat(E3)': 6.980245227157392,
             'WT_PGA_stat(E13)_rpkm': 13.9428053948966}
         '''
+        gen=self.genome
+        
+        if not hasattr(gen, "genes"):
+            print("Error: an annotation must be loaded to the object %s before loading expression data"%str(gen))
+            return 1
+        
         if not hasattr(self, 'genes_valid_expr'):
             self.genes_valid_expr = {}
-        if not hasattr(self, "genes"):
-            gen = Genome(self.name)
-            gen.load_annotation()
-            self.genes = gen.genes
 
         path2dir = f"{basedir}data/{self.name}/expression/"
         if os.path.exists(path2dir + "expression.info"):
@@ -90,10 +108,22 @@ class Transcriptome:
                         expr_col=int(header[3]),
                         is_log=header[4],
                         separator=header[5])
+                    if not gen.contig:
+                        # several chromosomes: load expression into each chromosome too
+                        for tr in self.transcriptomes:
+                            self.genes_valid_expr[header[0]] = add_expression_to_genes(
+                                genes_dict=self.genes,
+                                cond=header[0],
+                                filename=path2file,
+                                tag_col=int(header[2]),
+                                expr_col=int(header[3]),
+                                is_log=header[4],
+                                separator=header[5])
             f.close()
         else:
             print("No expression.info file, please create one")
 
+            
     def compute_fc_from_expr(self, ctrls, conds, condname):
         '''
         Compute_fc_from_expr computes, for each gene:
@@ -145,7 +175,7 @@ class Transcriptome:
         '''
         if not hasattr(self, 'genes_valid'):
             self.genes_valid = {}
-        self.load_expression()  # load expression values
+            self.load_expression()  # load expression values
 
         genes_val = []  # list containing all genes having valid expr
         for genename in self.genes.keys():
@@ -172,6 +202,7 @@ class Transcriptome:
 
         self.genes_valid[condname] = genes_val
 
+        
     def load_fc_pval(self):
         '''
         loads Fold-changes and p-values (if available) from data files that 
@@ -214,12 +245,11 @@ class Transcriptome:
              'osmotic': (-1.81603942323042, 0.0),
              'heat': (1.62203513077067, 0.0)}
         '''
-        self.genes_valid_fc = {}
+        if not hasattr(self.genome, "genes"):
+            print("Error: an annotation must be loaded to the object %s before loading expression data"%str(self.genome))
+            return 1
 
-        if not hasattr(self, "genes"):
-            gen = Genome(self.name)
-            gen.load_annotation()
-            self.genes = gen.genes
+        self.genes_valid_fc = {}
 
         path2dir = f"{basedir}data/{self.name}/fold_changes/"
         if os.path.exists(path2dir + "fc.info"):
@@ -237,8 +267,20 @@ class Transcriptome:
                             tag_col=int(header[2]),
                             fc_col=int(header[3]),
                             separator=header[4],
-                            start_line=int(header[5]),
+                            start_line=int(header[5]),  #1-indexed 
                             p_val_col=int(header[6]))
+                        if not self.genome.contig:
+                            # several chromosomes: load expression into each chromosome too
+                            for tr in self.transcriptomes:
+                                self.genes_valid_fc[header[0]] = load_fc_pval_cond(
+                                    genes_dict=self.genes,
+                                    filename=path2dir + header[1],
+                                    condition=header[0],
+                                    tag_col=int(header[2]),
+                                    fc_col=int(header[3]),
+                                    separator=header[4],
+                                    start_line=int(header[5]),  #1-indexed 
+                                    p_val_col=int(header[6]))
                     else :
                         print("No p-value column found in fc.info file")
                         self.genes_valid_fc[header[0]] = load_fc_pval_cond(
@@ -249,10 +291,22 @@ class Transcriptome:
                             fc_col=int(header[3]),
                             separator=header[4],
                             start_line=int(header[5]))
+                        if not self.genome.contig:
+                            # several chromosomes: load expression into each chromosome too
+                            for tr in self.transcriptomes:
+                                self.genes_valid_fc[header[0]] = load_fc_pval_cond(
+                                    genes_dict=self.genes,
+                                    filename=path2dir + header[1],
+                                    condition=header[0],
+                                    tag_col=int(header[2]),
+                                    fc_col=int(header[3]),
+                                    separator=header[4],
+                                    start_line=int(header[5]))
             f.close()
         else:
             print("No fc.info file, please create one")
 
+            
     def compute_state_from_fc(self, thresh_pval=0.05, thresh_fc=0):
         '''
         Loads Fold-changes and p-values data and computes genes state from 
@@ -331,11 +385,7 @@ class Transcriptome:
 
         if not hasattr(self, 'genes_valid_fc'):
             self.load_fc_pval()
-        if not hasattr(self, "genes"):  # if no genes loaded
-            # try to load them
-            gen = Genome(self.name)
-            gen.load_annotation()
-            self.genes = gen.genes
+
         if not hasattr(self, "statesFC"):
             self.statesFC = {}
 
@@ -365,6 +415,7 @@ class Transcriptome:
                         self.statesFC[cond_fc]['null'].append(gene)
                     g.add_state_cond(cond_fc, 'null')
 
+                    
     def load_rnaseq_cov(self, cond="all", compute_from_bam=False):
         '''
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance
@@ -373,8 +424,8 @@ class Transcriptome:
           data are loaded for the first time)  which are in the /rnaseq_cov/ 
           directory,
         * coverage files which are in the /rnaseq_cov/ directory and are 
-          described in cov_txt.info file,
-        * paired-end .bam reads files which are in the /rnaseq_reads/ 
+          described in cov_txt.info file, with ONE LINE per genomic position!
+        * .bam reads files which are in the /rnaseq_reads/ 
           directory  and are treated with 
           useful_functions_transcriptome.cov_from_reads function.
 
@@ -385,8 +436,7 @@ class Transcriptome:
                     position for the + strand (forward coverage)
             * self.rnaseq_cov_neg: 
                     idem for the - strand (reverse coverage)
-
-        
+        Note: this function is only designed for single-chromosome genomes. 
 
         Args:
             cond (Optional [list of str.]): selection of one or several 
@@ -395,9 +445,8 @@ class Transcriptome:
                     loaded.
             compute_from_bam (Boolean.): if True, computes, using 
                     useful_functions_transcriptome.cov_from_reads, coverage 
-                    from paired-end .bam reads files that are, with a 
+                    from .bam reads files that are, with a 
                     bam_files.info file, in the /rnaseq_reads/ directory.
-                    WARNING: Works only with paired-end files
 
         Note:
             To use directly new coverages data, both forward and reverse coverage 
@@ -405,7 +454,7 @@ class Transcriptome:
             genomic position (one line = one genomic position, no position can be 
             ommited), therefore if you use bedtools genomecov, please use the -d 
             option.
-            The importation of these new data requires a cov_txt.info 
+            The importation of these new data requires a cov_txt.info TSV
             file, in the /rnaseq_cov/ directory, containing the following 
             information:
             [0] Condition
@@ -413,6 +462,7 @@ class Transcriptome:
             [2] Forward coverage filename
             [3] Startline (has to be the same for both coverage files)
             [4] Column containing the coverage data
+            [5] Column containing the chromosome name (default 0), must match the annotation
 
             Coverages from the reverse file will be added to the Transcriptome
             instance as "rnaseq_cov_neg" attribute and coverages from the forward
@@ -433,6 +483,8 @@ class Transcriptome:
             [0] Condition [1] Coverage filename
             This cov.info file automatically completes itself when the data are
             loaded for the first time.
+            WARNING: for multi-chromosome species, the npz files contain arrays with 
+            chromosome coordinates stacked behind each other!
 
         Example:
             >>> from GRATIOSA import Transcriptome
@@ -454,6 +506,26 @@ class Transcriptome:
             >>> tr.rnaseq_cov_pos["Test"]
             array([0., 0., 0., ..., 20., 20., 20.])
         '''
+
+        gen=self.genome
+
+        # Handling of several chromosomes
+        # ---------------
+        # Convert chromosome names into shifted coordinates
+        # Coordinates for several chromosomes stacked together
+        if gen.contig:
+            # single-chromosome:
+            coord = {gen.chromosome_name: 0}
+            coo = gen.length
+        else:
+            # several chromosomes: shift coordinates of successive chromosomes:
+            coo = 0
+            coord = {}
+            for ic,c in enumerate(gen.chromosome_name):
+                coord[c] = coo
+                coo += gen.length[ic]
+        # ---------------
+        
         if not hasattr(self, "rnaseq_cov_pos"):
             self.rnaseq_cov_pos = {}  # cov on + strand
             self.rnaseq_cov_neg = {}  # cov on - strand
@@ -465,15 +537,17 @@ class Transcriptome:
         path2dir = f"{basedir}data/{self.name}/rnaseq_cov/"
 
         if compute_from_bam:
-            process_bam_paired_end(self)
+            process_bam(self)
             cov_from_reads(self)
 
         if os.path.exists(f"{path2dir}cov_txt.info"):
+            print("Reading the coverage data from text file {path2dir}cov_txt.info")
             if not os.path.exists(f"{path2dir}cov.info"):
                 file = open(f"{path2dir}cov.info", 'w')
                 file.write('Condition\tCov file\n')
             else:
                 file = open(f"{path2dir}cov.info", 'a')
+            # -----------------
             with open(f"{path2dir}cov_txt.info", "r") as f:
                 header = next(f)
                 for line in f:
@@ -481,14 +555,28 @@ class Transcriptome:
                     print(f'Updating cov.info with the new data: {line[0]}')
                     # create .npy from .txt
                     rnaseq_cov_neg = np.loadtxt(
-                        path2dir + line[1], usecols=[int(line[4])], skiprows=int(line[3]))
+                        path2dir + line[1], usecols=[int(line[4])], skiprows=int(line[3])-1)
                     rnaseq_cov_pos = np.loadtxt(
-                        path2dir + line[2], usecols=[int(line[4])], skiprows=int(line[3]))
+                        path2dir + line[2], usecols=[int(line[4])], skiprows=int(line[3])-1)
+                    # take chromosome name and convert to coordinates
+                    # we shift the coordinates of each chromosome to stack them
+                    if len(line) == 5:
+                        ind = int(line[4])
+                    else:
+                        ind = 0  # default value for bedgraph file
+                        cn = list(pd.read_csv(path2dir + line[1],sep="\t", usecols=[0], skiprows=int(line[3])-1, header=None)[0])
+                        cp = list(pd.read_csv(path2dir + line[1], sep="\t", usecols=[0], skiprows=int(line[3])-1, header=None)[0])
+                        try:
+                            ccn = np.array([coord[x] for x in cn])
+                            ccp = np.array([coord[x] for x in cp])
+                        except:
+                            print("Error with chromosome name in %s or %s, does not match the names in annotation!"%(path2dir + line[1], path2dir + line[2]))
+                            return 1
                     # save .npy into .npz
                     np.savez(
                         f"{path2dir}{line[0]}_cov.npz",
-                        cov_pos=rnaseq_cov_pos,
-                        cov_neg=rnaseq_cov_neg)
+                        cov_pos=rnaseq_cov_pos+ccp,
+                        cov_neg=rnaseq_cov_neg+ccn)
                     # update cov.info
                     file.write(f"{line[0]}\t{line[0]}_cov.npz\n")
             with open(f"{path2dir}cov_txt.info", "w") as f:
@@ -506,11 +594,29 @@ class Transcriptome:
                     if cond == ["all"] or line[0] in cond:
                         print('Loading condition', line[0])
                         loaded_cond.append(line[0])
-                        # load attributes
-                        self.rnaseq_cov_neg[line[0]] = np.load(
-                            path2dir + line[1])["cov_neg"]
-                        self.rnaseq_cov_pos[line[0]] = np.load(
-                            path2dir + line[1])["cov_pos"]
+                        # load files
+                        c=np.load(path2dir + line[1])
+                        cn = c["cov_neg"]
+                        cp = c["cov_pos"]
+                        # check that the table length matches the genome length,
+                        # and split into chromosomes if there are several
+                        if cn.size != coo:
+                            print("Problem with coordinates of coverage file %s: total annotated genome length is %d whereas number of lines in coverage file is %d"%(path2dir + line[1], coo, cn.size))
+                            return 1
+                        if gen.contig:
+                            # only one chromosome:
+                            self.rnaseq_cov_neg[line[0]] = cn
+                            self.rnaseq_cov_pos[line[0]] = cp
+                        else:
+                            # several chromosomes: create transcriptome objects
+                            # for each chromosome and assign values
+                            count_coord=0
+                            for igeno,geno in enumerate(gen.genomes):
+                                trg=Transcriptome(geno)
+                                trg.rnaseq_cov_neg[line[0]] = cn[count_coord:(count_coord+geno.length)]
+                                trg.rnaseq_cov_pos[line[0]] = cp[count_coord:(count_coord+geno.length)]
+                                count_coord += geno.length
+                                self.append(trg)
                 if cond != ["all"]:
                     unloaded = set(loaded_cond) ^ set(cond)
                     if len(unloaded) != 0:
@@ -543,11 +649,11 @@ class Transcriptome:
         Args:
             compute_from_bam (Boolean): if True, computes, using 
                     useful_functions_transcriptome.cov_start_stop_from_reads,
-                    coverage from paired-end .bam reads files that are, with 
+                    coverage from .bam reads files that are, with 
                     a bam_files.info file, in the /rnaseq_reads/ directory.
 
         Note:
-            To compute new coverages data from paired-end .bam reads files, the 
+            To compute new coverages data from .bam reads files, the 
             data files and a bam_files.info file have to be in the /rnaseq_reads/ 
             directory and the input argument "compute_from_bam" has to be set to 
             "True".The bam_files.info files contains:
@@ -558,7 +664,13 @@ class Transcriptome:
             the cov_start_stop.info will be loaded, thus allowing faster loading.
 
         Warning:
-            compute_from_bam works only with paired-end files
+            This function is only implemented for single contig
+            compute_from_bam works with paired-end or single-end .bam files, 
+            but the first read of each file is used to determine if PE or SE. 
+            i.e., if you are using PE sequencing, please ensure that the first read
+            of each file is paired, through prior filtering of unpaired reads. 
+            For single-end reads, the coverage is computed from sequenced reads, without
+            extension of fragments (i.e., it is the read rather than fragment coverage). 
 
         Example:
             >>> from GRATIOSA import Transcriptome
@@ -569,8 +681,12 @@ class Transcriptome:
              1: array([0, 0, 0, ..., 0, 0, 0])}
         '''
 
+        if not self.genome.contig:
+            print("Error: Handling of RNA-Seq coverage is only implemented for single contig/chromosome genomes. Consider working with a single chromosome.")
+            return 1
+        
         if compute_from_bam:
-            process_bam_paired_end(self)
+            process_bam(self)
             cov_start_stop_from_reads(self)
 
         self.cov_start = {}
@@ -598,13 +714,13 @@ class Transcriptome:
         else:
             print('cov_start_stop.info not available please check /rnaseq_cov/ folder')
 
-    def compute_log2rpkm_from_cov(self, cond='all', before=100):
+    def compute_rpkm_from_cov(self, cond='all', before=100):
         '''
-        Compute_log2rpkm_from_cov method:
+        Compute_rpkm_from_cov method:
             * loads the RNASeq coverage (using load_rnaseq_cov method)
             * computes and loads RPKM value on the Gene instances
               (using Gene.add_single_rpkm )
-            * saves the log2(RPKM) data in a new .csv file
+            * saves the RPKM data in a new .csv file
               (1 file for all conditions, with 1 column per condition)
             * adds the new .csv file informations in the expression.info file 
               in the /expression/ directory
@@ -653,10 +769,14 @@ class Transcriptome:
             142
         '''
 
+        if not self.genome.contig:
+            print("Error: Handling of RNA-Seq coverage is only implemented for single contig/chromosome genome. If you work on a species with multiple chromosomes, please apply sequentially to each chromosome!")
+            return 1
+        
         # Loading the annotation and the RNASeq coverage
         if not hasattr(self, "genes"):
-            gen = Genome(self.name)
-            gen.load_annotation()
+            #gen = Genome(self.name)
+            #gen.load_annotation()
             self.genes = gen.genes
         if not hasattr(self, "rnaseq_cov_pos"):
             self.load_rnaseq_cov()
@@ -667,14 +787,15 @@ class Transcriptome:
             cond = [cond]
         if cond == ["all"]:
             cond = self.rnaseq_cov_pos.keys()
+            condpb=set([])
         else:
             condpb = set(cond) - set(self.rnaseq_cov_pos.keys())
-        if condpb:
+        if condpb != set([]):
             print(f"Following conditions are not in cov.info: {condpb}")
 
         if os.path.exists(f"{path2dir}expression.info"):
             existing_cond = []
-            with open(f"{path2dir}expression.info", 'r')as f:
+            with open(f"{path2dir}expression.info", 'r') as f:
                 header = next(f)
                 for line in f:
                     line = line.strip('\n').split('\t')
@@ -686,40 +807,39 @@ class Transcriptome:
         if ignoredcond:
             print(f"Following conditions are already in expression.info: {ignoredcond})")
 
+        print("Computing the RPKM for conditions: %s"%str(cond2convert))
         # Computing the RPKM
         if cond2convert:
-            for g in self.genes.keys():  # for each gene
-                try:
-                    if self.genes[g].strand:
-                        # gene in + strand
-                        for c in cond2convert:  # for each condition of cov
-                            self.genes[g].add_single_rpkm(c, np.mean(self.rnaseq_cov_pos[c][(
-                                self.genes[g].left - before):self.genes[g].right]), np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))
-                    elif not self.genes[g].strand:
-                        # gene in - strand
-                        for c in cond2convert:
-                            self.genes[g].add_single_rpkm(c, np.mean(self.rnaseq_cov_neg[c][self.genes[g].left:(
-                                self.genes[g].right + before)]), np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))
-                except Exception as e:
-                    print(f'WARNING: {g} , {cond}, {e}')
-                    pass
+            totalcov={}
 
+            # compute total coverage for condition
+            for c in cond2convert:
+                totalcov[c]=(np.sum(self.rnaseq_cov_pos[c]) + np.sum(self.rnaseq_cov_neg[c]))/10**6
+
+            for g in self.genes.keys():  # for each gene
+                if self.genes[g].strand:
+                    # gene in + strand
+                    for c in cond2convert:  # for each condition of cov
+                        self.genes[g].add_expression(c,np.mean(self.rnaseq_cov_pos[c][(
+                            self.genes[g].left - before):self.genes[g].right])*1000/totalcov[c])
+                elif not self.genes[g].strand:
+                    # gene in - strand
+                    for c in cond2convert:                          
+                        self.genes[g].add_expression(c, np.mean(self.rnaseq_cov_neg[c][self.genes[g].left:(
+                            self.genes[g].right + before)])*1000/totalcov[c])
         # Saving log2RPKM in a .csv file and completing the expression.info
         # file
             file = []
             for g in self.genes.keys():
-                g_log2rpkm = []
+                g_rpkm = []
                 for c in cond2convert:
-                    if self.genes[g].rpkm[c] != 0:
-                        g_log2rpkm.append(np.log2(self.genes[g].rpkm[c]))
-                    else:
-                        g_log2rpkm.append(1)
-                file.append(g_log2rpkm)
+                    g_rpkm.append(self.genes[g].expression[c])
+                file.append(g_rpkm)
             df = pd.DataFrame(data=file, columns=cond2convert,
                               index=self.genes.keys())
             date = str(datetime.now())[:-10].replace(" ", "_")
-            filename = f"log2rpkm_from_cov_{date}.csv"
-            df.to_csv(path2dir + filename, sep=',', index=True)
+            filename = f"rpkm_from_cov_{date}.csv"
+            df.to_csv(path2dir + filename, sep=',', index=True, float_format="%.5f")
 
             if not os.path.exists(f"{path2dir}expression.info"):
                 f = open(f"{path2dir}expression.info", 'w')
@@ -729,5 +849,7 @@ class Transcriptome:
 
             for n, c in enumerate(cond2convert):
                 f.write(f'{c}\t{filename}\t0\t{n+1}\tyes\t,\n')
+            
+            f.close()
         else:
             print("All selected conditions are already in expression.info")

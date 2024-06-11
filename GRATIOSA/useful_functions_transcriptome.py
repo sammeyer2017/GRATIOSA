@@ -54,7 +54,7 @@ def add_expression_to_genes(genes_dict,
         header = next(f)
         header = header.strip().split(separator)
         header = header[expr_col:]
-        genes_valid["conditions"] = header
+        #genes_valid["conditions"] = header
         for line in f:
             line = line.strip().split(separator)
             try:
@@ -130,7 +130,7 @@ def load_fc_pval_cond(genes_dict,
     except_fc = 0
     with open(filename, 'r') as f:
         i = 0
-        while i < start_line:
+        while i < start_line-1: #caution, here the line numbering is 1-indexed
             header = next(f)
             i += 1
         for line in f:
@@ -150,6 +150,14 @@ def load_fc_pval_cond(genes_dict,
                     else:
                         except_fc += 1
     f.close()
+    # add NaN values for other genes
+    for ge in genes_dict.keys():
+        if not hasattr(genes_dict[ge], "fc_pval"):
+            genes_dict[ge].add_fc_pval_cond(
+                        float("nan"), condition, float("nan"))
+        elif condition not in genes_dict[ge].fc_pval.keys():
+            genes_dict[ge].add_fc_pval_cond(
+                        float("nan"), condition, float("nan"))
     if except_locus:
         if len(except_locus) > 20:
             print(f"\t{len(except_locus)} locus are not in annotation")
@@ -160,10 +168,10 @@ def load_fc_pval_cond(genes_dict,
     return genes_valid
 
 
-def process_bam_paired_end(tr):
+def process_bam(tr):
     """
-    Called by load_cov_start_end and load_rnaseq_cov, process_bam_paired_end
-    converts paired-end .bam files in .npy files containing the fragments.
+    Called by load_cov_start_end and load_rnaseq_cov, process_bam
+    converts .bam files in .npy files containing the fragments. 
     These files will enable a faster data loading for the next data
     importation with load_cov_start_end or load_rnaseq_cov.
     
@@ -182,12 +190,19 @@ def process_bam_paired_end(tr):
         tr: Transcriptome instance
 
     Note: 
-        The paired-end .bam reads files are, with a bam_files.info file, in the
+        The .bam reads files are, with a bam_files.info file, in the
         /rnaseq_reads/ directory. The bam_files.info file contains the following
         information:  [0] Condition [1] Reads filename for this condition
     
-    Warnings: 
-        Only for paired-end reads !
+    Warnings:
+        The first read of the .bam file is used to determine if paired-end or single-end. 
+        For paired-end files, the real fragment coverage is computed. 
+        For single-end files, the READ coverage is computed (i.e., without fragment extension). 
+        CAUTION for multi-chromosome species: the file is generated with chromosome
+        coordinates stacked behind each other. This is then propagated for the 
+        computation of coverage files. So, for a species with one 2-Mb chromosome and 
+        one 1-Mb chromosome, the files will have a 3-Mb long array. If the chromosome 
+        length or ordering is changed, re-compute all files. 
     """
 
     exist_cond = []
@@ -201,6 +216,20 @@ def process_bam_paired_end(tr):
         for line in file:
             exist_cond.append(line.split("\t")[0])
     file.close()
+
+    # Coordinates for several chromosomes stacked together
+    gen=tr.genome
+    if gen.contig:
+        # single-chromosome:
+        coord={gen.chromosome_name: 0}
+    else:
+        # several chromosomes: shift coordinates of successive chromosomes:
+        coo=0
+        coord={}
+        for ic,c in enumerate(gen.chromosome_name):
+            coord[c]=coo
+            coo+=gen.length[ic]
+    
     with open(path2dir + "bam_files.info", "r") as f:
         header = next(f)
         for line in f:  # for each condition
@@ -216,23 +245,44 @@ def process_bam_paired_end(tr):
                 bamfile = pysam.AlignmentFile(path2dir + bam_file, "rb")
 
                 # /!\ 0-based coordinate system /!\
-                # lists storing coordinates of paired-end fragments for +/-
-                # strands
+                # lists storing coordinates of fragments/reads
                 Rpos_start, Rpos_end, Rneg_start, Rneg_end = [], [], [], []
 
-                for read in bamfile.fetch():
+                for ir,read in enumerate(bamfile.fetch()):
+                    # We use the first read to determine if the .bam file contains
+                    # paired-end or single-end reads
+                    if ir==0:
+                        if read.is_paired:
+                            print("Treating sample %s as paired-end, based on the first analyzed read. If wrong, please eliminate wrong reads."%bam_file)
+                            PE=True
+                        else:
+                            print("Treating sample %s as single-end, based on the first analyzed read. The coverage is computed using the sequenced reads, without fragment extension."%bam_file)
+                            PE=False
+
+                    # Paired-end
                     # if correctly paired and R1/R2 in different strands and
                     # fragment size < 1000 kb
-                    if read.is_read1 and read.is_paired and not read.mate_is_unmapped and read.is_reverse != read.mate_is_reverse and abs(
-                            read.template_length) < 1000:
+                    if PE:
+                        if read.is_read1 and read.is_paired and not read.mate_is_unmapped and read.is_reverse != read.mate_is_reverse and abs(
+                                read.template_length) < 1000:
+                            if read.is_reverse:
+                                Rneg_start.append(read.reference_end + coord[read.reference_name])
+                                Rneg_end.append(
+                                    read.reference_end + abs(read.template_length) + coord[read.reference_name])
+                            elif not read.is_reverse:
+                                Rpos_start.append(read.reference_start++coord[read.reference_name])
+                                Rpos_end.append(
+                                    read.reference_start + read.template_length + +coord[read.reference_name])
+                    # Single-end
+                    # We do not extend the reads! directly compute coverage from reads
+                    else:
                         if read.is_reverse:
-                            Rneg_start.append(read.reference_end)
-                            Rneg_end.append(
-                                read.reference_end + abs(read.template_length))
-                        elif not read.is_reverse:
-                            Rpos_start.append(read.reference_start)
-                            Rpos_end.append(
-                                read.reference_start + read.template_length)
+                            Rneg_start.append(read.reference_start + +coord[read.reference_name])
+                            Rneg_end.append(read.reference_end + +coord[read.reference_name])
+                        else:
+                            Rpos_start.append(read.reference_start + +coord[read.reference_name])
+                            Rpos_end.append(read.reference_end + +coord[read.reference_name])
+                        
                 bamfile.close()
 
                 # conversion step into numpy array
@@ -257,11 +307,11 @@ def process_bam_paired_end(tr):
                          Rneg=Rneg)
 
 
-def cov_from_reads(tr):
+def cov_from_reads(tr,rev=False):
     """
     Called by load_rnaseq_cov, cov_from_reads computes the coverage from 
-    paired-end reads previously converted to .npz format (containing one .npy 
-    per strand: Rpos.npy and Rneg.npy) with the process_bam_paired_end 
+    reads previously converted to .npz format (containing one .npy 
+    per strand: Rpos.npy and Rneg.npy) with the process_bam 
     function. 
 
     Creates:
@@ -278,12 +328,18 @@ def cov_from_reads(tr):
 
     Args:
         tr: Transcriptome instance
+        rev (False): for special cases where the reads were mapped on reverse strand (equivalent to -s reverse in htseq-count). All reads are strand-reversed before computing the coverage. This is never called by the main functions, but can be called "by hand" after deleting the previous coverage files that were on the wrong strand.  
 
     Note: 
         The .npz files have to be, with a reads.info file (also created 
-        by the process_bam_paired_end function), in the /rnaseq_reads/ directory. 
+        by the process_bam function), in the /rnaseq_reads/ directory. 
         This reads.info file contains at least the following information: 
         [0] Condition [1] Reads filename
+
+        CAUTION for multi-chromosome species: the file is generated with chromosome
+        coordinates stacked behind each other. E.g., for a species with one 
+        2-Mb chromosome and one 1-Mb chromosome, the files will have a 3-Mb 
+        long array. If the chromosome length or ordering is changed, re-compute all files. 
     """
     # load npz file
     gen = Genome.Genome(tr.name)
@@ -311,8 +367,12 @@ def cov_from_reads(tr):
                 print('Converting reads in coverage for:', line[0])
                 # load npz file corresponding to condition
                 npzfile = np.load(path2reads + line[1])
-                Rpos = npzfile["Rpos"]
-                Rneg = npzfile["Rneg"]
+                if rev:
+                    Rneg = npzfile["Rpos"]
+                    Rpos = npzfile["Rneg"]
+                else:
+                    Rpos = npzfile["Rpos"]
+                    Rneg = npzfile["Rneg"]
                 # init cov
                 cov_pos = np.zeros(genome_length, dtype=int)
                 cov_neg = np.zeros(genome_length, dtype=int)
@@ -336,9 +396,9 @@ def cov_from_reads(tr):
 def cov_start_stop_from_reads(tr):
     """
     Called by load_cov_start_end, cov_start_stop_from_reads computes the 
-    density of RNA fragment starts and ends from paired-end reads previously 
+    density of RNA fragment starts and ends from reads previously 
     converted to .npz format (containing one .npy per strand: Rpos.npy and 
-    Rneg.npy) with the process_bam_paired_end function.
+    Rneg.npy) with the process_bam function.
     
     Creates:
         * For each condition listed in the reads.info file, this function
@@ -359,7 +419,7 @@ def cov_start_stop_from_reads(tr):
 
     Note: 
         The .npz files have to be, with a reads.info file (also created by 
-        process_bam_paired_end function), in the /rnaseq_reads/ directory. 
+        process_bam function), in the /rnaseq_reads/ directory. 
         This reads.info file contains at least the following information:
         [0] Condition [1] Reads filename
     """
@@ -419,3 +479,8 @@ def cov_start_stop_from_reads(tr):
                          cov_end_pos=cov_end[1],
                          cov_start_neg=cov_start[0],
                          cov_end_neg=cov_end[0])
+
+
+
+
+

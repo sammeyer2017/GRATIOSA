@@ -9,14 +9,15 @@ class Gene:
     its identifiers, its coordinates, its expression levels under different
     conditions, its functional annotations...
     '''
-    def __init__(self, locus_tag, name, ID, left, right, strand, ASAP_name):
+    def __init__(self, locus_tag, feature, name, ID, genome, left, right, strand, ASAP_name, product, notes):
         self.locus_tag = locus_tag
+        self.feature=feature
         self.ID = ID
         self.name = name
         self.left = int(left)
         self.right = int(right)
         self.strand = strand
-        self.middle = float(left + right) / 2
+        self.middle = int(float(left + right) / 2)
         self.length = int(right) - int(left) + 1
         if self.strand:
             self.start = int(left)
@@ -25,10 +26,15 @@ class Gene:
             self.start = int(right)
             self.end = int(left)
         self.ASAP = ASAP_name
+        self.genome = genome
+        self.chromosome = genome.chromosome_name
+        self.product = product
+        self.notes = notes
 
-    def add_single_rpkm(self, condition, expression_value, factor):
-        if not hasattr(self, 'rpkm'):
-            self.rpkm = {}
+    # def add_single_rpkm(self, condition, expression_value):
+    #     if not hasattr(self, 'rpkm'):
+    #         self.rpkm = {}
+    #     self.rpkm[c]=expression_value
 
     def add_id_TSS(self, id_TSS):
         if not hasattr(self, 'id_TSS'):
