@@ -1,0 +1,2 @@
+Condition	Filename	TagColumn	FCcolumn	ColumnSeparator	Startline	P-valueColumn
+seco_trans	stat_WTseco_vs_stat_WT.csv	0	2	\t	2	6
