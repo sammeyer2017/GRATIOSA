@@ -420,14 +420,14 @@ class Transcriptome:
         '''
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance 
         either from:
-        * .npz files (described in a cov.info file and computed when new 
-          data are loaded for the first time)  which are in the /rnaseq_cov/ 
-          directory,
-        * coverage files which are in the /rnaseq_cov/ directory and are 
-          described in cov_txt.info file, with ONE LINE per genomic position!
-        * .bam reads files which are in the /rnaseq_reads/ 
-          directory  and are treated with 
-          useful_functions_transcriptome.cov_from_reads function.
+            * .npz files (described in a cov.info file and computed when new 
+              data are loaded for the first time)  which are in the /rnaseq_cov/ 
+              directory,
+            * coverage files which are in the /rnaseq_cov/ directory and are 
+              described in cov_txt.info file, with ONE LINE per genomic position!
+            * .bam reads files which are in the /rnaseq_reads/ 
+              directory  and are treated with 
+              useful_functions_transcriptome.cov_from_reads function.
 
         Creates 2 new attributes of the Transcriptome instance:
             * self.rnaseq_cov_pos: 
