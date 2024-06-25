@@ -10,8 +10,8 @@ GRATIOSA is written in Python, and is targeted to computational biologists. The 
 
 How to install the package ? 
 ----------------------------
-To install this package, the recommended method is to execute the following command in your terminal 
-`pip install GRATIOSA`
+To install this package, the recommended method is to execute the following command in your terminal: ``pip install GRATIOSA``
+
 For simple testing, you can just download this package manually (using Code / Download ZIP) and work locally. 
 
 How to use the package ? 
