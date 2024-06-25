@@ -420,6 +420,7 @@ class Transcriptome:
         '''
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance 
         either from:
+        
             * .npz files (described in a cov.info file and computed when new 
               data are loaded for the first time)  which are in the /rnaseq_cov/ 
               directory,
@@ -430,12 +431,14 @@ class Transcriptome:
               useful_functions_transcriptome.cov_from_reads function.
 
         Creates 2 new attributes of the Transcriptome instance:
+        
             * self.rnaseq_cov_pos: 
                     dictionary of shape {condition: cov+}
                     with cov+ an array containing one signal data per genomic
                     position for the + strand (forward coverage)
             * self.rnaseq_cov_neg: 
                     idem for the - strand (reverse coverage)
+        
         Note: this function is only designed for single-chromosome genomes. 
 
         Args:
