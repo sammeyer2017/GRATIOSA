@@ -23,7 +23,7 @@ Before using the package, the user needs to prepare and organize their data into
 
 Typical data files supported by GRATIOSA are summarized in the following table. Please see the detailed documentation of each function to see if and how alternate formats can be used:
 .. csv-table:: Typical data files used by GRATIOSA 
-   :file:tableau_softs.csv
+   :file: tableau_softs.csv
    :widths: 30, 70
    :header-rows: 1
 
