@@ -418,6 +418,8 @@ class Transcriptome:
                     
     def load_rnaseq_cov(self, cond="all", compute_from_bam=False, rev=False):
         '''
+
+        test
         load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance 
         either from:
         
@@ -438,6 +440,7 @@ class Transcriptome:
                     dictionary of shape {condition: cov+}
                     with cov+ an array containing one signal data per genomic
                     position for the + strand (forward coverage)
+                    
             * self.rnaseq_cov_neg: 
                     idem for the - strand (reverse coverage)
         
