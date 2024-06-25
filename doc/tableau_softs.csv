@@ -1,0 +1,9 @@
+Data type,Rows,Columns,Standard format,Commonly used packages
+RNA-Seq reads,/,/,bam,bowtie2
+RNA-Seq coverage,positions,coverage,bedgraph,Bedtools
+RNA-Seq expression,genes,"locus, expression level (RPKM or FPKM)",tab,Cufflinks/ HTSeq
+RNA-Seq differential expression,genes,"locus, fold-change, p-value",csv,limma/ DESeq2
+Microarray differential expression,genes,"locus, fold-change, p-value",csv,limma
+ChIP-Seq coverage,positions,"bin start, bin end, coverage",bedgraph,deepTools
+ChIP-Seq peaks,sites,"position, value",bed,MACS
+list of genomic position data,sites,"position, value",csv,
