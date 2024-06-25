@@ -361,6 +361,7 @@ class Chipseq:
         load_smoothed_signal methods. Finally, the average of these signals at 
         each genomic position of the genome is calculated. This average signal 
         is assigned to the Chipseq instance as signals_average attribute:
+        
         * self.signals_average (dict.):
                 Dictionary of shape {average_name: array containing one 
                 averaged signal value per genomic position}. 
