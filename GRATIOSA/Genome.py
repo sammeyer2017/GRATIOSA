@@ -16,7 +16,7 @@ from GRATIOSA.TSS_TTS_TU import TSS, TTS, TU
 class Genome:
 
     '''
-    The Genome class is one of the main classes of this package. It gathers all
+    The Genome class is the primary class of this package. It gathers all
     the attributes of a genome such as the sequence, the set of genes (with their
     functional annotations and their orientation) but also all the annotations of
     TSS, TU and TTS.
@@ -200,8 +200,9 @@ class Genome:
         Note: 
             If the file is a .gff3 or .gff information will be loaded using
             useful_functions_genome.load_gff.
-            Else, the information importation requires an annotation.info file,
-           containing column indices of each information in the data file and 
+            Otherwise (LEGACY), the information importation requires 
+            an annotation.info file,
+            containing column indices of each information in the data file and 
             some additional information, in the following order:
             [0] Filename [1] Separator [2] Locus_tag column [3] Name column
             [4] ID column [5] Strand column [6] Left coordinate column
@@ -563,7 +564,8 @@ class Genome:
 
     def load_pos_orientation(self, max_dist=5000):
         """
-        Computes gene orientation for each position with the following criteria:
+        Defines an orientation for each genomic position, based on the neighboring genes, 
+        with the following criteria:
 
             * `divergent` if left neighbor on - strand and right neighbor on + strand,
             * `convergent` if left neighbor on + strand and right neighbor on - strand,

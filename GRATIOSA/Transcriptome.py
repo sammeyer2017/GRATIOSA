@@ -418,7 +418,7 @@ class Transcriptome:
                     
     def load_rnaseq_cov(self, cond="all", compute_from_bam=False, rev=False):
         '''
-        load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance
+        load_rnaseq_cov loads a RNASeq coverage to a Transcriptome instance 
         either from:
         * .npz files (described in a cov.info file and computed when new 
           data are loaded for the first time)  which are in the /rnaseq_cov/ 
