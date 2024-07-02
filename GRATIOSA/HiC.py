@@ -39,12 +39,14 @@ class HiC:
         score (pearson correlation coefficient between the border kernel and the 
         detected pattern), pvalue and qvalue.
         Creates 2 new attributes of the HiC instance:
+        
         * self.borders (dict. of dict.) 
                 dictionary containing one subdictionary per condition 
                 with the shape self.borders[cond]={bin_nb: {"score": 
                 score, "pval": pvalue, "qval": qvalue,"binsize":binsize}}.
                 N.B.: If data are binned at 2kb, the bin with number 10 
                 corresponds to data between 20000 and 22000.    
+        
         * self.borders_pos (dict. of dict)
                 dictionary containing one subdictionary per 
                 condition, with the shape self.borders_pos[cond] =
@@ -61,8 +63,10 @@ class HiC:
             The data importation requires a borders.info file that contains the
             column indices of each information in the data file and some
             additional information, in the following order:
+            
             * (required) [0] Condition, [1] Filename, [2] Startline,
               [3] Separator, [4] Bin, [5] Binsize (in b)
+            
             * (optional) [6] Score, [7] Pvalue,[8] Qvalue
 
         Note:    
@@ -172,6 +176,7 @@ class HiC:
         the detected pattern), the p-value and the q-value.
 
         Creates 2 new attributes of the HiC instance:
+        
             * self.loops (dict. of dict.)
                 dictionary containing one subdictionary per condition with 
                 the shape self.loops[cond] =
@@ -179,6 +184,7 @@ class HiC:
                 "qval": qvalue, "binsize":binsize}}
                 N.B.: If data are binned at 2kb, the bin with number 10 
                 corresponds to data between 20000 and 22000.
+                
             * self.loops_pos (dict. of dict)
                 dictionary containing one subdictionary per condition, with 
                 the shape self.loops_pos[cond] =
@@ -197,8 +203,10 @@ class HiC:
             column indices of each information in the data file and some 
             additional information, in the following
             order:
+            
             * (required) [0] Condition, [1] Filename, [2] Startline,
                   [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
+                  
             * (optional) [7] Score, [8] Pvalue,[9] Qvalue
         
         Note: 
@@ -358,8 +366,10 @@ class HiC:
             The data importation requires a loops.info file that contains 
             the column indices of each information in the data file and 
             some additional information, in the following order:
+            
             * (required) [0] Condition, [1] Filename, [2] Startline, 
               [3] Separator, [4] Bin1, [5] Bin2, [6] Binsize (in b),
+              
             * (optional) [7] Score, [8] Pvalue,[9] Qvalue
         
         Note:    
@@ -459,6 +469,7 @@ class HiC:
         the list of genes overlapping one of the borders.
 
         Creates:
+        
             * self.borders_genes (dict. of dict.) 
                     created only if per_genes = True. New attribute of the 
                     Genome instance. Dictionary containing one dictionary 
@@ -469,12 +480,14 @@ class HiC:
                     and contains the corresponding lists of genes. For 
                     example, self.borders_genes[cond_w0b]["borders"] returns
                     the list of genes that overlap the borders positions.
+                    
             * self.borders_pos (dict. of dict) 
                     new attribute of the HiC instance, dictionary containing 
                     one subdictionary per condition, with the shape 
                     self.borders_pos[cond] =
                     {'borders':list of positions that are in a border,
                     'no_borders':list of positions that are not in a border}
+                    
             * self.genes[locus].is_border (dict.) 
                     created only if per_genes = True.
                     New attribute of Gene instances related to the Genome
@@ -502,8 +515,10 @@ class HiC:
             The data importation requires a borders.info file that contains 
             the column indices of each information in the data file and some
             additional information, in the following order:
+            
             * (required) [0] Condition, [1] Filename, [2] Startline,
               [3] Separator, [4] Bin, [5] Binsize (in b)
+              
             * (optional) [6] Score, [7] Pvalue,[8] Qvalue
         
         Note:
