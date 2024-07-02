@@ -1,0 +1,2 @@
+Filename	TagColumn	FirstExprCol	Islog(yes/no)	ColumnSeparator
+base	cold_shock_rnaseq.csv	1	2	no	\t

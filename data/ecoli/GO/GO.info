@@ -1,0 +1,2 @@
+System	Filename	TagType	TagColumn	GOcol	Separator	StartLine
+GO	sequence_GO_format.csv	locus_tag	0	1	\t	0
