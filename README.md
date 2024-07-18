@@ -12,6 +12,10 @@ To install this package, the recommended method is to execute the following comm
 `pip install GRATIOSA`
 For simple testing, you can just download this package manually (using Code / Download ZIP) and work locally. 
 
+Dependencies
+------------
+GRATIOSA requires Python3 with the standard following libraries: NumPy, Pandas, Scipy, MatPlotLib, StatModels. Additionally, for the specific handling of .bam files, the library pySam is required. See version details in the requirements.txt file.
+
 General presentation 
 --------------------
 We describe here the recommended installation procedure. For a local use (for simple testing), please follow instructions proposed in the provided tutorials (Jupyter notebooks). 

@@ -8,7 +8,6 @@ import numpy as np
 from GRATIOSA.globvar import *
 from GRATIOSA import Genome
 import os
-import pysam
 import math
 
 def add_expression_to_genes(genes_dict, 
@@ -190,6 +189,7 @@ def process_bam(tr):
         tr: Transcriptome instance
 
     Note: 
+        REQUIRES the pySam library! 
         The .bam reads files are, with a bam_files.info file, in the
         /rnaseq_reads/ directory. The bam_files.info file contains the following
         information:  [0] Condition [1] Reads filename for this condition
@@ -204,7 +204,7 @@ def process_bam(tr):
         one 1-Mb chromosome, the files will have a 3-Mb long array. If the chromosome 
         length or ordering is changed, re-compute all files. 
     """
-
+    import pysam
     exist_cond = []
     path2dir = f"{basedir}data/{tr.name}/rnaseq_reads/"
     if not os.path.exists(path2dir + 'reads.info'):

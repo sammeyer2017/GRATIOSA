@@ -1,2 +1,2 @@
-Condition	Filename	IDColumn	StartColumn	StopColumn	StrandColumn	GenesColumn	Startline	Separator	Expression
-TUSutormin	TUSutormin.txt	0	2	3	4	1	1	\t	5
+Condition	Filename	TU_ID	StartColumn	StopColumn	StrandColumn	Startline	Separator		GenesColumn	Expression	TSS	TTS
+TUSutormin	TUSutormin.txt	0	2	3	4	1	\t		5	2	3
