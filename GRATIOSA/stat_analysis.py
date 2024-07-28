@@ -556,7 +556,7 @@ def quantitative_data_student_test(dict_data, cats="all",
                 
         m = np.mean(dict_data[c])
         means.append(m)
-        ci = stats.norm.interval(alpha=0.95, loc=m,
+        ci = stats.norm.interval(confidence=0.95, loc=m,
                                  scale=stats.sem(dict_data[c]))
         cim.append((ci[0], ci[1]))
         results.write(f"{c}\t{si}\t{m}\t{(ci[0],ci[1])}\n")
