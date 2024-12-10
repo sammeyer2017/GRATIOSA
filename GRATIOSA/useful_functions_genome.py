@@ -62,7 +62,7 @@ def update_NCBI_genomes():
         print("Error downloading the file!!")
         return 1
     else:
-        os.system(f"grep Complete assembly_summary.txt >  {basedir}data/accession_number_complete.txt")
+        os.system(f"grep Complete assembly_summary.txt >  {basedir}data/assembly_summary_complete.txt")
         os.system("rm assembly_summary.txt")
         return 0
 
