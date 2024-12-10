@@ -59,7 +59,12 @@ class GO:
         if obo_reload:
             #os.system(f"wget http://purl.obolibrary.org/obo/go/go-basic.obo \
             #    -P {basedir}data/")
-            os.system(f"curl -o {basedir}data/go-basic.obo http://purl.obolibrary.org/obo/go/go-basic.obo")
+            os.system(f"curl -o {basedir}data/go-basic.obo http://current.geneontology.org/ontology/go-basic.obo")
+            print("Update of go-basic.obo successful")
+        if not os.path_exists(f"{basedir}data/go-basic.obo"):
+            print("The go-basic.obo Gene Ontology file did not exist. Trying to download it.")
+            os.system(f"curl -o {basedir}data/go-basic.obo http://current.geneontology.org/ontology/go-basic.obo")
+            print("Update successful")
 
         self.dict_GO = {}
         with open(path2dir + filename, "r") as f:
