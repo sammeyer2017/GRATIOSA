@@ -95,7 +95,7 @@ class Genome:
                     nam=adr.split("/")[-1]
                     fil="%s_genomic.fna.gz"%(nam)
                     os.system("wget -nv %s/%s"%(adr,fil))
-                    if os.path.exists(fil):
+                    if not os.path.exists(fil):
                         print("Error in retrieving the sequence reference file from location %s/%s"%(adr,fil))
                     else:                        
                         os.system("gunzip %s"%fil)
@@ -104,7 +104,7 @@ class Genome:
                         os.system("wget -nv %s/%s"%(adr,fil))
                         os.system("gunzip %s"%fil)
                         os.system(f"mv %s {basedir}data/%s/annotation/sequence.gff3"%(fil[:-3],self.name))
-                        if os.path.exists(f"{basedir}data/%s/annotation/sequence.gff3"):
+                        if os.path.exists(f"{basedir}data/%s/annotation/sequence.gff3"%self.name):
                             print("Import of NCBI annotation for organism %s successful"%self.name)
                         else:
                             print("Error in import of NCBI annotation for organism %s"%self.name)
