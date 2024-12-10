@@ -57,8 +57,9 @@ class GO:
              water. [GOC:jl, ISBN:0198506732]'}
         """
         if obo_reload:
-            os.system(f"wget http://purl.obolibrary.org/obo/go/go-basic.obo \
-                -P {basedir}data/")
+            #os.system(f"wget http://purl.obolibrary.org/obo/go/go-basic.obo \
+            #    -P {basedir}data/")
+            os.system(f"curl -o {basedir}data/go-basic.obo http://purl.obolibrary.org/obo/go/go-basic.obo")
 
         self.dict_GO = {}
         with open(path2dir + filename, "r") as f:

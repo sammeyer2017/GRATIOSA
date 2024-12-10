@@ -94,14 +94,16 @@ class Genome:
                     adr=gline[19]
                     nam=adr.split("/")[-1]
                     fil="%s_genomic.fna.gz"%(nam)
-                    os.system("wget -nv %s/%s"%(adr,fil))
+                    #os.system("wget -nv %s/%s"%(adr,fil))
+                    os.system("curl -o %s %s/%s"%(fil,adr,fil))
                     if not os.path.exists(fil):
                         print("Error in retrieving the sequence reference file from location %s/%s"%(adr,fil))
                     else:                        
                         os.system("gunzip %s"%fil)
                         os.system(f"mv %s {basedir}data/%s/sequence.fasta"%(fil[:-3],self.name))
                         fil="%s_genomic.gff.gz"%(nam)
-                        os.system("wget -nv %s/%s"%(adr,fil))
+                        #os.system("wget -nv %s/%s"%(adr,fil))
+                        os.system("curl -o %s %s/%s"%(fil,adr,fil))
                         os.system("gunzip %s"%fil)
                         os.system(f"mv %s {basedir}data/%s/annotation/sequence.gff3"%(fil[:-3],self.name))
                         if os.path.exists(f"{basedir}data/%s/annotation/sequence.gff3"%self.name):
