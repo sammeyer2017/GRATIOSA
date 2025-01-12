@@ -61,7 +61,7 @@ class GO:
             #    -P {basedir}data/")
             os.system(f"curl -o {basedir}data/go-basic.obo http://current.geneontology.org/ontology/go-basic.obo")
             print("Update of go-basic.obo successful")
-        if not os.path_exists(f"{basedir}data/go-basic.obo"):
+        if not os.path.exists(f"{basedir}data/go-basic.obo"):
             print("The go-basic.obo Gene Ontology file did not exist. Trying to download it.")
             os.system(f"curl -o {basedir}data/go-basic.obo http://current.geneontology.org/ontology/go-basic.obo")
             print("Update successful")
