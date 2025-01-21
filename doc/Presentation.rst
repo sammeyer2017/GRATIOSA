@@ -7,6 +7,10 @@ Genome Regulation Analysis Tool Incorporating Organization and Spatial Architect
 
 GRATIOSA facilitates the integration, comparison and combined statistical analyses of diffent data types such as Chip-Seq data, RNA-Seq data and genomic annotations. It includes (1) the integration of various data types and formats in a unified framework, allowing direct comparison; (2) an implementation of spatial statistical analyses of the relationship between transcriptional regulation and chromosome organization, greatly reducing the required code length; and (3) an improvement in reproducibility, in particular across different species in order to identify common regulatory mechanisms.
 
+.. image:: _static/GRATIOSA.png
+   :width: 1000
+   :align: center
+
 GRATIOSA is written in Python, and is targeted to computational biologists. The automated import of data and standardized statistical tests and procedures are combined with the flexibility of Python for developing custom subsequent analyses, depending on the particular regulatory mechanism under investigation. It is primarily designed to treat expression data (RNA-Seq or microarrays), and ChIP-Seq data, but can be used with any type of continuous signals along the genome (other binding signals, mutation rates, binding prediction profiles…) or lists of discrete features (annotated or predicted protein binding sites, Hi-C topological domain borders, …). 
 
 How to install the package? 
