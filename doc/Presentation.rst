@@ -11,9 +11,14 @@ GRATIOSA is written in Python, and is targeted to computational biologists. The 
 
 How to install the package? 
 ---------------------------
-To install this package, the recommended method is to execute the following command in your terminal 
-``pip install GRATIOSA``
-For simple testing, you can just download this package manually (using Code / Download ZIP) and work locally. 
+To install this package for long-term use, the recommended method is to install it using PyPI, typically typing the following command in your terminal 
+``pip install GRATIOSA``. 
+Note that you may be required to install a virtual environment if you have a distribution-installed version of Python. This will avoid version conflicts with your current version. The typical procedure is ``python3 -m venv .venv``, ``source .venv/bin/activate``, ``python3 -m pip install GRATIOSA``, which will install GRATIOSA with all dependencies. You will need to use this environment for analyses (e.g., in Jupyter notebooks). 
+
+To install the package temporarily for simple testing, you can just download this package manually (using Code / Download ZIP) and work locally. 
+
+
+
 
 General presentation 
 --------------------
