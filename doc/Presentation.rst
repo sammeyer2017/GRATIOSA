@@ -31,6 +31,7 @@ We describe here the recommended installation procedure. For a local use (for si
 Before using the package, the user needs to prepare and organize their data into predefined directories: see examples in the provided data/ directory and their use in tutorials. Each new organism corresponds to a directory with the associated name.  This directory must contain the reference sequence in fasta format and an annotation file in gff format in the "annotation" subdirectory. This can be created automatically from the NCBI database (see documentation of the Genome class). The pre-processed and formatted experimental data, provided by the user, should be placed in appropriate directories named according to the data type (see examples in tutorials). These experimental data files should usually be accompanied by an "info" file that the user needs to complete with information about the file organization, following the provided template.
 
 Typical data files supported by GRATIOSA are summarized in the following table. Please see the detailed documentation of each function to see if and how alternate formats can be used:
+
 +-------------------------+-----------+----------------------------------------+-----------------+------------------------+
 | Data type               | Rows      | Columns                                | Standard format | Commonly used packages |
 +=========================+===========+========================================+=================+========================+
