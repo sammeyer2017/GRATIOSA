@@ -39,7 +39,7 @@ class Genome:
             NCBI_accession (Optional [str.]): name of the NCBI GenBank accession number of the requested genome. Example: GCA_000147055.1
 
         Note: 
-            If the NCBI command line tool is not installed, the software tries to open/download the "accession_number_complete.txt" file in the base directory. This is the list of all NCBI complete genomes (~ 20 Mb). If it is already present, the software does not try to update it. For an update of this file from the NCBI server, please run update_NCBI_genomes(). 
+            If the NCBI command line tool is not installed, the software tries to open/download the "assembly_summary_complete.txt" file in the base directory. This is the list of all NCBI complete genomes (~ 20 Mb). If it is already present, the software does not try to update it. For an update of this file from the NCBI server, please run update_NCBI_genomes(). 
 
         """
         if os.path.exists(f"{basedir}data/{self.name}"):
