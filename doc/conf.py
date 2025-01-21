@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.abspath('GRATIOSA'))
 
 
 project = 'GRATIOSA'
-copyright = '2023, Pineau, Forquet, Meyer'
+copyright = '2025, Pineau, Forquet, Meyer'
 author = 'Pineau, Forquet, Meyer'
-release = '0.0.3'
+release = '1.0.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
