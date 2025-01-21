@@ -31,10 +31,26 @@ We describe here the recommended installation procedure. For a local use (for si
 Before using the package, the user needs to prepare and organize their data into predefined directories: see examples in the provided data/ directory and their use in tutorials. Each new organism corresponds to a directory with the associated name.  This directory must contain the reference sequence in fasta format and an annotation file in gff format in the "annotation" subdirectory. This can be created automatically from the NCBI database (see documentation of the Genome class). The pre-processed and formatted experimental data, provided by the user, should be placed in appropriate directories named according to the data type (see examples in tutorials). These experimental data files should usually be accompanied by an "info" file that the user needs to complete with information about the file organization, following the provided template.
 
 Typical data files supported by GRATIOSA are summarized in the following table. Please see the detailed documentation of each function to see if and how alternate formats can be used:
-.. csv-table:: Typical data files used by GRATIOSA 
-:file: tableau_softs.csv
-:widths: 30, 70
-:header-rows: 1
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| Data type               | Rows      | Columns                                | Standard format | Commonly used packages |
++=========================+===========+========================================+=================+========================+
+| RNA-Seq coverage        | positions | coverage                               | bedgraph        | Bedtools               |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| RNA-Seq expression      | genes     | locus, expression level (RPKM or FPKM) | tab             | Cufflinks, HTSeq       |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| RNA-Seq differential    | genes     | locus, fold-change, p-value            | csv             | limma, DESeq2          |
+| expression              |           |                                        |                 |                        |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| Microarray differential | genes     | locus, fold-change, p-value            | csv             | limma                  |
+| expression              |           |                                        |                 |                        |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| ChIP-Seq coverage       | positions | bin start, bin end, coverage           | bedgraph        | deepTools              |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| ChIP-Seq peaks          | sites     | position, value                        | bed             | MACS                   |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
+| List of genomic         | sites     | position, value                        | csv             |                        |
+| position data           |           |                                        |                 |                        |
++-------------------------+-----------+----------------------------------------+-----------------+------------------------+
 
 How to use GRATIOSA?
 ------------------------
